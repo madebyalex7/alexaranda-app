@@ -570,6 +570,7 @@ nav.tabs .ti{transition:transform .18s ease}
 .rmas>summary{cursor:pointer;color:var(--sec);font-size:14px;padding:6px 0}
 .revgraf .spark{width:100%;height:96px;margin-top:6px}
 .hoytienes li.mal b{color:#C0553A}
+nav.tabs .tipol{font-size:19px;line-height:1;align-items:center;justify-content:center;opacity:1}
 </style>
 </head>
 <body>
@@ -596,6 +597,7 @@ nav.tabs .ti{transition:transform .18s ease}
     <button role="tab" id="tabLeads" aria-selected="false" data-tab="leads"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 11-4.7"/><path d="M18 14v6M15 17h6"/></svg></span>Leads<span class="n" id="nLea"></span></button>
     <button role="tab" id="tabTar" aria-selected="false" data-tab="tareas"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12.5l2.5 2.5 5-5.5"/></svg></span>Tareas<span class="n" id="nTar"></span></button>
     <button role="tab" id="tabRed" aria-selected="false" data-tab="redes"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.4 5 5.4.6-4 3.7 1.1 5.4L12 15.5l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6z"/></svg></span>Redes<span class="n" id="nRed"></span></button>
+    <button role="tab" id="tabPol" aria-selected="false" data-tab="pollitos"><span class="ti tipol" aria-hidden="true">🐥</span>Pollitos<span class="n" id="nPol"></span></button>
     <button role="tab" id="tabDin" aria-selected="false" data-tab="dinero"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 6.5a6.5 6.5 0 1 0 0 11"/><path d="M4 10.5h9M4 13.5h9"/></svg></span>Dinero</button>
     <button role="tab" id="tabCon" aria-selected="false" data-tab="contenido"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M10.5 13l3.5 2-3.5 2z"/></svg></span>Contenido</button>
     <button class="nuevo" id="btnNuevo">+ Nuevo</button>
@@ -812,6 +814,8 @@ function pintar(){
   $('#tabTar').setAttribute('aria-selected',S.tab==='tareas');
   $('#tabRed').setAttribute('aria-selected',S.tab==='redes'); $('#nRed').textContent=rdSinUsar()||'';
   $('#nTar').textContent=tareasVivas().filter(function(t){ var g=tGrupo(t); return g==='vencida'||g==='hoy'; }).length||'';
+  $('#tabPol').setAttribute('aria-selected',S.tab==='pollitos'); $('#nPol').textContent=nuevos().length||'';
+  if(S.tab==='pollitos'){ $('#btnNuevo').hidden=true; $('#tabClientes').setAttribute('aria-selected',false); $('#tabLeads').setAttribute('aria-selected',false); $('#tabDin').setAttribute('aria-selected',false); $('#tabCon').setAttribute('aria-selected',false); $('#tabRonda').setAttribute('aria-selected',false); $('#tabLlam').setAttribute('aria-selected',false); $('#tabHoy').setAttribute('aria-selected',false); $('#tabTar').setAttribute('aria-selected',false); $('#tabRed').setAttribute('aria-selected',false); pintarNuevos(''); return; }
   $('#tabDin').setAttribute('aria-selected',S.tab==='dinero'); $('#tabCon').setAttribute('aria-selected',S.tab==='contenido');
   if(S.tab==='dinero'||S.tab==='contenido'){ $('#btnNuevo').hidden=true; $('#tabClientes').setAttribute('aria-selected',false); $('#tabLeads').setAttribute('aria-selected',false); if(S.tab==='dinero') pintarDinero(); else pintarContenido(); return; }
   $('#btnNuevo').hidden=['ronda','llamadas','hoy','tareas','redes'].indexOf(S.tab)>=0;
@@ -1247,9 +1251,8 @@ function avisosRenov(cid){
 
 function pintarRonda(){
   $('#nRon').textContent = R.cargado ? (R.filas.filter(function(f){return !rhecha(f);}).length||'') : '';
-  var sel='<div class="rtipo" role="group" aria-label="Qué reporte">'+[['mensual','Mensual'+(R.pendMens?' <span class="c">'+R.pendMens+'</span>':'')],['lunes','Lunes'],['viernes','Viernes'],['videos','🎥 Vídeos'],['nuevos','🌱 Nuevos'+(nuevos().length?' <span class="c">'+nuevos().length+'</span>':'')]].map(function(x){ return '<button class="chip" data-rtipo="'+x[0]+'" aria-pressed="'+(R.tipo===x[0])+'">'+x[1]+'</button>'; }).join('')+'</div>';
+  var sel='<div class="rtipo" role="group" aria-label="Qué reporte">'+[['mensual','Mensual'+(R.pendMens?' <span class="c">'+R.pendMens+'</span>':'')],['lunes','Lunes'],['viernes','Viernes'],['videos','🎥 Vídeos']].map(function(x){ return '<button class="chip" data-rtipo="'+x[0]+'" aria-pressed="'+(R.tipo===x[0])+'">'+x[1]+'</button>'; }).join('')+'</div>';
   if(R.tipo==='videos'){ pintarVideos(sel); return; }
-  if(R.tipo==='nuevos'){ pintarNuevos(sel); return; }
   if(!R.cargado){ $('#app').innerHTML = R.err ? '<div class="pantalla"><h2>No se ha podido cargar el reporte</h2><p>'+esc(R.err)+'</p><p><button class="btn prim" id="rOtra">Volver a cargar</button></p></div>' : sel+'<div class="cargando"></div>'; if(!R.cargando&&!R.err) rondaCargar(); enlazarRonda(); return; }
   if(!R.filas.length){ $('#app').innerHTML=sel+'<div class="pantalla"><h2>'+(esMensual()?'No hay revisiones mensuales pendientes':'Todavía no hay reporte del '+(esViernes()?'viernes':'lunes'))+'</h2><p>'+(esMensual()?'Cuando a un cliente le toca su revisión del mes (cada 4 semanas, o cuando sube fotos y medidas), te preparo aquí su tarjeta: constancia del mes, peso, centímetros, fuerza, fotos, mini objetivos para elegir y el mensaje.':esViernes()?'El viernes por la mañana, después de la lectura de las 6:00, preparo una tarjeta corta por cliente: cómo va la semana, qué le queda, su finde y un mensaje breve.':'El lunes por la mañana, después de la lectura de las 6:00, preparo una tarjeta por cliente: su semana en gráficos, cómo va en repes y pesos, el mensaje que te propongo y los cambios de plan, con su porqué.')+'</p></div>'; enlazarRonda(); return; }
   var fs=R.filas, hechas=fs.filter(rhecha).length, tot={sube:0,igual:0,baja:0}, pend=0, enviados=0;
@@ -1469,7 +1472,7 @@ function enlazarVideos(){
   app.onkeydown=null; app.onchange=null;
   app.onclick=function(e){
     var b=e.target.closest('button,a'); if(!b) return;
-    if(b.hasAttribute('data-rtipo')){ var t=b.getAttribute('data-rtipo'); if(t===R.tipo) return; R.tipo=t; if(t==='videos'||t==='nuevos'){ pintarRonda(); return; } R.cargado=false; R.abierta=null; R.filtro='todas'; R.fecha=''; rondaCargar(); pintarRonda(); return; }
+    if(b.hasAttribute('data-rtipo')){ var t=b.getAttribute('data-rtipo'); if(t===R.tipo) return; R.tipo=t; if(t==='videos'){ pintarRonda(); return; } R.cargado=false; R.abierta=null; R.filtro='todas'; R.fecha=''; rondaCargar(); pintarRonda(); return; }
     if(b.hasAttribute('data-cvotra')){ CV.err=''; cvCargar(); pintarRonda(); return; }
     var art=b.closest('[data-cv]'); if(!art) return;
     var cid=art.getAttribute('data-cv'), c=CV.lista.filter(function(x){ return x.id===cid; })[0], r=CV.res[cid]=CV.res[cid]||{};
@@ -1577,9 +1580,9 @@ function nvRecordatorios(c){ var dia=nvDia(c), r=['Pídele foto y un mensajito d
   if(dia<=7) r.push('Esta semana, fotos de comidas y cenas'); r.push('Viernes: peso (el martes, si quiere)'); return r; }
 function pintarNuevos(sel){
   var lista=nuevos(), app=$('#app');
-  lista.forEach(function(c){ if(c.codigo_app&&!CAC[c.id]&&!c._cargandoCal){ c._cargandoCal=1; api('calendarioCliente',{cliente_id:c.id}).then(function(d){ d._fresco=1; CAC[c.id]=d; if(S.tab==='ronda'&&R.tipo==='nuevos'){ var y=scrollY; pintarRonda(); scrollTo(0,y); } }).catch(function(){ c._cargandoCal=0; }); } });
-  var h=sel+'<div class="rcab"><h2>Clientes nuevos<small>las 2 primeras semanas, con más control · '+lista.length+(lista.length===1?' cliente':' clientes')+'</small></h2></div>';
-  if(!lista.length){ app.innerHTML=h+'<div class="pantalla"><h2>Ahora no hay clientes nuevos</h2><p>Cuando des de alta a alguien y pongas su primer día de servicio («Inicio» en su ficha), sale aquí durante 14 días con todo lo que tienes que vigilar.</p></div>'; enlazarRonda(); return; }
+  lista.forEach(function(c){ if(c.codigo_app&&!CAC[c.id]&&!c._cargandoCal){ c._cargandoCal=1; api('calendarioCliente',{cliente_id:c.id}).then(function(d){ d._fresco=1; CAC[c.id]=d; if(S.tab==='pollitos'){ var y=scrollY; pintarNuevos(''); scrollTo(0,y); $('#nPol').textContent=nuevos().length||''; } }).catch(function(){ c._cargandoCal=0; }); } });
+  var h=sel+'<div class="rcab"><h2>🐥 Pollitos<small>tus clientes nuevos: las 2 primeras semanas, con más control · '+lista.length+(lista.length===1?' cliente':' clientes')+'</small></h2></div>';
+  if(!lista.length){ app.innerHTML=h+'<div class="pantalla"><h2>Ahora no hay pollitos</h2><p>Cuando des de alta a alguien y pongas su primer día de servicio («Inicio» en su ficha), sale aquí durante 14 días con todo lo que tienes que vigilar.</p></div>'; app.onclick=null; return; }
   h+='<div class="rlista">'+lista.map(function(c){ var d=CAC[c.id], ch=nvChecks(c,d), urg=ch.filter(function(x){ return x.urg; }).length, ok=ch.filter(function(x){ return x.ok; }).length, ab=NV.abierto===c.id, dia=nvDia(c), tel=String(c.telefono||'').replace(/\D/g,'');
     var chips='<span class="mini n">'+(dia<1?'empieza el '+esc(fCorta(cArranque(c))):'día '+dia+' de 14')+'</span>'+(ch.length?'<span class="mini '+(urg?'r':ok===ch.length?'v':'a')+'">'+ok+'/'+ch.length+'</span>':'')+(urg?'<span class="mini r">⚠ '+urg+'</span>':'');
     return '<article class="rfila nvfila'+(ab?' abierta':'')+'" data-nv="'+esc(c.id)+'"><div class="rhead"><button class="rc" data-nvab aria-expanded="'+ab+'"><span class="punto '+(urg?'rojo':'verde')+'"></span><span class="rnom">'+esc(c.nombre)+'</span><span class="rchips">'+chips+'</span>'+
@@ -1589,9 +1592,8 @@ function pintarNuevos(sel){
         '<div class="racc" style="margin-top:12px">'+(tel?'<a class="btn wa" href="https://wa.me/'+tel+'" target="_blank" rel="noopener">WhatsApp</a>':'')+'<button class="btn" data-nvficha>Su ficha y calendario →</button></div></section></div>':'')+'</article>'; }).join('')+'</div>';
   app.innerHTML=h;
   app.onclick=function(e){ var b=e.target.closest('button,a'); if(!b) return;
-    if(b.hasAttribute('data-rtipo')){ var t=b.getAttribute('data-rtipo'); if(t===R.tipo) return; R.tipo=t; if(t!=='videos'){ R.cargado=false; R.abierta=null; R.filtro='todas'; R.fecha=''; rondaCargar(); } pintarRonda(); return; }
     var art=b.closest('[data-nv]'); if(!art) return; var cid=art.getAttribute('data-nv');
-    if(b.hasAttribute('data-nvab')){ NV.abierto=NV.abierto===cid?null:cid; var y=scrollY; pintarRonda(); scrollTo(0,y); return; }
+    if(b.hasAttribute('data-nvab')){ NV.abierto=NV.abierto===cid?null:cid; var y=scrollY; pintarNuevos(''); scrollTo(0,y); return; }
     if(b.hasAttribute('data-nvver')){ PG={cid:cid,sec:b.getAttribute('data-nvver')}; S.tab='clientes'; try{ history.pushState({pg:1},'','#c/'+encodeURIComponent(cid)+'/'+PG.sec); }catch(er){} pintar(); window.scrollTo(0,0); return; }
     if(b.hasAttribute('data-nvficha')){ PG={cid:cid,sec:'calendario'}; S.tab='clientes'; try{ history.pushState({pg:1},'','#c/'+encodeURIComponent(cid)+'/calendario'); }catch(er){} pintar(); window.scrollTo(0,0); return; }
   };
@@ -2104,7 +2106,7 @@ function enlazarRonda(){
   app.onclick=function(e){
     var b=e.target.closest('button,a'); if(!b) return;
     if(b.hasAttribute('data-rfil')){ R.filtro=b.getAttribute('data-rfil'); pintarRonda(); return; }
-    if(b.hasAttribute('data-rtipo')&&/^(videos|nuevos)$/.test(b.getAttribute('data-rtipo'))){ if(R.tipo===b.getAttribute('data-rtipo')) return; R.tipo=b.getAttribute('data-rtipo'); pintarRonda(); return; }
+    if(b.hasAttribute('data-rtipo')&&/^videos$/.test(b.getAttribute('data-rtipo'))){ if(R.tipo===b.getAttribute('data-rtipo')) return; R.tipo=b.getAttribute('data-rtipo'); pintarRonda(); return; }
     if(b.hasAttribute('data-rtipo')){ var t=b.getAttribute('data-rtipo'); if(t===R.tipo) return; R.tipo=t; R.cargado=false; R.abierta=null; R.filtro='todas'; R.fecha=''; rondaCargar(); pintarRonda(); return; }
     var art=b.closest('.rfila'); if(!art) return;
     var id=art.getAttribute('data-rid'), f=rbuscar(id); if(!f) return;
@@ -3573,7 +3575,7 @@ function hoyTienes(dolor,llamadas,cobros){
   nuevos().forEach(function(c){ var d=CAC[c.id]; if(c.codigo_app&&!d&&!c._calPed){ c._calPed=1; api('calendarioCliente',{cliente_id:c.id}).then(function(x){ x._fresco=1; CAC[c.id]=x; if(S.tab==='hoy') pintarHoy(true); }).catch(function(){}); } if(!d) return;
     var en=(d.entrenos||[]).filter(function(e){ return e.hecho&&e.fecha>=cArranque(c); }).map(function(e){ return e.fecha; }).sort();
     if(en.length===1&&dias(en[0],h)<=2) fil.push(fila('🎉',c.nombre+' ha hecho su primer entreno',relativo(en[0])+' · buen momento para escribirle','data-irnuevo="'+esc(c.id)+'"'));
-    var u=nvChecks(c,d).filter(function(x){ return x.urg; })[0]; if(u) fil.push(fila('🌱',c.nombre+' · '+u.t,nvDia(c)<1?'empieza el '+fCorta(cArranque(c)):'día '+nvDia(c)+' de 14','data-irnuevo="'+esc(c.id)+'"','mal')); });
+    var u=nvChecks(c,d).filter(function(x){ return x.urg; })[0]; if(u) fil.push(fila('🐥',c.nombre+' · '+u.t,nvDia(c)<1?'empieza el '+fCorta(cArranque(c)):'día '+nvDia(c)+' de 14','data-irnuevo="'+esc(c.id)+'"','mal')); });
   nuevos().forEach(function(c){ var d=CAC[c.id], al=altaDe(c.id); if(d&&d.acceso&&d.acceso.candado&&!d.acceso.plan_ok&&al&&al.listo) fil.push(fila('✅','Aprobar el plan de '+c.nombre,'Revísalo y dale a «OK al plan»','data-irnuevo="'+esc(c.id)+'"')); });
   dolor.forEach(function(a){ fil.push(fila('🔴',a.cliente+' · '+a.titulo,a.detalle,a.cliente_id?'data-abrir="Clientes|'+esc(a.cliente_id)+'"':'','mal')); });
   llamadas.forEach(function(l){ fil.push(fila('📞','Llamada · '+(l.nombre||''),typeof lambas==='function'?lambas(l):'','data-irll="'+esc(l.id)+'"')); });
@@ -3586,7 +3588,7 @@ function restoHoy(){
   var nv=nuevos(), ctl=controlesSemana(), prR=tareasVivas().filter(esPromesa).filter(function(t){ return ['Esta semana','Más adelante'].indexOf(prGrupo(t.fecha))>=0; }).sort(function(a,b){ return String(a.fecha).localeCompare(String(b.fecha)); }), h='';
   h+='<details class="bloque lsec"><summary>🤝 Otras promesas <span class="n">'+prR.length+'</span></summary>'+(prR.length?'<ul class="corta avl">'+prR.map(filaPromesa).join('')+'</ul>':'')+bloquePromesaForm()+'</details>';
   if(ctl.length) h+='<details class="bloque lsec"><summary>📅 Controles de esta semana <span class="n">'+ctl.length+'</span></summary><ul class="corta">'+ctl.map(function(x){ return '<li><span class="ctic" aria-hidden="true">'+(x.tipo==='control'?'📸':x.tipo==='revision'?'📋':'⏳')+'</span><button class="quien" data-abrir="Clientes|'+esc(x.c.id)+'"><b>'+esc(x.dia)+' · '+esc(x.c.nombre)+'</b><span>'+esc(x.t)+(x.sub?' · '+esc(x.sub):'')+'</span></button></li>'; }).join('')+'</ul></details>';
-  if(nv.length) h+='<details class="bloque lsec"><summary>🌱 Clientes nuevos <span class="n">'+nv.length+'</span></summary><ul class="corta">'+nv.map(function(c){ return '<li><button class="quien" data-irnuevo="'+esc(c.id)+'"><b>'+esc(c.nombre)+'</b><span>'+(nvDia(c)<1?'empieza el '+esc(fCorta(cArranque(c))):'día '+nvDia(c)+' de 14')+'</span></button></li>'; }).join('')+'</ul></details>';
+  if(nv.length) h+='<details class="bloque lsec"><summary>🐥 Pollitos <span class="n">'+nv.length+'</span></summary><ul class="corta">'+nv.map(function(c){ return '<li><button class="quien" data-irnuevo="'+esc(c.id)+'"><b>'+esc(c.nombre)+'</b><span>'+(nvDia(c)<1?'empieza el '+esc(fCorta(cArranque(c))):'día '+nvDia(c)+' de 14')+'</span></button></li>'; }).join('')+'</ul></details>';
   return h;
 }
 function bloquePromesaForm(){ return '<div class="tnueva prn"><input id="prTxt" type="text" placeholder="Qué le has dicho… «le mando la dieta»" aria-label="Qué has prometido"><input id="prCli" type="text" list="dl-prcli" placeholder="A quién" aria-label="A quién"><input id="prF" type="date" value="'+esc(sumar(hoy(),1))+'" aria-label="Para cuándo"><button class="btn" id="prAdd">Añadir</button><datalist id="dl-prcli">'+(S.data.clientes||[]).filter(vivo).map(function(c){ return '<option>'+esc(c.nombre)+'</option>'; }).join('')+'</datalist></div>'; }
@@ -3809,7 +3811,7 @@ function enlazarHoy(){
     if(b.hasAttribute('data-abrir')&&/^Clientes\|/.test(b.getAttribute('data-abrir'))){ guardarLocal('panel_tab','clientes'); irFicha(b.getAttribute('data-abrir').split('|')[1]); return; }
     if(b.hasAttribute('data-abrir')){ var k=b.getAttribute('data-abrir').split('|'); S.tab='clientes'; S.fCli='Todos'; S.fSem=''; S.qCli=''; S.verArch=false; S.abierta=null; guardarLocal('panel_tab','clientes'); abrir(k[0]+'|'+k[1],true); return; }
     if(b.hasAttribute('data-irrep')){ R.tipo=b.getAttribute('data-irrep'); R.cargado=false; R.abierta=null; R.filtro='todas'; R.fecha=''; S.tab='ronda'; pintar(); return; }
-    if(b.hasAttribute('data-irnuevo')){ NV.abierto=b.getAttribute('data-irnuevo'); R.tipo='nuevos'; S.tab='ronda'; guardarLocal('panel_tab','ronda'); pintar(); return; }
+    if(b.hasAttribute('data-irnuevo')){ NV.abierto=b.getAttribute('data-irnuevo'); S.tab='pollitos'; pintar(); return; }
     if(b.hasAttribute('data-irll')){ LC.abierta=b.getAttribute('data-irll'); S.tab='llamadas'; guardarLocal('panel_tab','llamadas'); pintar(); return; }
     if(b.hasAttribute('data-avvisto')){ var aid=b.getAttribute('data-avvisto'), av=AV.lista.filter(function(x){ return x.id===aid; })[0]; AV.lista=AV.lista.filter(function(x){ return x.id!==aid; }); tRepintar();
       api('avisoVisto',{id:aid,codigo:av&&av.codigo,tipo:av&&av.tipo}).catch(function(err){ if(av){ AV.lista.push(av); tRepintar(); } alerta(err); }); return; }
@@ -3844,6 +3846,7 @@ document.addEventListener('click',function(e){ var b=e.target.closest&&e.target.
 document.addEventListener('click',function(e){ var b=e.target.closest&&e.target.closest('[data-formsc]'); if(!b) return; e.stopPropagation(); var c=(S.data.clientes||[]).filter(function(x){ return x.id===b.getAttribute('data-formsc'); })[0]; FO_TAB='comp'; abrirFormularios(c&&c.id,c&&c.nombre); },true);
 $('#tabRonda').onclick=function(){ S.tab='ronda'; S.abierta=null; guardarLocal('panel_tab','ronda'); pintar(); };
 $('#tabHoy').onclick=function(){ S.tab='hoy'; S.abierta=null; guardarLocal('panel_tab','hoy'); if(EN.cargado&&!EN.cargando) entregasCargar(); pintar(); };
+$('#tabPol').onclick=function(){ S.tab='pollitos'; S.abierta=null; pintar(); };
 $('#tabDin').onclick=function(){ S.tab='dinero'; S.abierta=null; pintar(); };
 $('#tabCon').onclick=function(){ S.tab='contenido'; S.abierta=null; pintar(); };
 $('#tabRed').onclick=function(){ S.tab='redes'; S.abierta=null; guardarLocal('panel_tab','redes'); pintar(); };
