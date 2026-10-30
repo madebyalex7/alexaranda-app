@@ -1922,7 +1922,7 @@ function avisoFotos(){
     if(((D.mp || {}).fotos || []).some(f=>String(f.f) >= sumaDias(vi, -3))) return "";
     const h = hoyLocal(), n = Math.round((new Date(h + "T12:00:00") - new Date(vi + "T12:00:00")) / 864e5);
     if(n < -2 || n > 8) return "";
-    const t = n < 0 ? ["El viernes toca fotos 📸", "Fotos, peso y medidas. Con la misma luz y la misma ropa que la otra vez."] : n === 0 ? ["Hoy toca fotos, peso y medidas 📸", "5 minutos y me ayudan muchísimo a ver todo lo que cambias."] : ["Te faltan tus fotos de control 📸", "Las del viernes. Cuando puedas, las subes y listo."];
+    const t = n < 0 ? ["El viernes toca fotos 📸", (FREC() === "no" ? "Fotos y medidas" : "Fotos, peso y medidas") + ". Con la misma luz y la misma ropa que la otra vez."] : n === 0 ? [FREC() === "no" ? "Hoy toca fotos y medidas 📸" : "Hoy toca fotos, peso y medidas 📸", "5 minutos y me ayudan muchísimo a ver todo lo que cambias."] : ["Te faltan tus fotos de control 📸", "Las del viernes. Cuando puedas, las subes y listo."];
     return `<button type="button" class="avfotos ${n > 0 ? "tarde" : n === 0 ? "hoy" : ""}" data-go="prog"><span class="avf-ic" aria-hidden="true">${ic("fotos")}</span><span><b>${t[0]}</b><small>${t[1]}</small></span><span class="avf-go" aria-hidden="true">›</span></button>`;
   }catch(e){ return ""; }
 }
@@ -2383,7 +2383,7 @@ function estadoCandado(){
     const c = D && D.candado; if(!c || typeof c !== "object") return null;
     if(Date.now() - (+lsGet("cand_visto_" + CODIGO) || Date.now()) > 72 * 36e5) return null;   // 3 días sin poder confirmarlo con el servidor: abierto
     const mp = D.mp || {}, f = c.fotos === true || (mp.fotos || []).length > 0, p = c.peso === true || (mp.pesos || []).length > 0, ok = c.plan === true;
-    return f && p && ok ? null : {fotos: f, peso: p, plan: ok};
+    return f && p && ok ? null : {fotos: f, peso: p, plan: ok, sinPeso: !!c.sinPeso};
   }catch(e){ return null; }
 }
 const vistaCerrada = v=>v === "home" || v === "week" || v === "nutri" || v === "extra" || !!(D && D.dias && D.dias[v]);
@@ -2393,13 +2393,13 @@ function pantallaCandado(c){
   <div class="candado">
     <div class="cand-ic" aria-hidden="true">🔒</div>
     <h1>Tu plan se abre muy pronto</h1>
-    <p class="sub">Tu entreno y tu alimentación se desbloquean en cuanto tengamos estas tres cosas. Vamos a por ellas 💪</p>
+    <p class="sub">Tu entreno y tu alimentación se desbloquean en cuanto tengamos esto. Vamos a por ello 💪</p>
     <ul class="cand-lista">
       ${fila(c.fotos, "Tus fotos de inicio", c.fotos ? "Hechas" : "De frente, de lado y de espalda. Solo las veo yo", "prog")}
-      ${fila(c.peso, "Tu peso de hoy", c.peso ? "Apuntado" : "En ayunas, después del baño", "prog")}
+      ${c.sinPeso ? "" : fila(c.peso, "Tu peso de hoy", c.peso ? "Apuntado" : "En ayunas, después del baño", "prog")}
       ${fila(c.plan, "Tu plan a tu medida", c.plan ? "Listo" : "Te lo estoy preparando con tu formulario", "")}
     </ul>
-    <p class="sub" style="font-size:13.5px">Mientras tanto, en «Progreso» puedes ir subiendo tus fotos y tu peso.</p>
+    <p class="sub" style="font-size:13.5px">Mientras tanto, lo que te falte lo subes en «Progreso».</p>
     <img class="cand-alex" src="/alex.jpg" alt="" width="56" height="56" onerror="this.remove()">
   </div>`;
   app.querySelectorAll("[data-go]").forEach(b=>b.onclick = ()=>ir(b.dataset.go));

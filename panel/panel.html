@@ -3363,7 +3363,8 @@ function lresultado(l){
 /* --- alta: formulario inicial y en qué paso va (Alex 25/10: el alta la monta el chat de Altas a las 10:00 y a las 20:00) --- */
 var FORM_INI='https://docs.google.com/forms/d/e/1FAIpQLSdJ2OUhlpTyLX9jU9reFnnKUFvmbl-qB4sFrpJ91RrBkKQREA/viewform?usp=pp_url&entry.70144598=';
 function altaFicha(cid){ var al=(S.data.altas||[]).filter(function(a){ return vivo(a)&&a.cliente_id===cid&&a.estado!=='hecha'; }).pop(); if(!al) return '';
-  return '<div class="grupo"><h3>Su alta</h3><p class="estado-m">'+altaPaso(al)+'</p>'+(al.listo?btnBienvenida(al):'<div class="racc">'+btnFormIni(al)+'</div>'+btnApp(al))+'</div>'; }
+  var dA=CAC[cid], espera=dA&&dA.acceso&&dA.acceso.candado&&!dA.acceso.plan_ok;   // listo con candado = propuesta lista para tu OK; la bienvenida va después
+  return '<div class="grupo"><h3>Su alta</h3><p class="estado-m">'+altaPaso(al)+'</p>'+(al.listo&&!espera?btnBienvenida(al):'<div class="racc">'+(al.listo?'':btnFormIni(al))+'</div>'+btnApp(al,espera))+'</div>'; }
 function altaPaso(al){ if(al.estado==='hecha') return '✓ Alta completa'+(al.resultado?' · '+esc(al.resultado):'');
   return (al.paso?esc(al.paso):'Pendiente: el chat de Altas crea sus documentos y su carpeta a las 10:00 o a las 20:00. Cuando llegue su formulario, te deja la propuesta de entreno y nutrición.')+(al.formulario_enviado?' · Formulario inicial enviado el '+esc(fCorta(al.formulario_enviado)):''); }
 /* Vídeos de las altas (Alex 30/10): se guardan una vez en Llamadas › Vídeos de las altas */
@@ -3378,8 +3379,8 @@ function msgApp(al){ var c=(S.data.clientes||[]).filter(function(x){ return x.id
   return 'Genial'+(n?', '+n:'')+'! Ya tengo tu formulario 🙌\n\nEsta es tu app, donde vas a tener todo:\n'+appUrl(c.codigo_app)+'\n\nÁbrela y añádela a la pantalla de inicio (en el iPhone: Compartir › Añadir a pantalla de inicio).'+
     (cfg('video_app')?'\n\nAquí te enseño cómo funciona:\n'+cfg('video_app'):'')+(cfg('video_seguimiento')?'\n\nY así va el seguimiento y cómo vamos a trabajar cada semana:\n'+cfg('video_seguimiento'):'')+
     '\n\nEl entreno y la alimentación se abren en cuanto subas tus fotos y tu peso en «Progreso» y tenga listo tu plan, que ya me pongo con él 💪'; }
-function btnApp(al){ var c=(S.data.clientes||[]).filter(function(x){ return x.id===al.cliente_id; })[0]||{}, tel=String(al.telefono||c.telefono||'').replace(/\D/g,''), fo=formIniDe(al);
-  if(al.listo||al.estado==='hecha'||!al.formulario_enviado) return '';
+function btnApp(al,espera){ var c=(S.data.clientes||[]).filter(function(x){ return x.id===al.cliente_id; })[0]||{}, tel=String(al.telefono||c.telefono||'').replace(/\D/g,''), fo=formIniDe(al);
+  if((al.listo&&!espera)||al.estado==='hecha'||!al.formulario_enviado) return '';
   if(!al.app_enviada&&/App enviada/.test(al.paso||'')) al.app_enviada=1;
   if(!fo) return '<p class="estado-m">⏳ Esperando su formulario inicial'+(FOC[al.cliente_id]?'':' · mirando…')+'</p>';
   if(!c.codigo_app) return '<p class="estado-m">✓ Formulario recibido el '+esc(fCorta(String(fo.fecha).slice(0,10)))+'. Falta su código de la app en la ficha para mandarle su usuario.</p>';

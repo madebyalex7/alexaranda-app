@@ -60,7 +60,7 @@ assert.throws(() => api('videosGuardar', { cliente_id: 'c2' }), /no tiene la app
 const aj = () => ctx.L_ajustes(ctx.D_leer(APP1, 'Ajustes'));
 assert.equal(ctx.L_candado(aj(), [], []), null, 'sin candado: abierto');
 ctx.R_ajuste(APP1, 'candado', 'TRUE');
-assert.deepEqual(JSON.parse(JSON.stringify(ctx.L_candado(aj(), [], []))), { fotos: false, peso: false, plan: false });
+assert.deepEqual(JSON.parse(JSON.stringify(ctx.L_candado(aj(), [], []))), { fotos: false, peso: false, plan: false, sinPeso: false });
 ctx.R_ajuste(APP1, 'plan_ok', '2026-10-30');
 assert.equal(ctx.L_candado(aj(), [{ archivo_id: 'f1' }], [{ peso: 70.2 }]), null, 'fotos + peso + OK: abierto');
 assert.notEqual(ctx.L_candado(aj(), [{ archivo_id: 'f1' }], []), null, 'sin peso: cerrado');
@@ -69,6 +69,12 @@ assert.equal(ctx.L_candado(aj(), [], []), null, 'desbloqueado a mano: abierto');
 ctx.R_ajuste(APP1, 'desbloqueado', ''); ctx.R_ajuste(APP1, 'candado', '');
 assert.equal(ctx.L_candado(aj(), [], []), null, 'quitar candado: abierto');
 assert.equal(ctx.L_candado(undefined, null, null), null, 'datos raros: abierto');
+// Sin báscula o pesándose más adelante: el peso no puede dejarle la app cerrada
+ctx.R_ajuste(APP1, 'candado', 'TRUE'); ctx.R_ajuste(APP1, 'plan_ok', '2026-10-30'); ctx.R_ajuste(APP1, 'peso_frecuencia', 'no');
+assert.equal(ctx.L_candado(aj(), [{ archivo_id: 'f1' }], [], 1), null, 'sin báscula: se abre con fotos y OK');
+ctx.R_ajuste(APP1, 'peso_frecuencia', 'semanal'); ctx.R_ajuste(APP1, 'peso_desde_semana', '2');
+assert.equal(ctx.L_candado(aj(), [{ archivo_id: 'f1' }], [], 1), null, 'se pesa desde la semana 2: en la 1 no le cierra');
+assert.notEqual(ctx.L_candado(aj(), [{ archivo_id: 'f1' }], [], 2), null, 'en la semana 2 ya le pide peso');
 // Renovar: alarga desde el fin, crea cuotas que suman el precio y apunta la fila
 api('guardar', { tabla: 'Clientes', id: 'c1', campos: { fin: '2099-01-10', metodo: 'Bizum' } });
 const rn = api('renovar', { cliente_id: 'c1', resultado: 'renueva', meses: 6, precio: 850, cuotas: 3, primero: '2099-01-10' });

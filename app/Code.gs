@@ -414,23 +414,26 @@ function L_viernesControl(semana, hoy, lunesPrograma) {
   return '';
 }
 /** Qué aviso de fotos toca hoy: miércoles antes, el viernes y cada 48 h después (hasta 8 días) mientras no las suba. null = ninguno */
-function L_avisoFotos(semana, hoy, fotos, nombre, lunesPrograma) {
+function L_avisoFotos(semana, hoy, fotos, nombre, lunesPrograma, sinPeso) {
   var vi = L_viernesControl(semana, hoy, lunesPrograma); if (!vi) return null;
   if ((fotos || []).some(function (f) { return String(f).slice(0, 10) >= L_sumarDias(vi, -3); })) return null;
-  var n = L_diasEntre(vi, hoy), quien = nombre ? nombre + ', ' : '';
-  if (n === -2) return { marca: vi + '|x', titulo: 'El viernes toca fotos 📸', texto: quien + 'este viernes toca fotos, peso y medidas. Con la misma luz y la misma ropa que la otra vez, y listo.' };
-  if (n === 0) return { marca: vi + '|v', titulo: 'Hoy toca fotos, peso y medidas 📸', texto: (nombre ? 'Buenos días, ' + nombre + '. ' : 'Buenos días. ') + 'Hoy es día de control: fotos, peso y medidas. 5 minutos y me ayudan muchísimo a ver todo lo que cambias.' };
+  var n = L_diasEntre(vi, hoy), quien = nombre ? nombre + ', ' : '', todo = sinPeso ? 'fotos y medidas' : 'fotos, peso y medidas';
+  if (n === -2) return { marca: vi + '|x', titulo: 'El viernes toca fotos 📸', texto: quien + 'este viernes toca ' + todo + '. Con la misma luz y la misma ropa que la otra vez, y listo.' };
+  if (n === 0) return { marca: vi + '|v', titulo: 'Hoy toca ' + todo + ' 📸', texto: (nombre ? 'Buenos días, ' + nombre + '. ' : 'Buenos días. ') + 'Hoy es día de control: ' + todo + '. 5 minutos y me ayudan muchísimo a ver todo lo que cambias.' };
   if (n > 0 && n <= 8 && n % 2 === 0) return { marca: vi + '|r' + n, titulo: 'Te faltan tus fotos 📸', texto: quien + 'me faltan tus fotos de control del viernes. Cuando puedas, las subes en «Progreso» y ya está.' };
   return null;
 }
 /** Candado (Alex 30/10): null = abierto. Solo se cierra si Alex lo pone y falta algo; si algo falla al mirarlo, abierto */
-function L_candado(aj, fotos, peso) {
+function L_candado(aj, fotos, peso, semana) {
   try {
     if (!aj || !aj.candado || aj.desbloqueado) return null;
     var f = (fotos || []).some(function (x) { return x && x.archivo_id; });
     var p = (peso || []).some(function (x) { return x && x.peso !== '' && x.peso != null && isFinite(Number(String(x.peso).replace(',', '.'))); });
     var ok = !!aj.plan_ok;
-    return f && p && ok ? null : { fotos: f, peso: p, plan: ok };
+    // Si la app aún no le deja pesarse (sin báscula o se pesa más adelante), el peso no puede cerrarle la app
+    var sinPeso = aj.peso_frecuencia === 'no' || (semana && aj.peso_desde_semana && semana < aj.peso_desde_semana);
+    if (sinPeso) p = true;
+    return f && p && ok ? null : { fotos: f, peso: p, plan: ok, sinPeso: !!sinPeso };
   } catch (e) { return null; }
 }
 /** Primera semana del programa que vivió en ESTA app (Alex 30/10: las de antes de migrar no son entrenos saltados).
@@ -698,7 +701,7 @@ function L_construir(t) {
 
   var lunes = L_lunesPrograma(aj, S);
   var desdeApp = L_primeraSemana(diasIdx, t.registro, aj, S);
-  var candado = L_candado(aj, t.fotos, t.peso);
+  var candado = L_candado(aj, t.fotos, t.peso, S);
   var proximo = L_proximo(prog, t.plan, t.agenda, S, lunes, t.hoy, aj);
   var desdeInicio = L_desdeInicio(porSemEj, dias, entreno);
 
@@ -1419,7 +1422,7 @@ function X_pendientes() {
       // 3) Fotos de control (cada 4 viernes): van antes que el peso ese día porque ya lo incluyen. Con cualquier aviso activado, de 9:00 a 21:00
       if (!msg && !enPausa && (/^\d\d:\d\d$/.test(hp) || L_bool(f[i('aviso_entreno')])) && hh >= (/^\d\d:\d\d$/.test(hp) && hp > '09:00' ? hp : '09:00') && hh < '21:00') {
         var fotosF = (d.fotos || []).map(function (x) { return x.fecha instanceof Date ? Utilities.formatDate(x.fecha, zona, 'yyyy-MM-dd') : String(x.fecha || '').slice(0, 10); });
-        var af = L_avisoFotos(L_int(d.aj.semana), hoyL, fotosF, d.aj.nombre, L_lunesPrograma(d.aj, L_int(d.aj.semana)));
+        var af = L_avisoFotos(L_int(d.aj.semana), hoyL, fotosF, d.aj.nombre, L_lunesPrograma(d.aj, L_int(d.aj.semana)), d.aj.peso_frecuencia === 'no');
         if (af && i('envio_fotos') >= 0 && String(f[i('envio_fotos')]) !== af.marca) msg = { titulo: af.titulo, texto: af.texto, url: '/?v=prog', campo: 'envio_fotos', valor: af.marca };
       }
       if (!msg && !enPausa && /^\d\d:\d\d$/.test(hp) && dow === '5' && L_viernesControl(L_int(d.aj.semana), hoyL, L_lunesPrograma(d.aj, L_int(d.aj.semana))) !== hoyL && semPeso && hh >= hp && hh < '12:00' && d.aj.semana >= d.aj.peso_desde_semana && ep !== 'd' + hoyL && ep !== hoyL) {
