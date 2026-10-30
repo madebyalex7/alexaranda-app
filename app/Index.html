@@ -604,6 +604,7 @@ details.calplega[open] .calver{display:none}
 .avfotos span:nth-child(2){flex:1;display:flex;flex-direction:column;gap:2px}.avfotos small{color:var(--muted);font-size:13px}
 .avf-ic{width:38px;height:38px;border-radius:12px;background:var(--soft);display:flex;align-items:center;justify-content:center;color:var(--accent-2)}.avf-ic .ic{width:22px;height:22px}
 .avf-go{font-size:24px;color:var(--muted)}
+.avcard.avtop{border-style:solid;border-color:var(--accent);margin:0 0 14px}
 </style>
 </head>
 <body>
@@ -949,7 +950,6 @@ function pantallaError(msg){
 
 function home(){
   const rec = recomendado(), n = nHechos(), A = D.ajustes;
-  const ayer = sumaDias(hoyLocal(), -1), pa = D.pasos[ayer];
   const nx = D.extras.length;
   app.innerHTML = `
   ${cabecera(`<div class="hbtns"><button class="colbtn" id="colbtn" type="button" aria-label="Cambiar el color de la app"><i style="background:conic-gradient(${PALETAS.map((x, n, a)=>`${x[3]} ${n * 100 / a.length}% ${(n + 1) * 100 / a.length}%`).join(",")})"></i></button><button class="palbtn" id="ajbtn" type="button" aria-expanded="false" aria-controls="aj">Ajustes</button></div>`)}
@@ -984,10 +984,6 @@ function home(){
   <div class="block pasos mover">
     <div class="label">${ic("caminar")} Moverte fuera del entreno <span style="text-transform:none;letter-spacing:0">· no cuenta como entreno, pero suma muchísimo</span></div>
     ${empujePaseo()}
-    ${barrasPasos()}
-    <label class="label" for="pasos" style="margin-top:6px">${ic("pasos")} Pasos de ayer <span style="text-transform:none;letter-spacing:0">· opcional</span></label>
-    <div class="pr fld"><input type="text" inputmode="numeric" id="pasos" placeholder="${A.objetivo_pasos ? "Tu objetivo: " + miles(A.objetivo_pasos) : "Ej. 8000"}" value="${pa !== undefined ? pa : ""}" autocomplete="off"><button class="mini" id="pasosOk" type="button">Guardar</button></div>
-    <small id="pasosMsg">${pa !== undefined ? mensajePasos(pa) : "Si llevas el móvil o el reloj encima, apunta los pasos de ayer."}</small>
     <div class="movbtns"><button class="mini" id="goPaseo" type="button">🚶 Apuntar un paseo</button><button class="mini sec" data-d="extra" id="goExtra" type="button">Otra actividad${nx ? " · " + nx + " esta semana" : ""}</button></div>
   </div>
   <p class="note">Puedes entrar en el día que quieras: arriba tienes el que te toca según lo que llevas esta semana.</p>
@@ -1007,15 +1003,6 @@ function home(){
   document.getElementById("colbtn").onclick = abrirColores;
   const gh = document.getElementById("goHome");
   if(gh) gh.onclick = ()=>ir(gh.dataset.d);   // entra arriba del todo; el botón de empezar del día baja al calentamiento   // entra arriba del todo: recordatorio, mensaje y «Cómo llegas hoy?» a la vista
-  document.getElementById("pasosOk").onclick = ()=>{
-    const v = parseInt(String(document.getElementById("pasos").value).replace(/\D/g, ""), 10);
-    const msg = document.getElementById("pasosMsg");
-    if(!(v >= 0 && v <= 100000)){ msg.textContent = "Escribe solo el número, por ejemplo 7500."; return; }
-    encolar({fn:"pasos", fecha: ayer, pasos: v});
-    document.getElementById("pasos").value = v;
-    msg.textContent = mensajePasos(v);
-    { const pb = app.querySelector(".pbars"), pr = app.querySelector(".pres"); const t = document.createElement("div"); t.innerHTML = barrasPasos(); if(pb && pr && t.children.length === 2){ pb.replaceWith(t.children[0]); pr.replaceWith(t.children[0]); } }
-  };
 }
 /* Pasos de la semana (lunes a domingo): barras con la línea del objetivo, media de los días apuntados y días en el objetivo */
 function semanaPasos(){
@@ -1299,7 +1286,7 @@ function grupos(ej){
   return out;
 }
 const CIERRE_TODO = [["Día completo, {n} 💪","Todo hecho. Así es como se construye, semana a semana."],["Brutal, {n}","Has hecho todos los ejercicios. Hoy te has ganado el descanso."],["Ni uno sin hacer 🔥","Constancia de la buena. Me encanta verlo."],["Hecho y bien hecho","Cada entreno completo es un paso más hacia lo que buscas."]];
-const CIERRE_PARCIAL = [["Día hecho, {n}","Has hecho {d} de {t} ejercicios. Venir ya cuenta, y mucho."],["Bien hecho por venir","{d} de {t} hoy. Hay días así, y presentarse es lo que marca la diferencia."],["Sumado a la semana","Hoy {d} de {t}. Lo importante es no romper la cadena, y no la has roto."]];
+const CIERRE_PARCIAL = [["Día hecho, {n}","Has hecho {d} de {t} ejercicios. Venir ya cuenta, y mucho."],["Bien hecho por venir","{d} de {t} ejercicios hoy. Hay días así, y presentarse es lo que marca la diferencia."],["Sumado a la semana","Hoy {d} de {t} ejercicios. Lo importante es no romper la cadena, y no la has roto."]];
 const CIERRE_SIN_SERIES = [["Día hecho, {n}","Apuntado como hecho. Si te apetece, marca las series que hiciste y así veo cómo vas."],["Sumado a la semana","Cuenta como día hecho. Marca las series cuando puedas y lo vemos juntos."]];
 const CIERRE_FLOJO = [["Día tranquilo hecho","Escuchar al cuerpo también es entrenar. Cuenta como día hecho."],["Hoy tocaba suave, y lo has hecho","Mejor así que no venir. Cuenta igual."]];
 function cierre(k){
@@ -1433,9 +1420,10 @@ function plegarHechos(k, scroll){
     const key = `${k}|${el.id}`;
     if(!done) ABIERTAS.delete(key);
     const plegar = done && !ABIERTAS.has(key);
-    if(plegar && !el.classList.contains("plegada")) plegoAlgo = true;
-    el.classList.toggle("plegada", plegar);
-    el.classList.toggle("abierta", done && !plegar);
+    const antes = el.classList.contains("plegada");
+    if(plegar && !antes) plegoAlgo = true;
+    const pon = ()=>{ el.classList.toggle("plegada", plegar); el.classList.toggle("abierta", done && !plegar); };
+    if(scroll && plegar !== antes) animaAltura(el, pon); else pon();
   });
   if(scroll && plegoAlgo){
     const sig = [...document.querySelectorAll(".ejx")].find(el=>!el.classList.contains("plegada"));
@@ -1486,6 +1474,15 @@ function wuGet(k){ return lsGet(kWu(k)) || {}; }
 /* Calentamiento por rondas: lo «previo» (p. ej. 3 min de remo) va primero; el resto, como circuito que se repite N rondas */
 function rondasCal(items){ return Math.max(1, ...items.filter(x=>!x.pre).map(x=>+x.rd || 1)); }
 function totalCal(items){ const R = rondasCal(items), pre = items.filter(x=>x.pre).length; return R > 1 ? pre + 1 : items.length; }
+/* Plegar y desplegar con una animación suave de altura (Alex 30/10) */
+function animaAltura(el, cambia){
+  let quieto = false; try{ quieto = matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){}
+  if(quieto || !el.animate){ cambia(); return; }
+  const h0 = el.offsetHeight; cambia(); const h1 = el.offsetHeight; if(h0 === h1) return;
+  el.style.overflow = "hidden";
+  const a = el.animate([{height: h0 + "px", opacity: h1 < h0 ? 1 : .6}, {height: h1 + "px", opacity: 1}], {duration: 340, easing: "cubic-bezier(.22,.8,.24,1)"});
+  a.onfinish = a.oncancel = ()=>{ el.style.overflow = ""; };
+}
 /* Calentamiento hecho (todas las casillas): se pliega solo y se puede volver a abrir (Alex 30/10) */
 function calHecho(items, k, wu){ return !!k && (wu || []).length >= totalCal(items); }
 function abreCal(titulo, items, k, wu){ if(!k) return `<div class="block warmblock"><div class="label">${ic("calentamiento")} ${esc(titulo)}</div>`;
@@ -1675,15 +1672,16 @@ function dia(k){
   document.getElementById("volver").onclick = ()=>ir("home");
   pintaSes(k);
   app.querySelectorAll("[data-unfold]").forEach(b=>b.onclick = ()=>{ const el = b.parentElement, key = `${k}|${el.id}`;
-    if(el.classList.contains("plegada")){ ABIERTAS.add(key); el.classList.remove("plegada"); el.classList.add("abierta"); }
-    else { ABIERTAS.delete(key); el.classList.remove("abierta"); el.classList.add("plegada"); el.scrollIntoView({behavior: SUAVE(), block: "nearest"}); } });
+    if(el.classList.contains("plegada")){ ABIERTAS.add(key); animaAltura(el, ()=>{ el.classList.remove("plegada"); el.classList.add("abierta"); }); }
+    else { ABIERTAS.delete(key); animaAltura(el, ()=>{ el.classList.remove("abierta"); el.classList.add("plegada"); }); el.scrollIntoView({behavior: SUAVE(), block: "nearest"}); } });
+  app.querySelectorAll("details.calplega > summary").forEach(su=>su.onclick = e=>{ e.preventDefault(); const det = su.parentElement; animaAltura(det, ()=>{ det.open = !det.open; }); });
   app.querySelectorAll("input[data-wu]").forEach(c=>c.onchange = ()=>{
     const w = wuGet(k), t = c.dataset.wu, n = +c.dataset.n, l = new Set(w[t] || []);
     c.checked ? l.add(n) : l.delete(n); w[t] = [...l]; lsSet(kWu(k), w);
     { const li = c.closest("li") || c.closest(".wcirc"); if(li) li.classList.toggle("tachado", c.checked); }
     if(t === "cal"){ const det = c.closest("details.calplega"), h = l.size >= totalCal(d.cal);
       if(det){ det.classList.toggle("hecho", h); const v = det.querySelector(".calver"); if(v) v.textContent = h ? "ver" : "";
-        if(h && c.checked) setTimeout(()=>{ det.open = false; }, 650); } }
+        if(h && c.checked) setTimeout(()=>{ animaAltura(det, ()=>{ det.open = false; }); }, 650); } }
     if(t === "cal" && c.checked && !D.est.hechos[k]){ const s0 = sesGet(k); let cambia = false;
       if(!s0.warm){ s0.warm = Date.now(); cambia = true; }
       if(!s0.fcal && l.size >= totalCal(d.cal)){ s0.fcal = Date.now(); cambia = true; }
@@ -1891,6 +1889,7 @@ function hub(){
   const carta = (id, t, sub, icono, extra, cls)=>`<button type="button" class="fcard ${cls || ""}" data-go="${id}"><span class="fc-in"><span class="fc-back" aria-hidden="true"><span class="la1">A</span><span class="la2">A</span></span>
       <span class="fc-front"><span class="fc-ic">${ic(icono)}</span><span class="fc-k">${t}</span><span class="fc-t">${esc(sub[0])}</span><span class="fc-s">${esc(sub[1])}</span>${extra || ""}</span></span></button>`;
   app.innerHTML = `${cabecera(`<div class="hbtns"><button class="palbtn" id="ajHub" type="button">Ajustes</button></div>`)}
+  ${tarjetaAvisos()}
   ${avisoAbierto()}
   ${avisoFotos()}
   <h1>${saludo()}, ${esc(D.nombre)}</h1>
@@ -1899,12 +1898,11 @@ function hub(){
   <div class="fcards">
     ${estadoCandado() ? carta("home", "Entrenamiento", ["Se abre muy pronto", "Con tus fotos, tu peso y tu plan listo"], "entrenamiento", `<span class="fc-lock">🔒 Muy pronto</span>`, "pronto") : carta("home", "Entrenamiento", ent, "entrenamiento", `<span class="fc-meta">${n} de ${OBJ()} esta semana${rec && vidsPend(rec) ? " · 🎥 " + vidsPend(rec) : ""}</span>`)}
     ${carta("prog", "Mi progreso", prog, "control", tocaPeso() ? `<span class="fc-dot" aria-hidden="true"></span>` : "", tocaPeso() ? "aviso" : "")}
-    ${estadoCandado() ? carta("nutri", "Alimentación", ["Se abre muy pronto", "Con tu plan a tu medida"], "alimentacion", `<span class="fc-lock">🔒 Muy pronto</span>`, "pronto") : D.nutri ? carta("nutri", "Alimentación", ["Tu plan de alimentación", "Ábrelo o descárgalo para imprimirlo"], "alimentacion") : carta("nutri", "Alimentación", ["Próximamente", "Tu plan, tus comidas y tus antojos, aquí mismo"], "alimentacion", `<span class="fc-lock">Muy pronto</span>`, "pronto")}
+    ${estadoCandado() ? carta("nutri", "Alimentación", ["Se abre muy pronto", "Con tu plan a tu medida"], "alimentacion", `<span class="fc-lock">🔒 Muy pronto</span>`, "pronto") : D.nutri ? carta("nutri", "Alimentación", ["Tu plan de alimentación", "Ábrelo o descárgalo para imprimirlo"], "alimentacion") : carta("nutri", "Alimentación", ["Tu plan está en camino", "Te lo preparo a tu medida y aparece aquí"], "alimentacion", `<span class="fc-lock">En preparación</span>`, "pronto")}
   </div>
-  ${tarjetaAvisos()}
   ${D.notaAlex ? `<div class="alexq"><div class="label">${ic("nota")} Esta semana te digo</div><p>${esc(D.notaAlex)}</p><span class="firma"><img class="av" src="/alex.jpg" alt="" width="36" height="36" onerror="this.remove()">— Alex</span></div>` : ""}
   <p class="sync" id="sync">${textoSync()}</p>`;
-  app.querySelectorAll("[data-go]").forEach(b=>b.onclick = ()=>{ if(estadoCandado() && vistaCerrada(b.dataset.go)){ ir(b.dataset.go); return; } if(b.dataset.go === "nutri" && !D.nutri){ toast(`<b>Muy pronto 💛</b> Estoy preparando esta parte para ti.`); return; } ir(b.dataset.go); });
+  app.querySelectorAll("[data-go]").forEach(b=>b.onclick = ()=>{ if(estadoCandado() && vistaCerrada(b.dataset.go)){ ir(b.dataset.go); return; } if(b.dataset.go === "nutri" && !D.nutri){ toast(`<b>Te lo estoy preparando 💛</b> En cuanto esté, aparece aquí.`); return; } ir(b.dataset.go); });
   document.getElementById("ajHub").onclick = ()=>{ ir("home"); setTimeout(()=>{ const a = document.getElementById("ajbtn"); if(a) a.click(); }, 60); };
   enlazaAbierto(); enlazaAvisos();
   girarCartas();
@@ -2349,16 +2347,17 @@ async function activarAvisos(pref){
   lsSet(kAv, Object.assign({}, pref, {zona}));
 }
 function tarjetaAvisos(){
-  if(!pushSoportado() || lsGet(kAv) || lsGet(kAv + "_no")) return "";
-  return `<div class="avcard" id="avCard"><div class="label">${ic("agenda")} Te aviso?</div><p>Te mando un aviso al móvil los <b>viernes a las 7:30</b> para pesarte, el día de tus <b>fotos de control</b> y si un día se te queda <b>el entreno abierto</b>. Nada más, sin agobiar.</p>
-    <div class="yb"><button type="button" class="ysi" id="avSi">Sí, avísame</button><button type="button" class="yno" id="avNo">Ahora no</button></div></div>`;
+  const pos = +lsGet(kAv + "_no") || 0;
+  if(!pushSoportado() || lsGet(kAv) || Date.now() - pos < 24 * 36e5) return "";   // «Luego» solo lo aparta un día (Alex 30/10)
+  return `<div class="avcard avtop" id="avCard"><div class="label">${ic("agenda")} Activa los avisos en tu móvil</div><p><b>Es importante, y activarlos es responsabilidad tuya.</b> Con ellos no se te pasa pesarte el viernes, tus fotos de control ni un entreno abierto. Solo te aviso de lo necesario.</p>
+    <div class="yb"><button type="button" class="ysi" id="avSi">Activar avisos</button><button type="button" class="yno" id="avNo">Luego</button></div></div>`;
 }
 function enlazaAvisos(){
   const si = document.getElementById("avSi"), no = document.getElementById("avNo");
   if(si) si.onclick = async ()=>{ si.disabled = true; si.textContent = "Activando…";
     try{ await activarAvisos({peso: "07:30", entreno: true}); toast(`<b>Avisos activados ✓</b> Puedes cambiar la hora en Mi progreso.`); const c = document.getElementById("avCard"); if(c) c.remove(); }
-    catch(e){ si.disabled = false; si.textContent = "Sí, avísame"; toast(e.message === "permiso" ? "Para avisarte, el móvil tiene que darme permiso de notificaciones. Puedes activarlo en los ajustes del móvil." : "No he podido activarlos ahora. Inténtalo en un rato."); } };
-  if(no) no.onclick = ()=>{ lsSet(kAv + "_no", 1); const c = document.getElementById("avCard"); if(c) c.remove(); };
+    catch(e){ si.disabled = false; si.textContent = "Activar avisos"; toast(e.message === "permiso" ? "Para avisarte, el móvil tiene que darme permiso de notificaciones. Puedes activarlo en los ajustes del móvil." : "No he podido activarlos ahora. Inténtalo en un rato."); } };
+  if(no) no.onclick = ()=>{ lsSet(kAv + "_no", Date.now()); const c = document.getElementById("avCard"); if(c) c.remove(); };
 }
 function abrirAvisos(){
   const a = lsGet(kAv) || {peso: "07:30", entreno: true};

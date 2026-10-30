@@ -28,7 +28,13 @@ Reportes › 🎥 Vídeos deja una fila en **Aplicados** (`tipo` = `correccion`,
 No hace falta cambiar nada: el panel lee lo que ya apunta la lectura diaria (Tareas con `cliente_id` y estado pendiente; `hecha` al verla enviada). Ojo: cualquier tarea con `cliente_id` sale como promesa.
 
 ## 7. Entreno corto en casa para clientes de gimnasio (skill `planes-entreno-clientes`)
-Añadir en su hoja un día `casa` en **Días plan** y sus ejercicios en **Plan**: unos 15 minutos, sin material y a su nivel, con tus normas. La app lo enseña como un día más; es opcional, no sube el objetivo de la semana y, si lo hace, cuenta como un entreno hecho.
+Añadir en su hoja un día `casa` en **Días plan**, con nombre «Salvar el día en casa», y sus ejercicios en **Plan**: unos 15 minutos, sin material y a su nivel, con tus normas. La app lo enseña como un día más; es opcional, no sube el objetivo de la semana y, si lo hace, cuenta como un entreno hecho.
 
 ## 8. Peso los viernes
 La app, los avisos y el panel ya piden el peso el viernes (martes opcional). Revisar en las skills y documentos lo que aún diga «miércoles», y hacer lo mismo con `recordatorios-formularios.md` si lo menciona.
+
+## 9. Nutrición en la app
+Al terminar un plan de nutrición, poner en **Ajustes** de su hoja `nutricion_pdf` (id o enlace del PDF en Drive) y `nutricion_fecha`. Sin eso, en su app sale «Tu plan está en camino». También se puede enlazar a mano desde el panel (ficha › Nutrición).
+
+## 10. Pasos
+La app ya no pide los pasos de ayer (Alex 30/10): van en el formulario semanal o mensual. La pestaña Pasos de cada hoja se queda como está.

@@ -1954,9 +1954,12 @@ function calHtml(d){
   return h;
 }
 /* ── Nutrición en la ficha: su PDF y el botón de adaptar ── */
+document.addEventListener('click',function(e){ var b=e.target.closest&&e.target.closest('[data-nuok]'); if(!b) return; e.stopPropagation(); var box=b.closest('[data-nupdf]'), i=$('[data-nuurl]',box); if(!i.value.trim()){ i.focus(); return; } b.disabled=true; b.textContent='Comprobando…';
+  api('nutriPdf',{cliente_id:box.getAttribute('data-nupdf'),url:i.value.trim()}).then(function(r){ flash(); b.textContent='✓ '+r.nombre; var fr=$('.nutpdf'); if(fr) fr.src=fr.src; }).catch(function(er){ b.disabled=false; b.textContent='Enlazar'; alerta(er); }); },true);
 function nutriPagina(c){
   var cod=String(c.codigo_app||'').trim();
   return '<div class="grupo"><h3>Nutrición</h3>'+nutriFicha(c)+'</div>'+
+    (cod?'<div class="grupo" data-nupdf="'+esc(c.id)+'"><h3>Enlazar su plan</h3><p class="estado-m">Pega el enlace del PDF en Drive: aparece al momento en su app, en Alimentación.</p><div class="tnueva"><input type="url" data-nuurl placeholder="https://drive.google.com/file/d/…" aria-label="Enlace del PDF"><button class="btn prim" data-nuok>Enlazar</button></div></div>':'')+
     (cod?'<div class="grupo"><h3>Su plan de alimentación <a class="linkbtn" style="float:right;padding:0" href="/nutricion?c='+encodeURIComponent(cod)+'" target="_blank" rel="noopener">Abrir en grande ↗</a></h3>'+
       '<iframe class="nutpdf" src="/nutricion?c='+encodeURIComponent(cod)+'" title="Plan de alimentación de '+esc(c.nombre||'')+'" loading="lazy"></iframe></div>'
       :'<p class="aviso-vacio">Sin código de la app: pon su código en «Programa y pagos» para ver aquí su plan.</p>');

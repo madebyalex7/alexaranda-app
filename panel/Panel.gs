@@ -76,6 +76,7 @@ function P_despachar(cuerpo) {
       case 'renovar': return { ok: true, data: P_escribir(function () { return RN_guardar(d); }) };
       case 'copiaAhora': return { ok: true, data: CO_copia() };
       case 'copiaProgramar': return { ok: true, data: CO_programar() };
+      case 'nutriPdf': return { ok: true, data: P_escribir(function () { return AC_nutri(d.cliente_id, d.url); }) };
       case 'videosCargar': return { ok: true, data: CV_cargar() };
       case 'videosCliente': return { ok: true, data: CV_cliente(d.cliente_id) };
       case 'videosGuardar': return { ok: true, data: P_escribir(function () { return CV_guardar(d); }) };
@@ -1193,4 +1194,13 @@ function CO_programar() {
   ScriptApp.newTrigger('copiaSemanal').timeBased().onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(3).create();
   P_guardar('Config', 'copia_programada', { valor: P_hoy() });
   return { ok: true };
+}
+
+/* Nutrición (Alex 30/10): enlazar su PDF de Drive desde el panel. Comprueba que se puede abrir antes de guardarlo; así se habilita en su app */
+function AC_nutri(cid, url) {
+  var h = CV_hojaDe(cid), m = String(url || '').match(/[-\w]{25,}/); if (!m) throw new Error('Ese enlace no parece de Drive');
+  var f; try { f = DriveApp.getFileById(m[0]); } catch (e) { throw new Error('No puedo abrir ese archivo con tu cuenta de Drive'); }
+  R_ajuste(h.ss, 'nutricion_pdf', m[0]); R_ajuste(h.ss, 'nutricion_fecha', P_hoy());
+  try { D_cacheFuera(String(h.cl.codigo_app).trim()); } catch (e) {}
+  return { nombre: f.getName(), fecha: P_hoy() };
 }
