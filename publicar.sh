@@ -15,7 +15,8 @@ ok(){
   [ "$MODO" = "--si" ] && return 0
   [ -t 0 ] || { echo "   Sin terminal para preguntar: no se publica."; return 1; }
   read -r -p "   ¿Publicar $1? (escribe si) " r
-  [ "$r" = "si" ]
+  case "$r" in si|s|y|yes|SI|Si|S|Y) return 0;; esac
+  echo "   No has escrito si: $1 NO se publica."; NO_PUBLICADO=1; return 1
 }
 huella(){ cat "$@" | shasum -a 256 | cut -d' ' -f1; }
 VERSION_DATOS(){ grep -o "VERSION_DATOS = '[^']*'" app/Code.gs; }
@@ -50,4 +51,4 @@ if [ "$CAMBIA_GAS" = si ] && ok "el Apps Script (app y panel)"; then
   echo "$H_GAS" > dist/.publicado-gas
   VERSION_DATOS > dist/.publicado-version-datos
 fi
-echo "Listo."
+if [ -n "$NO_PUBLICADO" ]; then echo "Ojo: no se ha publicado todo. Vuelve a ejecutarlo."; else echo "Listo."; fi
