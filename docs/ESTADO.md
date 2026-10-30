@@ -11,6 +11,8 @@ Documento de arranque para trabajar con Claude Code. Lo escribió el chat de la 
 - **Respuestas de formularios de Google:** hoja `1nAtltPRklp8lEi0UPR-08SHIX4n3poUWE2eVIjsmn6c`.
 - **Lo que NO es código y sigue en los chats del Proyecto** (tareas programadas): lectura diaria de WhatsApp a las 6:00, reportes de lunes y viernes (escriben en la pestaña Ronda), formularios del finde, revisión del domingo.
 
+> **Actualizado el 30/10:** Encargo 1 hecho y cambios del Encargo 2 publicados (ver `docs/PLAN.md`). Beta aparte con `./publicar-beta.sh`. Lo que depende del Proyecto, en `docs/PARA-EL-PROYECTO.md`.
+
 ## 2. Publicar
 Desde el 30/10, desde el Mac con Claude Code: `./publicar.sh --comprobar` construye y dice qué ha cambiado; `./publicar.sh` publica cada parte solo si Alex escribe «si» (`--si` cuando Alex ya ha dado el OK en el chat).
 - Worker: `wrangler deploy` con `wrangler.toml` (cron cada 15 min, logs; no toca el secreto `ANTHROPIC_API_KEY` ni las variables del panel de Cloudflare).
