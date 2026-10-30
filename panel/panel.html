@@ -1509,15 +1509,18 @@ function cFormulario(w,meses){
   if(wb===4&&b===1) return {f:'Primer mes'};
   return {f:'Mensual'+(w===8?' (mes 2: cómo se ve en un año)':'')};
 }
+/* Si la semana de la app no sale de su inicio (bloque nuevo o migración: Sole, Isaac…), el panel no adivina el nombre del formulario */
+function cReinicio(c,w){ if(!esFecha(c.inicio)) return true; var l=sumar(c.inicio,-((new Date(c.inicio+'T12:00:00').getDay()+6)%7)), b=l<=hoy()?Math.floor(dias(l,hoy())/7)+1:0; return Math.abs(b-w)>=2; }
 function controlesSemana(){
   var h=hoy(), dow=(new Date(h+'T12:00:00').getDay()+6)%7, lun=sumar(h,-dow), vie=sumar(lun,4), out=[];
   ((S.data&&S.data.clientes)||[]).filter(function(c){ return vivo(c)&&c.estado==='Activo'&&esFecha(c.inicio); }).forEach(function(c){
-    var meses=cMeses(c), total=meses*4,   /* 3 meses = un bloque de 12 semanas */ wv=cSemana(c,vie), wl=cSemana(c,lun);
-    if(wv&&wv%4===0){ var fo=cFormulario(wv,meses); out.push({c:c,cuando:vie,dia:'Viernes',t:'Fotos, peso, medidas y formulario «'+fo.f+'»',sub:'en lugar del semanal'+(fo.fin?' · último bloque: si no renueva, «Fin de programa»':''),tipo:'control'}); }
-    if(wl>1&&(wl-1)%4===0){ var mes=(wl-1)/4, ex=[]; if(mes>=1&&mes<=4) ex.push('⭐ mira si es momento del Grand Slam');
-      if(total&&wl-1>=total-4) ex.push('⏳ habla de renovar');
-      out.push({c:c,cuando:lun,dia:'Lunes',t:'Revisión '+(mes%3===0?'de fin de bloque (mes '+mes+')':'mensual (mes '+mes+')'),sub:['sustituye a la semanal'].concat(ex).join(' · '),tipo:'revision'}); }
-    else if(total&&wl>=total-3&&wl<=total) out.push({c:c,cuando:lun,dia:'Esta semana',t:'Renovación: le quedan '+(total-wl+1)+' semana'+(total-wl+1===1?'':'s'),sub:'recordatorio semanal desde su última revisión',tipo:'renovar'});
+    var meses=cMeses(c), wv=cSemana(c,vie), wl=cSemana(c,lun), resta=esFecha(c.fin)?Math.ceil(dias(lun,c.fin)/7):null;   // la renovación cuenta desde su fecha de fin, no desde la semana
+    if(wv&&wv%4===0){ var re=cReinicio(c,wv), fo=resta!=null&&resta>=4&&resta<=6?{f:'Previo a renovación'}:re?{f:'de control'}:cFormulario(wv,meses), ult=resta!=null&&resta<=2;
+      out.push({c:c,cuando:vie,dia:'Viernes',t:'Fotos, peso, medidas y formulario '+(fo.f==='de control'?'de control':'«'+fo.f+'»'),sub:'en lugar del semanal'+(ult?' · último bloque: si no renueva, «Fin de programa»':''),tipo:'control'}); }
+    if(wl>1&&(wl-1)%4===0){ var mes=(wl-1)/4, ex=[], rein=cReinicio(c,wl); if(mes>=1&&mes<=4&&!rein) ex.push('⭐ mira si es momento del Grand Slam');
+      if(resta!=null&&resta<=4) ex.push('⏳ habla de renovar');
+      out.push({c:c,cuando:lun,dia:'Lunes',t:rein?'Revisión mensual':'Revisión '+(mes%3===0?'de fin de bloque (mes '+mes+')':'mensual (mes '+mes+')'),sub:['sustituye a la semanal'].concat(ex).join(' · '),tipo:'revision'}); }
+    else if(resta!=null&&resta>0&&resta<=3) out.push({c:c,cuando:lun,dia:'Esta semana',t:'Renovación: le quedan '+resta+' semana'+(resta===1?'':'s'),sub:'recordatorio semanal desde su última revisión',tipo:'renovar'});
   });
   return out.sort(function(a,b){ return a.cuando.localeCompare(b.cuando)||String(a.c.nombre).localeCompare(String(b.c.nombre)); });
 }
@@ -1909,7 +1912,7 @@ function revSeccion(f){
   var ps=(d.peso||[]).slice().sort(function(a,b){ return a.fecha.localeCompare(b.fecha); }).slice(-12), pv=ps.map(function(x){ return rnum(x.peso); }), pe=ps.map(function(x){ return fCorta(x.fecha); });
   var fo=(d.fotos||[]).slice().sort().pop(), me=(d.medidas||[]).slice().sort().pop(), ts=d.troncales||[], sel=ts.filter(function(t){ return t.id===TRS[f.cliente_id]; })[0]||ts[0];
   var pdif=pv.length>1&&pv[0]!=null&&pv[pv.length-1]!=null?Math.round((pv[pv.length-1]-pv[0])*10)/10:null;
-  var cw=buscar('Clientes',f.cliente_id)||{}, wk=cSemana(cw,hoy()), mesN=wk>1?Math.round((wk-1)/4):0;
+  var cw=buscar('Clientes',f.cliente_id)||{}, wk=cSemana(cw,hoy()), mesN=wk>1&&!cReinicio(cw,wk)?Math.round((wk-1)/4):0;
   var h='<section class="rsec ancho2 revgraf"><h3>Desde su app'+(mesN?' <small>'+(mesN%3===0?'fin de bloque: '+(mesN)+' meses':'mes '+mesN)+'</small>':'')+'</h3><div class="vtiles">'+tile('Fotos',fo?'✓':'✕',fo?'últimas: '+esc(fCorta(fo)):'sin fotos todavía',null,fo?'ok':'mal')+tile('Medidas',me?'✓':'—',me?'últimas: '+esc(fCorta(me)):'sin medidas',null)+
     tile('Peso',ps.length?esc(String(ps[ps.length-1].peso).replace('.',','))+' <small>kg</small>':'—',pdif!=null?(pdif>0?'+':'')+String(pdif).replace('.',',')+' kg en '+ps.length+' pesajes':'',linea(pv,pe,function(v){ return String(v).replace('.',',')+' kg'; }))+'</div>';
   var mU=(d.medUlt||[])[(d.medUlt||[]).length-1], mP=d.medPrim; if(mU&&mP&&mU.fecha!==mP.fecha){ h+='<div class="lab" style="margin-top:12px">Medidas: desde el principio</div><table class="prog"><tbody>'+['cintura','cadera','pecho','muslo','brazo'].filter(function(z){ return mU[z]!=null&&mP[z]!=null; }).map(function(z){ var df=Math.round((mU[z]-mP[z])*10)/10; return '<tr><td>'+z+'</td><td class="k">'+mP[z]+' cm</td><td class="k"><b>'+mU[z]+' cm</b></td><td class="d '+(df<0?'sube':df>0?'baja':'igual')+'">'+(df>0?'+':'')+String(df).replace('.',',')+'</td></tr>'; }).join('')+'</tbody></table>'; }
