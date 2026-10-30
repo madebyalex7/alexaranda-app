@@ -69,4 +69,11 @@ assert.equal(ctx.L_candado(aj(), [], []), null, 'desbloqueado a mano: abierto');
 ctx.R_ajuste(APP1, 'desbloqueado', ''); ctx.R_ajuste(APP1, 'candado', '');
 assert.equal(ctx.L_candado(aj(), [], []), null, 'quitar candado: abierto');
 assert.equal(ctx.L_candado(undefined, null, null), null, 'datos raros: abierto');
+// Renovar: alarga desde el fin, crea cuotas que suman el precio y apunta la fila
+api('guardar', { tabla: 'Clientes', id: 'c1', campos: { fin: '2099-01-10', metodo: 'Bizum' } });
+const rn = api('renovar', { cliente_id: 'c1', resultado: 'renueva', meses: 6, precio: 850, cuotas: 3, primero: '2099-01-10' });
+assert.equal(rn.cliente.fin, '2099-07-10'); assert.equal(rn.cobros.length, 3);
+assert.equal(rn.cobros.reduce((a, c) => a + parseFloat(c.importe), 0).toFixed(2), '850.00');
+assert.equal(api('renovar', { cliente_id: 'c1', resultado: 'no' }).renovacion.resultado, 'no');
+assert.throws(() => api('renovar', { cliente_id: 'c1', resultado: 'renueva', meses: 6 }), /precio/);
 console.log('prueba-videos: OK');

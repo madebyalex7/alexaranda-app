@@ -1,6 +1,7 @@
 # Normas para trabajar en este repositorio
 
 - **Nada se publica sin el OK de Alex.** Primero se prueba (mocks de `panel/test` y `worker/test.mjs`), después se le enseña, y solo entonces se publica.
+- **Beta permanente (Alex 30/10):** cada cambio se sube antes a la beta (`./publicar-beta.sh`: copias de las hojas, sin avisos al móvil) y Alex lo mira ahí; lo real, después, con `./publicar.sh`.
 - **Las claves nunca van al código ni a GitHub:** `secretos/` y `dist/` están fuera de git. En el código van los marcadores `__PANEL_KEY__` y `__PUSH_KEY__`; `build.py` los sustituye en `dist/`.
 - **Una sola fuente por archivo:** `panel/panel.html` lleva dentro todo el JavaScript del panel; `app/Index.html` el de la app. No crear copias sueltas.
 - **Antes de dar algo por hecho**, construir (`python3 build.py`), `node --check dist/worker.js` y probarlo en el navegador (Playwright) con los mocks.

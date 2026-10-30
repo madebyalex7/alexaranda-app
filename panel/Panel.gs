@@ -43,6 +43,8 @@ var P_TABLAS = {
   Gastos: { pref: 'g', cols: ['id', 'fecha', 'concepto', 'categoria', 'importe', 'recurrente', 'hasta', 'notas', 'actualizado', 'archivado'] },
   // Calendario de contenido (Alex 30/10). tipo: Reel o Historia; estado: Idea, Grabado, Programado, Publicado
   Contenido: { pref: 'ct', largo: true, cols: ['id', 'fecha', 'hora', 'tipo', 'titulo', 'guion', 'texto', 'enlace', 'estado', 'notas', 'actualizado', 'archivado'] },
+  // Renovaciones (Alex 30/10): resultado renueva o no, para la tasa y la facturación
+  Renovaciones: { pref: 'rn', cols: ['id', 'fecha', 'cliente_id', 'cliente', 'resultado', 'meses', 'precio', 'notas', 'actualizado', 'archivado'] },
   // Ajustes del panel (Alex 30/10): enlaces de los vídeos de las altas y lo que haga falta. id = clave
   Config: { pref: 'cf', cols: ['id', 'valor', 'actualizado', 'archivado'] },
   Aplicados: { pref: 'a', cols: ['id', 'fecha', 'cliente', 'codigo_app', 'ronda_id', 'cambio_id', 'tipo', 'detalle', 'resultado', 'pasado_a_docs', 'actualizado', 'archivado'] }
@@ -71,6 +73,9 @@ function P_despachar(cuerpo) {
       case 'caminoCliente': return { ok: true, data: EV_cliente(d.cliente_id) };
       case 'calendarioCliente': return { ok: true, data: CA_cliente(d.cliente_id) };
       case 'appAcceso': P_escribir(function () { AC_cambiar(d.cliente_id, d.que); }); return { ok: true, data: CA_cliente(d.cliente_id) };
+      case 'renovar': return { ok: true, data: P_escribir(function () { return RN_guardar(d); }) };
+      case 'copiaAhora': return { ok: true, data: CO_copia() };
+      case 'copiaProgramar': return { ok: true, data: CO_programar() };
       case 'videosCargar': return { ok: true, data: CV_cargar() };
       case 'videosCliente': return { ok: true, data: CV_cliente(d.cliente_id) };
       case 'videosGuardar': return { ok: true, data: P_escribir(function () { return CV_guardar(d); }) };
@@ -205,7 +210,7 @@ function P_nuevo(tabla, campos) {
 function P_cargar() {
   var clientes = P_leer('Clientes'), leads = P_leer('Leads'), cobros = P_leer('Cobros');
   var config = {}; P_leer('Config').forEach(function (r) { if (!r.archivado) config[r.id] = r.valor; });
-  return { config: config, gastos: P_leer('Gastos'), contenido: P_leer('Contenido'), clientes: clientes, leads: leads, cobros: cobros, tareas: P_leer('Tareas'), redes: P_leer('Redes'), altas: P_leer('Altas'), resumen: P_resumen(clientes, leads, cobros), hoy: P_hoy(), generado: P_ahora() };
+  return { config: config, renovaciones: P_leer('Renovaciones'), gastos: P_leer('Gastos'), contenido: P_leer('Contenido'), clientes: clientes, leads: leads, cobros: cobros, tareas: P_leer('Tareas'), redes: P_leer('Redes'), altas: P_leer('Altas'), resumen: P_resumen(clientes, leads, cobros), hoy: P_hoy(), generado: P_ahora() };
 }
 
 function P_resumen(clientes, leads, cobros) {
@@ -1151,4 +1156,41 @@ function AC_cambiar(cid, que) {
   if (!c) throw new Error('Acción no válida');
   Object.keys(c).forEach(function (k) { R_ajuste(h.ss, k, c[k]); });
   try { D_cacheFuera(String(h.cl.codigo_app).trim()); } catch (e) {}
+}
+
+// ═════════ Renovaciones (Alex 30/10) ═════════
+/* Renueva: alarga «fin» desde donde acabe, crea sus cobros y apunta la fila. No renueva: solo la fila (el estado lo cambia Alex). */
+function RN_guardar(d) {
+  var cl = P_leer('Clientes').filter(function (c) { return c.id === d.cliente_id; })[0]; if (!cl) throw new Error('No encuentro ese cliente');
+  if (d.resultado === 'no') return { renovacion: P_nuevo('Renovaciones', { fecha: P_hoy(), cliente_id: cl.id, cliente: cl.nombre, resultado: 'no', notas: String(d.notas || '') }) };
+  var meses = parseInt(d.meses, 10), precio = P_num(d.precio), n = parseInt(d.cuotas, 10) || 1, primero = R_fechaOk(d.primero || P_hoy());
+  if (!(meses > 0)) throw new Error('Falta la duración'); if (!(precio > 0)) throw new Error('Falta el precio'); if (n < 1 || n > 24) throw new Error('Cuotas no válidas');
+  var base = /^\d{4}-\d{2}-\d{2}$/.test(cl.fin) && cl.fin > P_hoy() ? cl.fin : P_hoy(), fin = LL_sumarMeses(base, meses), cents = Math.round(precio * 100), cuota = Math.floor(cents / n), cobros = [];
+  for (var i = 0; i < n; i++) cobros.push(P_nuevo('Cobros', { fecha: LL_sumarMeses(primero, i), cliente_id: cl.id, cliente: cl.nombre, concepto: 'Renovación ' + meses + ' meses' + (n > 1 ? ' · cuota ' + (i + 1) + '/' + n : ''),
+    importe: String((i === n - 1 ? cents - cuota * (n - 1) : cuota) / 100), estado: 'Pendiente', ultimo: i === n - 1 ? 'Sí' : '', metodo: String(d.metodo || cl.metodo || '') }));
+  return { cliente: P_guardar('Clientes', cl.id, { fin: fin, estado: 'Activo' }), cobros: cobros, renovacion: P_nuevo('Renovaciones', { fecha: P_hoy(), cliente_id: cl.id, cliente: cl.nombre, resultado: 'renueva', meses: String(meses), precio: String(precio) }) };
+}
+
+// ═════════ Copia de seguridad (Alex 30/10) ═════════
+/* Copia en Drive la hoja del panel, la maestra y las hojas de los clientes activos en una carpeta con la fecha; guarda 8 semanas (las viejas, a la papelera). */
+var CO_CARPETA = 'Copias de seguridad · App y panel';
+function CO_copia() {
+  var ini = Date.now(), nombre = (typeof ES_BETA !== 'undefined' && ES_BETA ? 'BETA · ' : '') + CO_CARPETA, it = DriveApp.getFoldersByName(nombre), raiz = it.hasNext() ? it.next() : DriveApp.createFolder(nombre);
+  var hoy = P_hoy(), dest = raiz.createFolder(hoy), ids = [[PANEL_HOJA_ID, 'Panel Alex – datos'], [MAESTRA_ID, 'App entrenos – maestra']], hechas = 0, fallos = [];
+  D_leer(SpreadsheetApp.openById(MAESTRA_ID), 'Registro clientes').forEach(function (f) { if (L_bool(f.activa) && f.hoja_datos_id && f.hoja_datos_id !== 'PENDIENTE') ids.push([String(f.hoja_datos_id).trim(), 'App · ' + (f.nombre || f.codigo)]); });
+  ids.forEach(function (x) {
+    if (Date.now() - ini > 300000) { fallos.push(x[1] + ' (sin tiempo)'); return; }
+    try { DriveApp.getFileById(x[0]).makeCopy(x[1] + ' · ' + hoy, dest); hechas++; } catch (e) { fallos.push(x[1]); }
+  });
+  var limite = P_sumarDias(hoy, -56), sub = raiz.getFolders();
+  while (sub.hasNext()) { var c = sub.next(); if (/^\d{4}-\d{2}-\d{2}$/.test(c.getName()) && c.getName() < limite) c.setTrashed(true); }
+  P_guardar('Config', 'copia_ultima', { valor: hoy + ' · ' + hechas + ' hojas' + (fallos.length ? ' · falló: ' + fallos.join(', ') : '') });
+  return { fecha: hoy, hechas: hechas, fallos: fallos, url: dest.getUrl() };
+}
+function copiaSemanal() { CO_copia(); }
+function CO_programar() {
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'copiaSemanal') ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('copiaSemanal').timeBased().onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(3).create();
+  P_guardar('Config', 'copia_programada', { valor: P_hoy() });
+  return { ok: true };
 }

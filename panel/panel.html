@@ -565,6 +565,7 @@ nav.tabs .ti{transition:transform .18s ease}
 .promesas .prdia.tarde + ul li{background:rgba(181,70,47,.07);border-radius:10px}
 @media (prefers-reduced-motion:reduce){.btn,.chip,.rfila,.fila,.vtile,.calc,.rcuerpo,.bloque,.cv{transition:none!important;animation:none!important}}
 .semsug{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--sec);margin:10px 0 0}
+.dnprev th{font:500 12px Jost,sans-serif;color:var(--sec);text-align:right;padding:4px 8px}.dncatw{margin-top:10px}
 </style>
 </head>
 <body>
@@ -1850,7 +1851,7 @@ function pgSeccion(c){
     '</div></div><div class="grupo"><h3>Pago</h3><div class="campos">'+
       campo(T,c,'precio_total','Precio total (€)','num')+campo(T,c,'forma_pago','Forma de pago','text','dl-forma')+campo(T,c,'metodo','Método','text','dl-metodo')+
       campo(T,c,'cuotas','Nº de cuotas','num')+campo(T,c,'importe_cuota','Importe cuota (€)','num')+campo(T,c,'dia_cobro','Día de cobro','num')+
-    '</div>'+tablaCobros(c)+'</div>'+
+    '</div>'+tablaCobros(c)+'</div>'+renovHtml(c)+
     '<div class="pie"><small>'+(c.actualizado?'Último cambio: '+esc(String(c.actualizado).replace('T',' ').slice(0,16)):'')+'</small><span>'+(c.archivado?'<button class="btn" data-desarchivar>Recuperar</button>':'<button class="btn peligro" data-archivar>Archivar</button>')+'</span></div>';
   // resumen
   return '<div class="pgcols"><div>'+
@@ -2339,7 +2340,7 @@ function pintarRedes(){
       (r.antes?'<div class="foq antes"><span>Al empezar · '+esc(foMes(r.fecha_antes))+'</span>«'+esc(r.antes)+'»</div>':'')+
       '<div class="foq ahora"><span>'+esc(r.antes?(foMeses(r.fecha_antes,r.fecha)||'Ahora'):foMes(r.fecha))+'</span>«'+esc(r.texto)+'»</div>'+
       '<div class="racc fofmt"><span class="estado-m">Imagen:</span><button class="btn" data-rdimg="form">Formulario</button><button class="btn" data-rdimg="chat">Chat</button><button class="btn" data-rdimg="marca">Con tu marca</button><button class="btn" data-rdcop>Copiar texto</button>'+
-      (r.usada?'<button class="btn" data-rduso="0">Quitar «usada»</button>':'<button class="btn prim" data-rduso="1">✓ Usada</button>')+'<button class="linkbtn" data-rdfuera>Quitar del banco</button></div></article>'; }).join('')+'</div>';
+      (r.usada?'<button class="btn" data-rduso="0">Quitar «usada»</button>':'<button class="btn prim" data-rduso="1">✓ Usada</button>')+(ok&&!r.usada?'<button class="btn" data-rdcal>📅 Al calendario</button>':'')+'<button class="linkbtn" data-rdfuera>Quitar del banco</button></div></article>'; }).join('')+'</div>';
   $('#app').innerHTML=h;
   $('#app').onclick=function(e){ var b=e.target.closest('button'); if(!b) return;
     if(b.hasAttribute('data-rdv')){ RD.vista=b.getAttribute('data-rdv'); return pintarRedes(); }
@@ -2347,6 +2348,8 @@ function pintarRedes(){
     var art=b.closest('[data-rid]'), r=art&&buscar('Redes',art.getAttribute('data-rid')); if(!r) return;
     if(b.hasAttribute('data-rdimg')) return foImagen(rdItem(r),b.getAttribute('data-rdimg'));
     if(b.hasAttribute('data-rdcop')){ var t=(r.antes?'«'+r.antes+'»\n\n'+(foMeses(r.fecha_antes,r.fecha)||'Ahora')+': ':'')+'«'+r.texto+'»'; (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){ b.textContent='Copiado ✓'; setTimeout(function(){ b.textContent='Copiar texto'; },1500); }).catch(function(){ prompt('Copia el texto',t); }); return; }
+    if(b.hasAttribute('data-rdcal')){ if(!/^s[ií]/i.test(String(r.permiso||''))) return; b.disabled=true;   // solo con su permiso y sin su nombre
+      api('nuevo',{tabla:'Contenido',campos:{fecha:sumar(hoy(),1),tipo:'Historia',estado:'Idea',titulo:'Testimonio (sin nombre)',guion:(r.antes?'«'+r.antes+'»\n\n'+(foMeses(r.fecha_antes,r.fecha)||'Ahora')+': ':'')+'«'+r.texto+'»',notas:'Del banco para redes: '+r.id}}).then(function(n){ (S.data.contenido=S.data.contenido||[]).push(n); r.usada=hoy(); programar('Redes',r.id,{usada:r.usada},true); $('#nRed').textContent=rdSinUsar()||''; toastDeshacer('En el calendario para mañana ✓',function(){ n.archivado=hoy(); api('archivar',{tabla:'Contenido',id:n.id}).catch(alerta); r.usada=''; programar('Redes',r.id,{usada:''},true); pintarRedes(); }); pintarRedes(); }).catch(function(er){ b.disabled=false; alerta(er); }); return; }
     if(b.hasAttribute('data-rduso')){ var u=b.getAttribute('data-rduso')==='1'?hoy():''; r.usada=u; programar('Redes',r.id,{usada:u},true); $('#nRed').textContent=rdSinUsar()||''; return pintarRedes(); }
     if(b.hasAttribute('data-rdfuera')){ if(!confirm('¿Quitar esta frase del banco? Se puede recuperar desde la hoja.')) return; r.archivado=hoy(); api('archivar',{tabla:'Redes',id:r.id}).catch(alerta); $('#nRed').textContent=rdSinUsar()||''; return pintarRedes(); }
   };
@@ -3528,7 +3531,7 @@ document.addEventListener('click',function(e){ if(!e.target.closest) return;
    Gastos = los apuntados, con los recurrentes repetidos cada mes o cada año. */
 var DN={per:'mes',off:0,form:false};
 var DN_PER={mes:[1,'Mes'],trim:[3,'Trimestre'],sem:[6,'Semestre'],anio:[12,'Año']};
-var DN_CAT=['Anuncios','Software'];
+var DN_CAT=['Anuncios','Software','IA (Claude)'];
 function dnCats(){ var ex=cfg('gastos_categorias').split(',').map(function(x){ return x.trim(); }).filter(String), usadas=(S.data.gastos||[]).filter(vivo).map(function(g){ return g.categoria; }).filter(Boolean); return DN_CAT.concat(ex,usadas).filter(function(x,i,a){ return a.indexOf(x)===i; }); }
 function dnRango(){ var h=new Date(hoy()+'T12:00:00'), n=DN_PER[DN.per][0], y=h.getFullYear(), m=h.getMonth(), base=DN.per==='mes'?m:DN.per==='anio'?0:Math.floor(m/n)*n, d0=new Date(y,base+DN.off*n,1), d1=new Date(y,base+DN.off*n+n,0);
   var meses=[]; for(var i=0;i<n;i++){ var dm=new Date(d0.getFullYear(),d0.getMonth()+i,1); meses.push(dm.getFullYear()+'-'+pad(dm.getMonth()+1)); }
@@ -3541,14 +3544,52 @@ function dnDatos(R0){
   var por={}; R0.meses.forEach(function(m){ por[m]={cash:0,fact:0,gasto:0,pend:0}; });
   (S.data.cobros||[]).filter(vivo).forEach(function(p){ var m=String(p.fecha||'').slice(0,7); if(!por[m]) return; if(p.estado==='Cobrado') por[m].cash+=num(p.importe); else por[m].pend+=num(p.importe); });
   (S.data.clientes||[]).filter(vivo).forEach(function(c){ var cs=cobrosDe(c.id), f=cs.length?cs[0].fecha:c.inicio, m=String(f||'').slice(0,7); if(por[m]) por[m].fact+=num(c.precio_total); });
+  (S.data.renovaciones||[]).filter(vivo).forEach(function(r){ var m=String(r.fecha||'').slice(0,7); if(por[m]&&r.resultado==='renueva') por[m].fact+=num(r.precio); });
   var cats={}; (S.data.gastos||[]).filter(vivo).forEach(function(g){ R0.meses.forEach(function(m){ var v=dnGastoEn(g,m); if(v){ por[m].gasto+=v; var c=g.categoria||'Sin categoría'; cats[c]=(cats[c]||0)+v; } }); });
   var T={cash:0,fact:0,gasto:0,pend:0}; R0.meses.forEach(function(m){ Object.keys(T).forEach(function(k){ T[k]+=por[m][k]; }); });
   return {por:por,T:T,cats:cats};
 }
+/* Métricas (Alex 30/10): coste por cliente con TODOS los gastos, lo que deja cada uno, renovación, abandonos y previsión a 3 meses */
+function dnMetricas(R0,X){
+  var e=function(v){ return EUR.format(Math.round(v)); }, T=X.T, hh=hoy();
+  var altas=(S.data.clientes||[]).filter(vivo).filter(function(c){ var cs=cobrosDe(c.id), f=cs.length?cs[0].fecha:c.inicio; return R0.meses.indexOf(String(f||'').slice(0,7))>=0; }).length;
+  var activos=(S.data.clientes||[]).filter(function(c){ return vivo(c)&&c.estado==='Activo'; }).length, anu=Object.keys(X.cats).filter(function(c){ return /anunc/i.test(c); }).reduce(function(a,c){ return a+X.cats[c]; },0);
+  var tile2=function(t,v,sub,cl){ return '<div class="dnt '+(cl||'')+'"><span>'+t+'</span><b>'+v+'</b><small>'+sub+'</small></div>'; };
+  var h='<section class="bloque"><h2>Coste y rentabilidad</h2><div class="dntiles">'+tile2('Altas',String(altas),'clientes nuevos en el periodo')+
+    tile2('Coste por cliente nuevo',altas?e(T.gasto/altas):'—','todos los gastos, IA incluida, entre las altas')+tile2('Solo anuncios',altas?e(anu/altas):'—','anuncios entre las altas')+
+    tile2('Coste por cliente activo',activos?e(T.gasto/activos):'—',activos+' activos en este periodo')+tile2('Te deja cada activo',activos?e((T.cash-T.gasto)/activos):'—','cash menos gastos, entre activos',T.cash>=T.gasto?'ok':'mal')+'</div>'+
+    (Object.keys(X.cats).some(function(c){ return /ia|claude/i.test(c); })?'':'<p class="estado-m">Apunta abajo lo que pagas por Claude en la categoría «IA (Claude)», como gasto mensual, para que entre en el coste.</p>')+'</section>';
+  // Renovación
+  var rs=(S.data.renovaciones||[]).filter(vivo), si=rs.filter(function(r){ return r.resultado==='renueva'; }).length, no=rs.filter(function(r){ return r.resultado==='no'; }).length, tasa=si+no?si/(si+no):null;
+  // Abandonos: Inactivos antes de su fin, por mes del programa (la fecha es la de su último cambio: aproximada)
+  var ab={}, nAb=0; (S.data.clientes||[]).filter(function(c){ return c.estado==='Inactivo'&&esFecha(c.inicio); }).forEach(function(c){ var b=String(c.actualizado||'').slice(0,10); if(!esFecha(b)||b<c.inicio||(esFecha(c.fin)&&b>=c.fin)) return; var m=Math.max(1,Math.ceil(dias(c.inicio,b)/30)); ab[m]=(ab[m]||0)+1; nAb++; });
+  h+='<section class="bloque"><h2>Clientes</h2><div class="dntiles">'+tile2('Tasa de renovación',tasa==null?'—':Math.round(tasa*100)+' %',si+' renuevan · '+no+' no (se apunta en su ficha › Programa y pagos)')+tile2('Abandonos',String(nAb),'dejaron antes de acabar (fecha aproximada)')+'</div>'+
+    (nAb?'<div class="dncatw">'+Object.keys(ab).map(Number).sort(function(a,b){ return a-b; }).map(function(m){ return '<div class="dncat"><span>Mes '+m+'</span><span class="dnbar"><i style="width:'+Math.round(ab[m]*100/nAb)+'%"></i></span><b>'+ab[m]+'</b><small></small></div>'; }).join('')+'</div>':'')+'</section>';
+  // Previsión: los 3 próximos meses
+  var ms=[]; for(var i=1;i<=3;i++){ var dm=new Date(+hh.slice(0,4),+hh.slice(5,7)-1+i-1+0,1); ms.push(dm.getFullYear()+'-'+pad(dm.getMonth()+1)); }
+  h+='<section class="bloque"><h2>Previsión <small class="estado-m">este mes y los 2 siguientes</small></h2><table class="prog dnprev"><thead><tr><th></th><th>Cuotas pendientes</th><th>Renovaciones posibles</th><th>Total posible</th></tr></thead><tbody>'+ms.map(function(m){
+    var cu=(S.data.cobros||[]).filter(function(p){ return vivo(p)&&p.estado!=='Cobrado'&&String(p.fecha||'').slice(0,7)===m; }).reduce(function(a,p){ return a+num(p.importe); },0);
+    var re=(S.data.clientes||[]).filter(function(c){ return vivo(c)&&c.estado==='Activo'&&String(c.fin||'').slice(0,7)===m; }).reduce(function(a,c){ return a+num(c.precio_total); },0), pr=tasa==null?re:re*tasa;
+    return '<tr><td>'+MESES_L[+m.slice(5)-1]+'</td><td class="k"><b>'+e(cu)+'</b></td><td class="k">'+e(pr)+'</td><td class="k"><b>'+e(cu+pr)+'</b></td></tr>'; }).join('')+'</tbody></table><p class="estado-m">Renovaciones: lo que pagaron la vez anterior los que acaban ese mes'+(tasa==null?', si renovaran todos (aún no hay historial)':', por tu tasa de renovación')+'.</p></section>';
+  return h;
+}
+/* Renovar desde la ficha */
+function renovHtml(c){ var hist=(S.data.renovaciones||[]).filter(function(r){ return vivo(r)&&r.cliente_id===c.id; });
+  return '<div class="grupo" data-rnc="'+esc(c.id)+'"><h3>Renovación</h3>'+(hist.length?'<p class="estado-m">'+hist.map(function(r){ return esc(fCorta(r.fecha))+': '+(r.resultado==='renueva'?'renovó '+esc(r.meses)+' meses por '+esc(euros(r.precio)):'no renueva'); }).join(' · ')+'</p>':'')+
+    '<div class="tnueva dnform"><select data-rn="meses" aria-label="Meses"><option value="3">3 meses</option><option value="6" selected>6 meses</option><option value="12">12 meses</option></select><input data-rn="precio" inputmode="decimal" placeholder="Precio €" aria-label="Precio"><input data-rn="cuotas" inputmode="numeric" value="1" aria-label="Cuotas" style="max-width:80px"><input data-rn="primero" type="date" value="'+esc(hoy())+'" aria-label="Primer cobro"><button class="btn prim" data-rnsi>🔁 Ha renovado</button><button class="btn" data-rnno>No renueva</button></div></div>'; }
+document.addEventListener('click',function(e){ if(!e.target.closest) return; var si=e.target.closest('[data-rnsi]'), no=e.target.closest('[data-rnno]'); if(!si&&!no) return; e.stopPropagation(); var b=si||no, box=b.closest('[data-rnc]'), cid=box.getAttribute('data-rnc'), v=function(k){ return $('[data-rn="'+k+'"]',box).value; }, c=buscar('Clientes',cid);
+  if(si&&!num(v('precio'))){ $('[data-rn="precio"]',box).focus(); return; }
+  if(no&&!confirm('Apuntar que '+(c&&c.nombre||'')+' no renueva? Su estado lo cambias tú.')) return;
+  b.disabled=true; api('renovar',si?{cliente_id:cid,resultado:'renueva',meses:v('meses'),precio:v('precio'),cuotas:v('cuotas'),primero:v('primero')}:{cliente_id:cid,resultado:'no'}).then(function(r){ (S.data.renovaciones=S.data.renovaciones||[]).push(r.renovacion); if(r.cliente&&c) Object.assign(c,r.cliente); (r.cobros||[]).forEach(function(x){ S.data.cobros.push(x); }); flash(); var y=scrollY; pintar(); scrollTo(0,y); }).catch(function(er){ b.disabled=false; alerta(er); }); },true);
+/* Copia de seguridad: bloque al final de Hoy */
+function copiaHtml(){ return '<details class="bloque lsec"><summary>🛟 Copia de seguridad</summary><p class="estado-m">Última: '+esc(cfg('copia_ultima')||'ninguna')+(cfg('copia_programada')?' · cada domingo a las 3:00':'')+'. Guarda el panel, la maestra y las hojas de los clientes en tu Drive, 8 semanas.</p><div class="racc"><button class="btn" data-copia="ahora">Hacer copia ahora</button>'+(cfg('copia_programada')?'':'<button class="btn prim" data-copia="prog">Programar cada domingo</button>')+'</div></details>'; }
+document.addEventListener('click',function(e){ var b=e.target.closest&&e.target.closest('[data-copia]'); if(!b) return; var q=b.getAttribute('data-copia'); b.disabled=true; b.textContent=q==='ahora'?'Copiando… (puede tardar 1-2 min)':'Programando…';
+  api(q==='ahora'?'copiaAhora':'copiaProgramar',{}).then(function(r){ S.data.config=S.data.config||{}; if(q==='ahora') S.data.config.copia_ultima=r.fecha+' · '+r.hechas+' hojas'+(r.fallos.length?' · falló: '+r.fallos.join(', '):''); else S.data.config.copia_programada=hoy(); flash(); pintarHoy(); }).catch(function(er){ b.disabled=false; b.textContent='Reintentar'; alerta(er); }); });
 function pintarDinero(){
   var R0=dnRango(), X=dnDatos(R0), T=X.T, ben=T.cash-T.gasto, e=function(v){ return EUR.format(Math.round(v)); };
   var h='<div class="rcab"><h2>Dinero<small>'+esc(R0.etq)+'</small></h2></div><div class="dnsel"><div class="rtipo">'+Object.keys(DN_PER).map(function(k){ return '<button class="chip" data-dnper="'+k+'" aria-pressed="'+(DN.per===k)+'">'+DN_PER[k][1]+'</button>'; }).join('')+'</div><span class="racc" style="margin:0"><button class="btn" data-dnoff="-1" aria-label="Anterior">‹</button><button class="btn" data-dnoff="0">Hoy</button><button class="btn" data-dnoff="1" aria-label="Siguiente">›</button></span></div>'+
     '<div class="dntiles">'+[['Cash collected',T.cash,'cobrado de verdad','ok'],['Facturación',T.fact,'lo vendido en el periodo',''],['Gastos',T.gasto,'con los recurrentes','mal'],['Lo que queda',ben,'cash menos gastos',ben>=0?'ok':'mal'],['Por cobrar',T.pend,'cobros pendientes','']].map(function(x){ return '<div class="dnt '+x[3]+'"><span>'+x[0]+'</span><b>'+e(x[1])+'</b><small>'+x[2]+'</small></div>'; }).join('')+'</div>';
+  h+=dnMetricas(R0,X);
   // Barras por mes
   if(R0.meses.length>1){ var mx=Math.max.apply(null,R0.meses.map(function(m){ return Math.max(X.por[m].cash,X.por[m].gasto); }).concat([1]));
     h+='<section class="bloque"><h2>Mes a mes</h2><div class="dnbars">'+R0.meses.map(function(m){ var o=X.por[m]; return '<div class="dnb"><div class="dnbb"><i class="c" style="height:'+Math.round(o.cash*100/mx)+'%" title="Cobrado '+e(o.cash)+'"></i><i class="g" style="height:'+Math.round(o.gasto*100/mx)+'%" title="Gastos '+e(o.gasto)+'"></i></div><small>'+MESES_L[+m.slice(5)-1].slice(0,3)+'</small></div>'; }).join('')+'</div><p class="calley"><span class="dnl c"></span> cobrado <span class="dnl g"></span> gastos</p></section>'; }
@@ -3672,6 +3713,7 @@ function pintarHoy(soloSecs){
   var renov=[]; (S.data.clientes||[]).filter(function(c){ return vivo(c)&&c.estado==='Activo'; }).forEach(function(c){ avisosRenov(c.id).forEach(function(x){ if(!x.cobro) renov.push({c:c,x:x}); }); });
   html+=miSemana(renov);
   if(renov.length) html+='<section class="bloque"><h2>Renovaciones <span class="n">'+renov.length+'</span></h2><ul class="corta">'+renov.map(function(r){ return '<li><span class="punto '+(r.x.n==='r'?'rojo':'amarillo')+'"></span><button class="quien" data-abrir="Clientes|'+esc(r.c.id)+'"><b>'+esc(r.c.nombre)+'</b><span>'+esc(r.x.t)+'</span></button></li>'; }).join('')+'</ul></section>';
+  html+=copiaHtml();
   $('#app').innerHTML=html; enlazarHoy();
 }
 function pintarTareas(){
