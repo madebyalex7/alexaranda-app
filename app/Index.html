@@ -609,6 +609,17 @@ details.calplega[open] .calver{display:none}
 .fcard.cerrada{position:relative}
 .fcard.cerrada .fc-front{filter:grayscale(1);opacity:.42}
 .fcard.cerrada::after{content:"🔒";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:58px;line-height:1;opacity:.82;pointer-events:none;z-index:5;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35))}
+/* Progreso más visual (Alex 30/10) */
+.ptiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 16px}
+.ptile{display:flex;flex-direction:column;gap:2px;text-decoration:none;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:10px 10px 12px;min-width:0}
+.ptile .pt-ic{color:var(--accent-2)}.ptile .pt-ic .ic{width:20px;height:20px}.ptile .pt-t{font-size:11.5px;color:var(--muted)}
+.ptile b{font-weight:500;font-size:18px;line-height:1.15}.ptile small{font-size:11.5px;color:var(--muted)}
+.ptile.ok{background:var(--soft);border-color:var(--accent)}
+.pult{font-size:14px;margin:0 0 10px;color:var(--accent-2)}.pult b{color:var(--fg);font-weight:500}
+.fbtn.ya{border-color:var(--accent);background:var(--soft)}.fbtn.ya > span{font-size:20px;color:var(--accent-2);font-weight:700}.fbtn small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.flashok{animation:flashok 1.3s ease both}
+@keyframes flashok{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 70%,transparent);transform:scale(.985)}30%{box-shadow:0 0 0 7px color-mix(in srgb,var(--accent) 35%,transparent);transform:scale(1)}100%{box-shadow:0 0 0 14px transparent}}
+@media (prefers-reduced-motion:reduce){.flashok{animation:none}}
 </style>
 </head>
 <body>
@@ -961,6 +972,7 @@ function home(){
   <div class="ajustes" id="aj" hidden>
     <label class="tog" for="crono"><span>Cronómetro de descanso<small>Cuenta el descanso al marcar una serie</small></span><input type="checkbox" id="crono" ${A.crono ? "checked" : ""}></label>
     ${pushSoportado() ? `<button type="button" class="mini" id="ajAv" style="margin:4px 0 12px">⏰ Avisos al móvil</button>` : ""}
+    <button type="button" class="mini" id="ajMol" style="margin:4px 0 12px">Avisar de una molestia</button>
     <div class="label">Colores</div>
     <div class="pals">${PALETAS.map(([p,nn,c1,c2])=>`<button type="button" data-pal="${p}" class="pal ${A.paleta === p ? "on" : ""}" aria-pressed="${A.paleta === p}"><i style="background:linear-gradient(135deg,${c1} 50%,${c2} 50%)"></i>${nn}</button>`).join("")}</div>
   </div>
@@ -1001,6 +1013,7 @@ function home(){
   { const gp = document.getElementById("goPaseo"); if(gp) gp.onclick = ()=>{ EXTRA = {tipo: "Caminar", otro: "", min: "", km: "", sens: 0, nota: ""}; ir("extra"); }; }
   { const gx = document.getElementById("goExtra"); if(gx) gx.onclick = ()=>ir("extra"); }
   { const av = document.getElementById("ajAv"); if(av) av.onclick = ()=>abrirAvisos(); }
+  { const am = document.getElementById("ajMol"); if(am) am.onclick = ()=>abrirMolestia(); }
   enlazaVideos();
   enlazaAbierto();
   { const px = document.getElementById("goNext"); if(px) px.onclick = ()=>ir(px.dataset.d); }
@@ -2073,17 +2086,54 @@ function msgPesoGuardado(){
   const t = tendencia(); if(t && t.dif <= -0.3) return "Apuntado ✓ Tu línea sigue bajando 💛";
   return "Apuntado ✓ Recuerda: miramos la línea, no el número del día.";
 }
+/* Molestias (Alex 30/10): fuera de Progreso. Se avisa desde Entreno › Ajustes */
+function abrirMolestia(){
+  hoja("Avisar de una molestia", `${molestiasSemana()}<p class="sub small">Si notas algo fuera de un ejercicio (espalda, rodilla, hombro…), apúntalo aquí y lo veo. Si es fuerte o no mejora, escríbeme también por WhatsApp.</p>
+      <label class="mfi"><span>Desde cuándo</span><input type="text" id="mlD" placeholder="Ej.: desde ayer, hace 2 semanas" autocomplete="off" style="flex:1;min-width:0;font:inherit;font-size:15px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg);color:var(--fg)"></label>
+      <label class="mfi" style="margin-top:8px"><span>Dónde</span><input type="text" id="mlZ" placeholder="Ej.: lumbar, rodilla izquierda" autocomplete="off" style="flex:1;min-width:0;font:inherit;font-size:15px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg);color:var(--fg)"></label>
+      <div class="label" style="margin-top:10px">Cuánto (0 nada · 10 mucha)</div>
+      <div class="molr" id="mlV">${Array.from({length: 11}, (_, n)=>`<button type="button" data-mlv="${n}" class="m${n >= 8 ? 8 : n >= 6 ? 6 : n >= 4 ? 4 : n >= 2 ? 2 : 0}">${n}</button>`).join("")}</div>
+      <textarea class="moln" id="mlT" rows="2" placeholder="Cómo es y cuándo la notas" style="margin-top:10px"></textarea>
+      <button class="cta" id="mlOk" type="button">Guardar</button>`);
+  const o = document.getElementById("hojaOv"); let mlv = null;
+  o.querySelectorAll("[data-mlv]").forEach(b=>b.onclick = ()=>{ mlv = +b.dataset.mlv; o.querySelectorAll("[data-mlv]").forEach(x=>x.classList.toggle("on", x === b)); });
+  document.getElementById("mlOk").onclick = ()=>{
+    const z = document.getElementById("mlZ").value.trim(), t = document.getElementById("mlT").value.trim();
+    if(mlv === null){ toast("Marca del 0 al 10 cuánto te molesta"); return; }
+    const uid = Date.now().toString(36) + Math.random().toString(36).slice(2, 6), f = hoyLocal(), desde = document.getElementById("mlD").value.trim();
+    encolar({fn:"molestia", uid, fecha: f, zona: z, v: mlv, desde, texto: t});
+    D.mp.molestias = [{f, z, v: mlv, d: desde, t, uid}].concat(D.mp.molestias || []);
+    toast(mlv >= 6 ? "<b>Apuntado.</b> Como es fuerte, escríbeme también por WhatsApp y lo vemos 💛" : "<b>Apuntado ✓</b> Lo tengo en cuenta para tus entrenos.");
+    o.remove(); document.body.style.overflow = "";
+  };
+}
+/* Desde cuándo cuentan las fotos actuales: hasta la ventana del siguiente control se mantiene «ya las has subido» */
+function fotosCicloIni(){
+  const w = D.semana, h = hoyLocal(); if(!D.lunes) return "";
+  const ctrl = w - (w % 4); if(ctrl < 4) return sumaDias(D.lunes, -7 * (w - 1) - 7);
+  const ini = sumaDias(sumaDias(D.lunes, -7 * (w - ctrl)), 1);   // martes de la semana de control: 3 días antes del viernes
+  return h >= ini ? ini : sumaDias(ini, -28);
+}
+function flashOk(id){ const el = document.getElementById(id); if(el){ el.classList.remove("flashok"); void el.offsetWidth; el.classList.add("flashok"); } }
 function vistaProg(){
   const mp = D.mp || {}, pd = mp.pesoDesde || 1, ph = pesoHoy(), md = mejorDato(), m = mp.medidas || [], ult = m[m.length - 1] || {}, pri = m[0] || {};
   const prox = FREC() === "quincenal" ? "el viernes que te toque" : DOW() >= 1 && DOW() < 5 ? "este viernes" : DOW() === 5 ? "el viernes" : "el viernes que viene";
   const fotosF = [...new Set((mp.fotos || []).map(x=>x.f))].sort();
+  const uPeso = (mp.pesos || [])[(mp.pesos || []).length - 1], cicloF = fotosCicloIni(), fHechas = ["frente","lado","espalda"].filter(t=>(mp.fotos || []).some(x=>x.t === t && x.f >= cicloF)), todasF = fHechas.length === 3;
+  const res = (id, icn, t, val, sub, ok)=>`<a class="ptile ${ok ? "ok" : ""}" href="#${id}" data-ir="${id}"><span class="pt-ic">${ic(icn)}</span><span class="pt-t">${t}</span><b>${val}</b><small>${sub}</small></a>`;
   app.innerHTML = `${cabecera()}
+  <button class="back" id="volver" type="button">← Volver</button>
   <h1>Mi progreso</h1><p class="sub">Lo que vas consiguiendo, ${esc(D.nombre)}</p>
+  <div class="ptiles">
+    ${res("bPeso", "control", "Peso", uPeso ? (lsGet(kOcultar) ? "✓" : num(uPeso.p) + " kg") : "—", uPeso ? fechaCorta(uPeso.f) : "sin apuntar", !!uPeso)}
+    ${res("bMed", "agenda", "Medidas", m.length ? "✓" : "—", m.length ? fechaCorta(ult.f) : "sin apuntar", !!m.length)}
+    ${res("bFotos", "fotos", "Fotos", fHechas.length + "/3", todasF ? "hechas" : "por subir", todasF)}
+  </div>
   <div class="mejor ${md ? "" : "vacio"}">${md ? `<span class="mi">${ic(md.ic)}</span><div><div class="label">Lo que más has mejorado</div><b>${esc(md.big)}</b> <span>${esc(md.txt)}</span></div>` : `<span class="mi">${ic("lo_proximo")}</span><div><div class="label">Lo que más has mejorado</div><span>Aquí irá lo que más vayas mejorando. Empieza apuntando tu peso y tus medidas.</span></div>`}</div>
 
   <section class="block pblock" id="bPeso"><div class="label">${ic("control")} Peso</div>
   ${FREC() === "no" ? `<p class="sub">Tú vas sin báscula: tu progreso lo vemos con las medidas, la ropa y las fotos. Y eso cuenta igual 💛</p>` : D.semana < pd ? `<p class="sub">Empezamos a pesarnos en tu semana ${pd}. Así la primera semana te centras solo en entrenar 😊</p>` : `
-    ${ph ? `<p class="phoy">Hoy: <b>${lsGet(kOcultar) ? "apuntado" : num(ph.p) + " kg"}</b> ✓ <button type="button" class="lnk" id="pCambiar">Cambiar</button></p>` : ""}
+    ${ph ? `<p class="phoy">Hoy: <b>${lsGet(kOcultar) ? "apuntado" : num(ph.p) + " kg"}</b> ✓ <button type="button" class="lnk" id="pCambiar">Cambiar</button></p>` : uPeso ? `<p class="pult">✓ Última vez: <b>${fechaCorta(uPeso.f)}</b>${lsGet(kOcultar) ? "" : " · " + num(uPeso.p) + " kg"}</p>` : ""}
     <div class="pform ${ph ? "oculto" : ""}" id="pForm">
       <p class="ptit">${tocaPeso() ? "Hoy toca pesarse ⚖️" : `Te toca pesarte ${prox}${FREC() === "libre" ? " · te has pesado hoy?" : ""}`}</p>
       <p class="sub small">Los viernes, sí o sí: en ayunas, después del baño y antes de comer o beber. El martes, si te apetece, también.</p>
@@ -2098,6 +2148,7 @@ function vistaProg(){
   </section>
 
   <section class="block pblock" id="bMed"><div class="label">${ic("agenda")} Medidas</div>
+    ${m.length ? `<p class="pult">✓ Últimas: <b>${fechaCorta(ult.f)}</b></p>` : ""}
     ${m.length ? `<div class="mtab">${MED.map(([k, nm])=>ult[k] === undefined ? "" : `<div class="mrow"><span>${nm}</span><b>${num(ult[k])} cm</b>${pri[k] !== undefined && m.length > 1 ? (()=>{ const d = ult[k] - pri[k]; const bueno = (k === "brazo") ? d > 0 : d < 0; return Math.abs(d) >= 0.5 ? `<i class="${bueno ? "ok" : ""}">${d > 0 ? "+" : "−"}${num(Math.abs(d))}</i>` : `<i>=</i>`; })() : "<i></i>"}</div>`).join("")}</div><p class="sub small">Últimas: ${fechaCorta(ult.f)}${m.length > 1 ? " · comparado con el " + fechaCorta(pri.f) : ""}</p>` : `<p class="sub">Cuando te midas, aquí verás los centímetros que vas perdiendo (o ganando donde toca 😉).</p>`}
     <details class="como medir"><summary>${m.length ? "Apuntar medidas nuevas" : "Apuntar mis medidas"}</summary>
       <p class="sub small">Con una cinta métrica, por la mañana y siempre igual. Una vez al mes es suficiente.</p>
@@ -2107,29 +2158,18 @@ function vistaProg(){
     </details>
   </section>
 
-  <section class="block pblock" id="bMol"><div class="label">${ic("molestia")} Molestias</div>
-    ${molestiasSemana()}
-    <details class="como medir"><summary>Avisar de una molestia</summary>
-      <p class="sub small">Si notas algo fuera de un ejercicio (espalda, rodilla, hombro…), apúntalo aquí y lo veo. Si es fuerte o no mejora, escríbeme también por WhatsApp.</p>
-      <label class="mfi"><span>Desde cuándo</span><input type="text" id="mlD" placeholder="Ej.: desde ayer, hace 2 semanas" autocomplete="off" style="flex:1;min-width:0;font:inherit;font-size:15px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg);color:var(--fg)"></label>
-      <label class="mfi" style="margin-top:8px"><span>Dónde</span><input type="text" id="mlZ" placeholder="Ej.: lumbar, rodilla izquierda" autocomplete="off" style="flex:1;min-width:0;font:inherit;font-size:15px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg);color:var(--fg)"></label>
-      <div class="label" style="margin-top:10px">Cuánto (0 nada · 10 mucha)</div>
-      <div class="molr" id="mlV">${Array.from({length: 11}, (_, n)=>`<button type="button" data-mlv="${n}" class="m${n >= 8 ? 8 : n >= 6 ? 6 : n >= 4 ? 4 : n >= 2 ? 2 : 0}">${n}</button>`).join("")}</div>
-      <textarea class="moln" id="mlT" rows="2" placeholder="Cómo es y cuándo la notas" style="margin-top:10px"></textarea>
-      <button class="cta" id="mlOk" type="button">Guardar</button>
-    </details>
-  </section>
-
   <section class="block pblock" id="bFotos"><div class="label">${ic("fotos")} Fotos</div>
     <p class="sub small">Solo las vemos tú y Alex. Se guardan en tu carpeta privada. Mismo sitio, misma luz y misma ropa: así se nota el cambio.</p>
     <button type="button" class="glink" id="bGuiaFotos">${ic("fotos")} Cómo me hago las fotos?</button>
-    ${selFecha("foto", "Fotos de")}
-    <div class="fsub">${[["frente","De frente"],["lado","De lado"],["espalda","De espaldas"]].map(([t, nm])=>`<label class="fbtn"><input type="file" accept="image/*" data-foto="${t}" hidden><span>${ic("fotos")}</span>${nm}</label>`).join("")}</div>
+    ${todasF ? `<p class="pult">✓ <b>Ya has subido tus fotos</b> de este control. Hasta el próximo, nada más que hacer.</p>` : selFecha("foto", "Fotos de")}
+    <div class="fsub">${[["frente","De frente"],["lado","De lado"],["espalda","De espaldas"]].map(([t, nm])=>{ const ya = fHechas.includes(t); return `<label class="fbtn ${ya ? "ya" : ""}"><input type="file" accept="image/*" data-foto="${t}" hidden><span>${ya ? "✓" : ic("fotos")}</span>${nm}${ya ? `<small>Subida · rehacerla</small>` : ""}</label>`; }).join("")}</div>
     <p class="sub small" id="fEstado">${fotosF.length ? `Últimas fotos: ${fechaCorta(fotosF[fotosF.length - 1])}` : "Aún no has subido fotos."}</p>
     <div id="fComp">${fotosF.length ? `<p class="sub small">Cargando tus fotos…</p>` : ""}</div>
   </section>
   <p class="sync" id="sync">${textoSync()}</p>`;
   enlazaProg();
+  document.getElementById("volver").onclick = ()=>ir("hub");
+  app.querySelectorAll("[data-ir]").forEach(a=>a.onclick = e=>{ e.preventDefault(); const t = document.getElementById(a.dataset.ir); if(t) t.scrollIntoView({behavior: SUAVE(), block: "start"}); });
   { const g = document.getElementById("bGuiaFotos"); if(g) g.onclick = ()=>hoja("Cómo me hago las fotos?", guiaFotos()); }
   if(fotosF.length) cargarFotos();
 }
@@ -2202,7 +2242,7 @@ function enlazaProg(){
     const f = fechaDe("peso"); D.mp = D.mp || {pesos: []}; D.mp.pesos = (D.mp.pesos || []).filter(x=>x.f !== f).concat([{f, p: v}]).sort((a, b)=>a.f < b.f ? -1 : 1);
     encolar({fn:"peso", fecha: f, peso: v, regla: PCICLO || ""});
     const ul = D.mp.pesos.find(x=>x.f === f); if(ul){ if(PCICLO) ul.c = PCICLO; else delete ul.c; }
-    toast(f === hoyLocal() ? `<b>${msgPesoGuardado()}</b>` : `<b>Peso guardado ✓</b> Con fecha del ${fechaCorta(f)}.`); const y = scrollY; vistaProg(); scrollTo(0, y);
+    toast(f === hoyLocal() ? `<b>${msgPesoGuardado()}</b>` : `<b>Peso guardado ✓</b> Con fecha del ${fechaCorta(f)}.`); const y = scrollY; vistaProg(); scrollTo(0, y); flashOk("bPeso");
   };
   app.querySelectorAll("[data-pc]").forEach(b=>b.onclick = ()=>{ PCICLO = PCICLO === b.dataset.pc ? "" : b.dataset.pc; app.querySelectorAll("[data-pc]").forEach(x=>{ x.classList.toggle("on", x.dataset.pc === PCICLO); x.setAttribute("aria-pressed", x.dataset.pc === PCICLO); }); });
   const pc = document.getElementById("pCambiar"); if(pc) pc.onclick = ()=>{ document.getElementById("pForm").classList.remove("oculto"); pc.parentElement.remove(); };
@@ -2216,19 +2256,8 @@ function enlazaProg(){
     D.mp.medidas = (D.mp.medidas || []).filter(x=>x.f !== op.fecha).concat([Object.assign({f: op.fecha}, ...MED.map(([k])=>op[k] !== undefined ? {[k]: op[k]} : {}))]).sort((a, b)=>a.f < b.f ? -1 : 1);
     encolar(op);
     toast(`<b>Medidas guardadas ✓</b> ${D.mp.medidas.length > 1 ? "Mira cómo vas comparado con la primera vez 💛" : "La próxima vez ya verás la diferencia."}`);
-    const y = scrollY; vistaProg(); scrollTo(0, y);
+    const y = scrollY; vistaProg(); scrollTo(0, y); flashOk("bMed");
   };
-  { let mlv = null; app.querySelectorAll("[data-mlv]").forEach(b=>b.onclick = ()=>{ mlv = +b.dataset.mlv; app.querySelectorAll("[data-mlv]").forEach(x=>x.classList.toggle("on", x === b)); });
-    const mok2 = document.getElementById("mlOk"); if(mok2) mok2.onclick = ()=>{
-      const z = document.getElementById("mlZ").value.trim(), t = document.getElementById("mlT").value.trim();
-      if(mlv === null){ toast("Marca del 0 al 10 cuánto te molesta"); return; }
-      const uid = Date.now().toString(36) + Math.random().toString(36).slice(2, 6), f = hoyLocal();
-      const desde = document.getElementById("mlD").value.trim();
-      encolar({fn:"molestia", uid, fecha: f, zona: z, v: mlv, desde, texto: t});
-      D.mp.molestias = [{f, z, v: mlv, d: desde, t, uid}].concat(D.mp.molestias || []);
-      toast(mlv >= 6 ? "<b>Apuntado.</b> Como es fuerte, escríbeme también por WhatsApp y lo vemos 💛" : "<b>Apuntado ✓</b> Lo tengo en cuenta para tus entrenos.");
-      const y = scrollY; vistaProg(); scrollTo(0, y);
-    }; }
   app.querySelectorAll("[data-foto]").forEach(inp=>inp.onchange = ()=>{ const f = inp.files && inp.files[0]; if(f) subirFoto(f, inp.dataset.foto, fechaDe("foto")); inp.value = ""; });
   enlazaSelFecha();
 }
@@ -2252,7 +2281,7 @@ async function subirFoto(file, tipo, fecha){
     D.mp = D.mp || {}; D.mp.fotos = (D.mp.fotos || []).filter(x=>!(x.f === fecha && x.t === tipo)).concat([{f: fecha, t: tipo}]);
     FOTOS = (FOTOS || []).filter(x=>!(x.f === fecha && x.t === tipo)).concat([{f: fecha, t: tipo, m: mini}]);
     toast(`<b>Foto guardada ✓</b> ${fecha === hoyLocal() ? "" : "Con fecha del " + fechaCorta(fecha) + ". "}Solo la vemos tú y Alex.`);
-    const y = scrollY; vistaProg(); scrollTo(0, y);
+    const y = scrollY; vistaProg(); scrollTo(0, y); flashOk("bFotos");
   }catch(e){ if(est) est.textContent = "No se ha podido subir. Revisa la conexión y vuelve a intentarlo."; }
 }
 let FOTOS = null;
@@ -2401,8 +2430,8 @@ function pantallaCandado(c){
     <h1>Tu plan se abre muy pronto</h1>
     <p class="sub">Tu entreno y tu alimentación se desbloquean en cuanto tengamos esto. Vamos a por ello 💪</p>
     <ul class="cand-lista">
-      ${fila(c.fotos, "Tus fotos de inicio", c.fotos ? "Hechas" : "De frente, de lado y de espalda. Solo las veo yo", "prog")}
       ${c.sinPeso ? "" : fila(c.peso, "Tu peso de hoy", c.peso ? "Apuntado" : "En ayunas, después del baño", "prog")}
+      ${fila(c.fotos, "Tus fotos de inicio", c.fotos ? "Hechas" : "De frente, de lado y de espalda. Solo las veo yo", "prog")}
       ${fila(c.plan, "Tu plan a tu medida", c.plan ? "Listo" : "Te lo estoy preparando con tu formulario", "")}
     </ul>
     <p class="sub" style="font-size:13.5px">Mientras tanto, lo que te falte lo subes en «Progreso».</p>
