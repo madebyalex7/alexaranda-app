@@ -39,6 +39,10 @@ var P_TABLAS = {
     'semana_personal', 'semana_entreno', 'datos', 'progreso', 'tener_en_cuenta', 'voz',
     'mensaje', 'mensaje_estado', 'mensaje_peticion', 'mensaje_versiones', 'cambios', 'nota_alex', 'nutricion', 'revisado', 'ejemplo', 'actualizado', 'archivado'] },
   // Registro de lo que se aplica desde el panel (para que Claude lo pase a los documentos del cliente)
+  // Gastos del negocio (Alex 30/10). recurrente: vacío (una vez), mensual o anual, desde «fecha» hasta «hasta» (vacío = sigue)
+  Gastos: { pref: 'g', cols: ['id', 'fecha', 'concepto', 'categoria', 'importe', 'recurrente', 'hasta', 'notas', 'actualizado', 'archivado'] },
+  // Calendario de contenido (Alex 30/10). tipo: Reel o Historia; estado: Idea, Grabado, Programado, Publicado
+  Contenido: { pref: 'ct', largo: true, cols: ['id', 'fecha', 'hora', 'tipo', 'titulo', 'guion', 'texto', 'enlace', 'estado', 'notas', 'actualizado', 'archivado'] },
   // Ajustes del panel (Alex 30/10): enlaces de los vídeos de las altas y lo que haga falta. id = clave
   Config: { pref: 'cf', cols: ['id', 'valor', 'actualizado', 'archivado'] },
   Aplicados: { pref: 'a', cols: ['id', 'fecha', 'cliente', 'codigo_app', 'ronda_id', 'cambio_id', 'tipo', 'detalle', 'resultado', 'pasado_a_docs', 'actualizado', 'archivado'] }
@@ -201,7 +205,7 @@ function P_nuevo(tabla, campos) {
 function P_cargar() {
   var clientes = P_leer('Clientes'), leads = P_leer('Leads'), cobros = P_leer('Cobros');
   var config = {}; P_leer('Config').forEach(function (r) { if (!r.archivado) config[r.id] = r.valor; });
-  return { config: config, clientes: clientes, leads: leads, cobros: cobros, tareas: P_leer('Tareas'), redes: P_leer('Redes'), altas: P_leer('Altas'), resumen: P_resumen(clientes, leads, cobros), hoy: P_hoy(), generado: P_ahora() };
+  return { config: config, gastos: P_leer('Gastos'), contenido: P_leer('Contenido'), clientes: clientes, leads: leads, cobros: cobros, tareas: P_leer('Tareas'), redes: P_leer('Redes'), altas: P_leer('Altas'), resumen: P_resumen(clientes, leads, cobros), hoy: P_hoy(), generado: P_ahora() };
 }
 
 function P_resumen(clientes, leads, cobros) {

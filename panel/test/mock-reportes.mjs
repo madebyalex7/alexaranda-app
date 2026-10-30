@@ -60,6 +60,7 @@ const LAT=+(process.env.LATENCIA||60);
 http.createServer((req,res)=>{
   const u=new URL(req.url,'http://x');
   const send=(o)=>{ res.writeHead(200,{'Content-Type':'application/json'}); res.end(JSON.stringify(o)); };
+  if(u.pathname==='/alex.jpg'){ res.writeHead(200,{'Content-Type':'image/jpeg'}); return res.end(fs.readFileSync(path.join(DIR,'..','..','assets','alex-240.jpg'))); }
   if(u.pathname==='/panel'){ res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); return res.end(fs.readFileSync(path.join(DIR,'..','panel.html'))); }
   if(u.pathname==='/dumpcv'){ return send(globalThis.__cv||null); }
   if(u.pathname==='/dumpp'){ const t=(n)=>(BOOKS.PANEL.sheets[n]||{data:()=>null}).data(); return send({Clientes:t('Clientes'),Cobros:t('Cobros'),Altas:t('Altas'),Leads:t('Leads'),Planes:t('Planes')}); }

@@ -19,7 +19,7 @@ var TZ = 'Europe/Madrid';
 var CACHE_CLIENTE_S = 60;     // si Alex pone activa = FALSE, como mucho tarda 1 minuto en cortar
 var CACHE_DATOS_S = 300;
 /** Cambia con cada versión del código: así, al publicar una versión nueva, no se sirven datos guardados por la anterior */
-var VERSION_DATOS = '2026-10-25b';      // cambios de Alex en el plan se ven en 5 minutos como mucho
+var VERSION_DATOS = '2026-10-30a';      // cambios de Alex en el plan se ven en 5 minutos como mucho
 var DIAS_ENTRENO = ['d1', 'd2', 'd3'];   // por defecto; cada hoja lo define en «Días plan» (todos menos «st»)
 
 // ═════════════════════════ 1. LÓGICA (pura) ═════════════════════════
@@ -1422,7 +1422,7 @@ function X_pendientes() {
         var af = L_avisoFotos(L_int(d.aj.semana), hoyL, fotosF, d.aj.nombre);
         if (af && i('envio_fotos') >= 0 && String(f[i('envio_fotos')]) !== af.marca) msg = { titulo: af.titulo, texto: af.texto, url: '/?v=prog', campo: 'envio_fotos', valor: af.marca };
       }
-      if (!msg && !enPausa && /^\d\d:\d\d$/.test(hp) && dow === '5' && semPeso && hh >= hp && hh < '12:00' && d.aj.semana >= d.aj.peso_desde_semana && ep !== 'd' + hoyL && ep !== hoyL) {
+      if (!msg && !enPausa && /^\d\d:\d\d$/.test(hp) && dow === '5' && L_viernesControl(L_int(d.aj.semana), hoyL) !== hoyL && semPeso && hh >= hp && hh < '12:00' && d.aj.semana >= d.aj.peso_desde_semana && ep !== 'd' + hoyL && ep !== hoyL) {
         var yaHoy = d.peso.some(function (p) { return String(D_valor(p.fecha, d.tz)) === hoyL && L_num(p.peso) !== ''; });
         if (!yaHoy) msg = { titulo: 'Hoy toca pesarse ⚖️', texto: 'Buenos días' + (d.aj.nombre ? ', ' + d.aj.nombre : '') + '. En ayunas, después del baño y antes de comer o beber. Lo apuntas en la app y listo ' + cz, url: '/?v=prog', campo: 'envio_peso', valor: 'd' + hoyL };
       }

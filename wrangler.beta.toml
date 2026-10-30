@@ -1,0 +1,10 @@
+# Worker de PRUEBAS: dist-beta/worker.js, contra las copias de las hojas. Sin avisos programados. Se publica con ./publicar-beta.sh
+name = "alexaranda-entrena-beta"
+account_id = "9f965f9f6a65f746d0ed40a8ff4a7361"
+main = "dist-beta/worker.js"
+compatibility_date = "2026-10-22"
+no_bundle = true
+find_additional_modules = false
+workers_dev = true
+preview_urls = false
+keep_vars = true
