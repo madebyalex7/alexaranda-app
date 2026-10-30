@@ -26,7 +26,7 @@ const LIBROS = { PANEL: PANEL, M: MAESTRA, APP1: APP1 };
 const fmt = (d, tz, f) => { const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: tz || 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).formatToParts(d).map(x => [x.type, x.value]));
   const dia = `${p.year}-${p.month}-${p.day}`; return f === 'yyyy-MM-dd' ? dia : f === 'HH:mm:ss' ? `${p.hour}:${p.minute}:${p.second}` : `${dia}T${p.hour}:${p.minute}:${p.second}`; };
 const ctx = vm.createContext({ console, Date, Math, JSON, String, Object, Number, parseFloat, parseInt, isNaN, isFinite,
-  SpreadsheetApp: { openById: id => LIBROS[id] || (id === '1SmU2r84U-k2lq5RR1R9f0BVamwIU4-mwtRd8uRVnZ48' ? PANEL : id === '1UKuXBYxFLsjNVN6ecR2ALC6AI1J--08YpvC8XacFJ78' ? MAESTRA : null) },
+  SpreadsheetApp: { flush() {}, openById: id => LIBROS[id] || (id === '1SmU2r84U-k2lq5RR1R9f0BVamwIU4-mwtRd8uRVnZ48' ? PANEL : id === '1UKuXBYxFLsjNVN6ecR2ALC6AI1J--08YpvC8XacFJ78' ? MAESTRA : null) },
   LockService: { getScriptLock: () => ({ tryLock: () => true, waitLock() {}, releaseLock() {} }) },
   CacheService: { getScriptCache: () => ({ get: () => null, put() {}, remove() {}, removeAll() {} }) },
   Utilities: { formatDate: fmt } });

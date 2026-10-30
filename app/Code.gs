@@ -1084,7 +1084,12 @@ function S_cargar(cli) {
     catch (e) { console.error('ponerAlDia ' + cli.codigo + ': ' + e); filasAj = filasAj.filter(function (f) { return String(f.clave) !== 'semana'; }).concat([{ clave: 'semana', valor: Shoy }]); }
   }
   var c = D_cache(), k = 'dat_' + VERSION_DATOS + '_' + cli.codigo + '_' + hoy, h = c.get(k);
-  if (h) return JSON.parse(h);
+  if (h) {
+    // El candado nunca sale de la memoria: Ajustes se acaba de leer, y un OK de Alex tiene que abrir la app al momento
+    var dh = JSON.parse(h), mpH = dh.mp || {};
+    dh.candado = L_candado(L_ajustes(filasAj), (mpH.fotos || []).map(function () { return { archivo_id: 1 }; }), (mpH.pesos || []).map(function (x) { return { peso: x.p }; }), dh.semana);
+    return dh;
+  }
   var m = SpreadsheetApp.openById(MAESTRA_ID);
   var datos = L_construir({
     codigo: cli.codigo, hoy: hoy, paletaMaestra: cli.paleta,

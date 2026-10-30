@@ -1165,6 +1165,7 @@ function AC_cambiar(cid, que) {
   var c = { candado: { candado: 'TRUE', desbloqueado: '' }, plan_ok: { plan_ok: hoy }, desbloquear: { desbloqueado: 'TRUE' }, quitar: { candado: '', desbloqueado: '' } }[que];
   if (!c) throw new Error('Acción no válida');
   Object.keys(c).forEach(function (k) { R_ajuste(h.ss, k, c[k]); });
+  SpreadsheetApp.flush();
   try { D_cacheFuera(String(h.cl.codigo_app).trim()); } catch (e) {}
 }
 
