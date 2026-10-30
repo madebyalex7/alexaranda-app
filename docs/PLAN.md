@@ -75,3 +75,14 @@ Se construye todo en la **beta** (worker `alexaranda-entrena-beta` + Apps Script
 - [x] = hecho en el código y probado con mocks. Lo que sigue en [ ] depende de algo de fuera: el Proyecto («Clientes» de claude.ai, ver PARA-EL-PROYECTO.md), los vídeos, los libros o Instagram.
 - Mensajes destacados: ya existía el banco «Para redes» (Redes), con permiso y «usada»; falta comprobar con Alex si le basta.
 - Para subir la beta: activar la API de Apps Script (https://script.google.com/home/usersettings) y ./publicar-beta.sh.
+
+## Proceso de un cliente nuevo (como quedó el 30/10)
+1. Pollitos › «+ Nuevo pollito» (o «+ Nuevo cliente»): datos, casa o gimnasio, días, plan, precio y pagos.
+2. En su tarjeta, «📝 Mandar formulario inicial»: abre WhatsApp con el mensaje (lleva el vídeo de pilares si está puesto).
+3. Llega el formulario: el Proyecto monta su hoja con candado = TRUE, escribe la propuesta y marca listo en Altas. El panel propone el mensaje con su usuario de la app y los vídeos de la app y del seguimiento.
+4. Sube peso y foto desde la app (el peso no bloquea si no puede pesarse).
+5. «✅ Aprobar el plan» en Hoy: OK al plan y su app se abre sola.
+6. 14 días de seguimiento en Pollitos.
+
+## Pendiente de Alex
+- [ ] Grabar los 3 vídeos de las altas: pilares del servicio, cómo funciona la app y cómo funciona el seguimiento. Subirlos (YouTube oculto o Cap) y pegar los enlaces en Llamadas › 🎬 Vídeos de las altas. Hasta entonces, los mensajes salen sin ellos.
