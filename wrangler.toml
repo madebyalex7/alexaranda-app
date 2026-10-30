@@ -1,0 +1,34 @@
+# Worker de Cloudflare que sirve la app, el panel y los avisos push.
+# Copia la configuración que ya tenía en Cloudflare el 30/10/2026 para que publicar no cambie nada más que el código.
+# Publicar: python3 build.py && wrangler deploy (solo con el OK de Alex).
+name = "alexaranda-entrena"
+account_id = "9f965f9f6a65f746d0ed40a8ff4a7361"
+main = "dist/worker.js"
+compatibility_date = "2026-10-22"
+
+# dist/worker.js ya sale completo de build.py: se sube tal cual
+no_bundle = true
+# Y solo ese archivo: que no recoja otros .js que haya en dist/
+find_additional_modules = false
+
+# Se sirve en alexaranda-entrena.alexaranda7793.workers.dev
+workers_dev = true
+preview_urls = false
+
+# No borrar variables puestas desde el panel de Cloudflare.
+# Los secretos (ANTHROPIC_API_KEY) no se tocan nunca al publicar.
+keep_vars = true
+
+# Avisos push cada 15 minutos
+[triggers]
+crons = ["*/15 * * * *"]
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true

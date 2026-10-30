@@ -12,7 +12,11 @@ Documento de arranque para trabajar con Claude Code. Lo escribió el chat de la 
 - **Lo que NO es código y sigue en los chats del Proyecto** (tareas programadas): lectura diaria de WhatsApp a las 6:00, reportes de lunes y viernes (escriben en la pestaña Ronda), formularios del finde, revisión del domingo.
 
 ## 2. Publicar
-Hoy: `python3 build.py` y Alex copia `dist/worker.js` en Cloudflare (Deploy), `dist/Code.gs` en el Apps Script de la app y `dist/Panel.gs` en el del panel (Implementar › Gestionar implementaciones › Nueva versión, sin cambiar la URL). Si cambia `app/Code.gs`, subir `VERSION_DATOS` (caché).
+Desde el 30/10, desde el Mac con Claude Code: `./publicar.sh --comprobar` construye y dice qué ha cambiado; `./publicar.sh` publica cada parte solo si Alex escribe «si» (`--si` cuando Alex ya ha dado el OK en el chat).
+- Worker: `wrangler deploy` con `wrangler.toml` (cron cada 15 min, logs; no toca el secreto `ANTHROPIC_API_KEY` ni las variables del panel de Cloudflare).
+- Apps Script: **la app y el panel viven en el mismo proyecto** (`1J3DGG…`, en la hoja «App entrenos – maestra»: archivos `Código`, `Panel`, `Index`). `build.py` deja en `dist/gas/` lo que sube `clasp push`; después `clasp deploy -i` crea una versión nueva de la implementación que usa el worker (la de `EXEC`), sin cambiar la URL.
+- Si cambia `app/Code.gs`, subir `VERSION_DATOS` (caché); `publicar.sh` avisa si sigue igual.
+- Antes (a mano): `python3 build.py` y copiar `dist/worker.js` en Cloudflare y `dist/Code.gs` / `dist/Panel.gs` en Apps Script (Implementar › Gestionar implementaciones › Nueva versión).
 
 ## 3. Encargo 1: dejar Claude Code listo para publicar (con Alex delante)
 1. Instalar Node.js si no está, y después `npm i -g wrangler @google/clasp`.

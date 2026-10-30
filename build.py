@@ -3,6 +3,7 @@
   dist/worker.js   → Cloudflare (Workers › alexaranda-entrena)
   dist/Code.gs     → Apps Script de la APP (hoja «App entrenos – maestra»)
   dist/Panel.gs    → Apps Script del PANEL (hoja «Panel Alex – datos»)
+  dist/gas/        → lo que sube clasp: app y panel viven en el mismo proyecto de Apps Script
 Las claves salen de secretos/claves.json y secretos/vapid.json (fuera de git).
 Uso:  python3 build.py
 """
@@ -41,6 +42,13 @@ panel = open(p('panel', 'panel.html'), encoding='utf-8').read()
 # ── Apps Script con sus claves ──
 open(p('dist', 'Code.gs'), 'w', encoding='utf-8').write(open(p('app', 'Code.gs'), encoding='utf-8').read().replace("'__PUSH_KEY__'", "'" + PUSH_KEY + "'"))
 open(p('dist', 'Panel.gs'), 'w', encoding='utf-8').write(open(p('panel', 'Panel.gs'), encoding='utf-8').read().replace("'__PANEL_KEY__'", "'" + PANEL_KEY + "'"))
+
+# ── Carpeta que sube clasp (un solo proyecto de Apps Script con app y panel), con los nombres que tiene en Google ──
+os.makedirs(p('dist', 'gas'), exist_ok=True)
+for origen, destino in [(p('dist', 'Code.gs'), 'Código.gs'), (p('dist', 'Panel.gs'), 'Panel.gs'), (p('app', 'appsscript.json'), 'appsscript.json')]:
+    open(p('dist', 'gas', destino), 'w', encoding='utf-8').write(open(origen, encoding='utf-8').read())
+open(p('dist', 'gas', 'Index.html'), 'w', encoding='utf-8').write(
+    open(p('app', 'Index.html'), encoding='utf-8').read().replace('__VAPID_PUB__', vapid['pub']))
 
 # ── Worker ──
 tpl = open(p('worker', 'template.js'), encoding='utf-8').read()
