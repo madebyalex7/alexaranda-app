@@ -676,11 +676,11 @@ var EUR2 = new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',minimu
 function euros(v){ var s=String(v==null?'':v).trim(); if(!s) return ''; if(isNaN(parseFloat(s.replace(',','.')))) return s; return EUR2.format(num(s)); }
 function vivo(r){ return !r.archivado; }
 
-/* WhatsApp en el ordenador (Alex 30/10): se abre en la app de escritorio con el chat y el texto, sin pestañas nuevas. WhatsApp Web no deja reutilizar su pestaña. En el móvil, wa.me abre la app */
+/* WhatsApp en el ordenador (Alex 30/10): usa WhatsApp Web (su Business) e intenta reutilizar siempre la misma pestaña. La app de escritorio es su número personal: no usarla. En el móvil, wa.me abre la app */
 window.addEventListener('click',function(e){ var a=e.target.closest&&e.target.closest('a[href*="wa.me/"]'); if(!a||window.matchMedia('(max-width:640px)').matches) return;
   var u; try{ u=new URL(a.href); }catch(er){ return; } if(!/(^|\.)wa\.me$/.test(u.hostname)) return;
   var tel=u.pathname.replace(/\D/g,''), tx=u.searchParams.get('text')||''; e.preventDefault();
-  location.href='whatsapp://send?'+(tel?'phone='+tel+'&':'')+'text='+encodeURIComponent(tx); },true);
+  var w=window.open('https://web.whatsapp.com/send?'+(tel?'phone='+tel+'&':'')+'text='+encodeURIComponent(tx),'whatsapp_alex'); if(w) w.focus(); },true);
 
 /* ───────── red ───────── */
 function api(accion, datos, keepalive){
