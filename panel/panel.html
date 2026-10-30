@@ -732,7 +732,7 @@ var AV={cargado:false,cargando:false,err:'',lista:[],errores:[]};
 var AV_TIPO={no_entra:'No entra',semana:'Semana a medias',molestia:'Molestia',abierto:'Entreno a medias',nota:'Nota',peso:'Peso'};
 function avisosCargar(fresco){
   AV.cargando=true; AV.err='';
-  return api('avisos',{fresco:!!fresco}).then(function(d){ AV.cargado=true; AV.cargando=false; AV.lista=d.avisos||[]; AV.errores=d.errores||[]; AV.semanas=d.semanas||null; avPintar(); })
+  return api('avisos',{fresco:!!fresco}).then(function(d){ AV.cargado=true; AV.cargando=false; AV.lista=d.avisos||[]; AV.errores=d.errores||[]; AV.semanas=d.semanas||null; avPintar(); if(d.viejo&&!fresco) avisosCargar(true); })   /* los últimos al momento; los nuevos llegan por detrás */
     .catch(function(e){ AV.cargando=false; AV.err=e.message; avPintar(); });
 }
 /* Recordatorio de cobro por WhatsApp, escrito en la voz de Alex (sin ¿ ¡). Alex lo revisa antes de enviarlo */
@@ -1250,7 +1250,7 @@ function pintarRonda(){
   var sel='<div class="rtipo" role="group" aria-label="Qué reporte">'+[['mensual','Mensual'+(R.pendMens?' <span class="c">'+R.pendMens+'</span>':'')],['lunes','Lunes'],['viernes','Viernes'],['videos','🎥 Vídeos'],['nuevos','🌱 Nuevos'+(nuevos().length?' <span class="c">'+nuevos().length+'</span>':'')]].map(function(x){ return '<button class="chip" data-rtipo="'+x[0]+'" aria-pressed="'+(R.tipo===x[0])+'">'+x[1]+'</button>'; }).join('')+'</div>';
   if(R.tipo==='videos'){ pintarVideos(sel); return; }
   if(R.tipo==='nuevos'){ pintarNuevos(sel); return; }
-  if(!R.cargado){ $('#app').innerHTML = R.err ? '<div class="pantalla"><h2>No se ha podido cargar el reporte</h2><p>'+esc(R.err)+'</p><p><button class="btn prim" id="rOtra">Volver a cargar</button></p></div>' : '<div class="cargando"></div>'; if(!R.cargando&&!R.err) rondaCargar(); enlazarRonda(); return; }
+  if(!R.cargado){ $('#app').innerHTML = R.err ? '<div class="pantalla"><h2>No se ha podido cargar el reporte</h2><p>'+esc(R.err)+'</p><p><button class="btn prim" id="rOtra">Volver a cargar</button></p></div>' : sel+'<div class="cargando"></div>'; if(!R.cargando&&!R.err) rondaCargar(); enlazarRonda(); return; }
   if(!R.filas.length){ $('#app').innerHTML=sel+'<div class="pantalla"><h2>'+(esMensual()?'No hay revisiones mensuales pendientes':'Todavía no hay reporte del '+(esViernes()?'viernes':'lunes'))+'</h2><p>'+(esMensual()?'Cuando a un cliente le toca su revisión del mes (cada 4 semanas, o cuando sube fotos y medidas), te preparo aquí su tarjeta: constancia del mes, peso, centímetros, fuerza, fotos, mini objetivos para elegir y el mensaje.':esViernes()?'El viernes por la mañana, después de la lectura de las 6:00, preparo una tarjeta corta por cliente: cómo va la semana, qué le queda, su finde y un mensaje breve.':'El lunes por la mañana, después de la lectura de las 6:00, preparo una tarjeta por cliente: su semana en gráficos, cómo va en repes y pesos, el mensaje que te propongo y los cambios de plan, con su porqué.')+'</p></div>'; enlazarRonda(); return; }
   var fs=R.filas, hechas=fs.filter(rhecha).length, tot={sube:0,igual:0,baja:0}, pend=0, enviados=0;
   fs.forEach(function(f){ var c=rprog(f); tot.sube+=c.sube; tot.igual+=c.igual; tot.baja+=c.baja; pend+=rpend(f); if(f.mensaje_estado==='enviado') enviados++; });

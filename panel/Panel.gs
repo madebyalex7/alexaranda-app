@@ -72,7 +72,7 @@ function P_despachar(cuerpo) {
       case 'entrenoCliente': return { ok: true, data: EC_cliente(d.cliente_id) };
       case 'caminoCliente': return { ok: true, data: EV_cliente(d.cliente_id) };
       case 'calendarioCliente': return { ok: true, data: CA_cliente(d.cliente_id) };
-      case 'appAcceso': P_escribir(function () { AC_cambiar(d.cliente_id, d.que); }); return { ok: true, data: CA_cliente(d.cliente_id) };
+      case 'appAcceso': P_escribir(function () { AC_cambiar(d.cliente_id, d.que); }); return { ok: true, data: CA_cliente(d.cliente_id, true) };
       case 'renovar': return { ok: true, data: P_escribir(function () { return RN_guardar(d); }) };
       case 'copiaAhora': return { ok: true, data: CO_copia() };
       case 'copiaProgramar': return { ok: true, data: CO_programar() };
@@ -704,7 +704,7 @@ function LL_probar() { return JSON.stringify(LL_sincronizar()); }
 var AV_CACHE = 'avisos_panel_v1';
 function AV_cargar(fresco) {
   var c = CacheService.getScriptCache();
-  if (!fresco) { var h = c.get(AV_CACHE); if (h) return JSON.parse(h); }
+  if (!fresco) { var h = c.get(AV_CACHE); if (h) return JSON.parse(h); var v = c.get(AV_CACHE + '_viejo'); if (v) { var rv = JSON.parse(v); rv.viejo = true; return rv; } }
   var vistos = {}; P_leer('AvisosVistos').forEach(function (v) { if (!v.archivado) vistos[v.id] = true; });
   var porCodigo = {}; P_leer('Clientes').forEach(function (cl) { if (cl.codigo_app && !cl.archivado) porCodigo[String(cl.codigo_app).trim()] = cl; });
   var out = [], errores = [], semanas = {};
@@ -713,10 +713,10 @@ function AV_cargar(fresco) {
     var codigo = String(fila.codigo).trim(), cl = porCodigo[codigo] || {};
     try {
       // Su semana real (la de la app, con pausas): el panel cuenta con ella sus controles
-      var ajS = L_ajustes(D_leer(SpreadsheetApp.openById(String(fila.hoja_datos_id).trim()), 'Ajustes')), hoyS = D_diaSemanal();
+      var ssA = SpreadsheetApp.openById(String(fila.hoja_datos_id).trim()), ajS = L_ajustes(D_leer(ssA, 'Ajustes')), hoyS = D_diaSemanal();
       var nB = String(ajS.bloque || '').match(/\d+/);   // «Bloque 2 de casa», «Plan Casares 2»
       semanas[codigo] = { b: nB ? +nB[0] : 1, ini: ajS.fecha_inicio_semana1 || '', s: Math.max(ajS.semana, L_semanaPrograma(ajS, hoyS) || 0), pausa: !!(ajS.pausa_desde && ajS.pausa_hasta && hoyS >= ajS.pausa_desde && hoyS <= ajS.pausa_hasta) };
-      AV_cliente(SpreadsheetApp.openById(String(fila.hoja_datos_id).trim())).forEach(function (a) {
+      AV_cliente(ssA).forEach(function (a) {
         a.id = codigo + '|' + a.clave; if (vistos[a.id]) return;
         a.codigo = codigo; a.cliente = cl.nombre || fila.nombre || codigo; a.cliente_id = cl.id || ''; a.telefono = cl.telefono || '';
         delete a.clave; out.push(a);
@@ -725,7 +725,7 @@ function AV_cargar(fresco) {
   });
   out.sort(function (a, b) { return (a.nivel === 'rojo' ? 0 : 1) - (b.nivel === 'rojo' ? 0 : 1) || String(a.cliente).localeCompare(String(b.cliente)); });
   var res = { avisos: out, errores: errores, semanas: semanas, generado: P_ahora() };
-  try { c.put(AV_CACHE, JSON.stringify(res), 300); } catch (e) {}
+  try { c.put(AV_CACHE, JSON.stringify(res), 300); c.put(AV_CACHE + '_viejo', JSON.stringify(res), 21600); } catch (e) {}
   return res;
 }
 
@@ -1030,13 +1030,18 @@ function EV_cliente(cid) {
  *   semanas: lunes de cada semana del programa con su objetivo y lo hecho, desde la primera semana en la app hasta la actual.
  * Un día que tocaba y no se hizo solo se marca si ese día tiene «día de la semana» en Días plan; si no, la semana dice «2 de 3».
  */
-function CA_cliente(cid) {
+function CA_cliente(cid, fresco) {
+  var cc = CacheService.getScriptCache(), ck = 'ca2_' + cid; if (!fresco) { var ch = cc.get(ck); if (ch) return JSON.parse(ch); }
   var cl = P_leer('Clientes').filter(function (c) { return c.id === cid; })[0];
   if (!cl || !cl.codigo_app) return { sinApp: true };
   var cli = D_cliente(String(cl.codigo_app).trim()); if (!cli) return { sinApp: true };
-  var D = S_cargar(cli), ss = SpreadsheetApp.openById(cli.hoja), zona = D.zona;
+  // Solo las pestañas que hacen falta (antes, S_cargar leía unas 20 y tardaba 10-15 s)
+  var ss = SpreadsheetApp.openById(cli.hoja), aj = L_ajustes(D_leer(ss, 'Ajustes')), zona = D_zonaOk(aj.zona_movil) || D_zonaOk(aj.zona) || P_ZONA;
+  var S = Math.max(aj.semana, L_semanaPrograma(aj, D_diaSemanal()) || 0), diasCrudo = D_leer(ss, 'Días', zona), reg = D_leer(ss, 'Registro', zona);
+  var dpS = L_filtrarSemana(D_leer(ss, 'Días plan'), S), entrenoS = L_diasEntreno(dpS), objetivoS = L_objetivo(L_aplicarBloque(L_ajustes(D_leer(ss, 'Ajustes')), D_leerOpc(ss, 'Bloques'), S), entrenoS);
+  var D = { semana: S, objetivo: objetivoS, hoy: D_hoyEn(zona), desdeApp: L_primeraSemana(L_indiceDias(diasCrudo), reg, aj, S) };
   var f10 = function (v) { var t = String(v == null ? '' : v).slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : ''; };
-  var entrenos = D_leer(ss, 'Días', zona).map(function (f) {
+  var entrenos = diasCrudo.map(function (f) {
     return { fecha: f10(f.fecha) || (L_bool(f.hecho) ? f10(f.fin) || f10(f.actualizado) : ''), w: L_int(f.semana), k: String(f.dia || ''), hecho: L_bool(f.hecho), flojo: L_bool(f.flojo) };
   }).filter(function (x) { return x.w && x.k && (x.hecho || x.flojo); });
   var peso = D_leerOpc(ss, 'Peso', zona).map(function (f) { return { fecha: f10(f.fecha), peso: f.peso }; }).filter(function (x) { return x.fecha; });
@@ -1044,17 +1049,18 @@ function CA_cliente(cid) {
   var medidas = medFilas.map(function (f) { return f10(f.fecha); });
   var medVal = function (f) { var o = { fecha: f10(f.fecha) }; MEDIDAS.forEach(function (m) { var v = L_num(f[m]); if (v !== '') o[m] = +v; }); return o; };
   var medUlt = medFilas.slice(-2).map(medVal), medPrim = medFilas.length ? medVal(medFilas[0]) : null;
-  var fotos = D_leerOpc(ss, 'Fotos', zona).map(function (f) { return f10(f.fecha); }).filter(String);
+  var fotosCrudo = D_leerOpc(ss, 'Fotos', zona), pesoCrudo = D_leerOpc(ss, 'Peso', zona);
+  var fotos = fotosCrudo.map(function (f) { return f10(f.fecha); }).filter(String);
   var extras = D_leerOpc(ss, 'Extra', zona).map(function (f) { return { fecha: f10(f.fecha), tipo: String(f.tipo || ''), min: L_int(f.minutos) || 0 }; }).filter(function (x) { return x.fecha; });
-  var aj = L_ajustes(D_leer(ss, 'Ajustes')), semanas = [], desde = D.desdeApp || 1;
+  var semanas = [], desde = D.desdeApp || 1;
   for (var w = desde; w <= D.semana; w++) {
     var lun = L_lunesPrograma(aj, w); if (!lun) break;
     var hechos = {}; entrenos.forEach(function (e) { if (e.w === w && e.hecho) hechos[e.k] = 1; });
     semanas.push({ w: w, lunes: lun, objetivo: D.objetivo, hechos: Object.keys(hechos).length });
   }
-  var dias = {}; (D.orden || []).forEach(function (k) { var d = D.dias[k]; if (d && k !== 'st' && k !== 'casa') dias[k] = { n: d.n, ds: d.ds }; });
+  var dias = {}; dpS.forEach(function (d) { var k = String(d.dia || ''); if (k && k !== 'st' && k !== 'casa') dias[k] = { n: String(d.nombre || ''), ds: L_diaSemana(d.dia_semana) }; });
   // Troncales (principal en su Plan): la mejor serie de cada semana y si toca subir (todas las series de la última semana, con su peso más alto, en el tope del rango)
-  var troncales = [], vistoT = {}, reg = D_leer(ss, 'Registro', zona);
+  var troncales = [], vistoT = {};
   D_leer(ss, 'Plan').forEach(function (p) {
     var id = String(p.ejercicio_id || '').trim(); if (!id || vistoT[id] || !L_bool(p.principal)) return; vistoT[id] = 1;
     var nums = String(p.repes || '').match(/\d+/g), tope = nums ? Math.max.apply(null, nums.map(Number)) : 0, porW = {};
@@ -1064,8 +1070,10 @@ function CA_cliente(cid) {
     var u = serie[serie.length - 1], deU = porW[u.w].filter(function (x) { return x.kg === u.kg; });
     troncales.push({ id: id, nm: String(p.nombre || id), rango: String(p.repes || ''), serie: serie, subir: !!tope && deU.every(function (x) { return x.re >= tope; }) });
   });
-  var acceso = { candado: !!aj.candado, desbloqueado: !!aj.desbloqueado, plan_ok: aj.plan_ok || '', cerrado: D.candado || null };
-  return { medUlt: medUlt, medPrim: medPrim, troncales: troncales, acceso: acceso, nombre: D.nombre, semana: D.semana, desde: desde, hoy: D.hoy || P_hoy(), entrenos: entrenos, peso: peso, medidas: medidas, fotos: fotos, extras: extras, semanas: semanas, dias: dias };
+  var acceso = { candado: !!aj.candado, desbloqueado: !!aj.desbloqueado, plan_ok: aj.plan_ok || '', cerrado: L_candado(aj, fotosCrudo, pesoCrudo, S) };
+  var res = { medUlt: medUlt, medPrim: medPrim, troncales: troncales, acceso: acceso, nombre: aj.nombre, semana: D.semana, desde: desde, hoy: D.hoy || P_hoy(), entrenos: entrenos, peso: peso, medidas: medidas, fotos: fotos, extras: extras, semanas: semanas, dias: dias };
+  try { cc.put(ck, JSON.stringify(res), 300); } catch (e) {}
+  return res;
 }
 
 // ═════════ Correcciones de vídeos desde el panel (Alex 30/10) ═════════
