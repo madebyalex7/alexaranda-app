@@ -451,11 +451,11 @@ details.lsec>summary{cursor:pointer;font:600 19px/1.2 "Cormorant Garamond",Georg
 .cmrec{margin:10px 0}.cmrec.v b{color:#4F6B45}.cmrec.a b{color:#9A5B3C}
 
 .pgcli{max-width:1200px;margin:0 auto}
-.pgtop{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:12px 0;background:var(--fondo,#F6F1EA)}
+.pgtop{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:12px 0;background:var(--bg)}
 .pgnom{display:flex;align-items:center;gap:10px;flex:1;min-width:0}.pgnom h2{margin:0;font-size:30px;line-height:1.1}.pgnom small{opacity:.75}
-.pgnav{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 16px;border-bottom:1px solid var(--linea,#e4d8ca);padding-bottom:12px}
-.pgnav button{font:inherit;border:1px solid var(--linea,#e4d8ca);background:#fff;border-radius:999px;padding:8px 16px;cursor:pointer}
-.pgnav button[aria-pressed="true"]{background:#3B2F28;color:#F7F1EA;border-color:#3B2F28}
+.pgnav{display:flex;gap:6px;margin:4px 0 16px;overflow-x:auto;scrollbar-width:none;padding-bottom:6px}.pgnav::-webkit-scrollbar{display:none}
+.pgnav button{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--cafe);border-radius:999px;padding:8px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;flex:none;transition:background .16s ease}
+.pgnav button[aria-pressed="true"]{background:var(--cafe);color:var(--bg);border-color:var(--cafe)}
 .pgfila{border:0!important;background:none!important;box-shadow:none!important}.pgfila>.ficha{padding:0!important;border:0!important}
 .pgcols{display:grid;grid-template-columns:1.1fr 1fr;gap:18px}@media(max-width:900px){.pgcols{grid-template-columns:1fr}}
 .pgir{margin:0 0 10px;display:block}
@@ -468,6 +468,56 @@ details.lsec>summary{cursor:pointer;font:600 19px/1.2 "Cormorant Garamond",Georg
 .estado-m.err{color:#c0553a}
 @keyframes v3in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.v3op{animation:none}}
+/* Menú lateral (Alex 30/10): en pantalla grande, a la izquierda y con iconos; en el móvil, arriba como siempre */
+nav.tabs .ti{display:inline-flex;width:20px;height:20px;margin-right:7px;vertical-align:-3px;opacity:.85}
+nav.tabs .ti svg{width:100%;height:100%}
+@media (min-width:1000px){
+  body{padding-left:232px}
+  .wrap{max-width:1240px;padding:0 32px}
+  nav.tabs{position:fixed;left:0;top:0;bottom:0;width:232px;flex-direction:column;align-items:stretch;gap:2px;padding:24px 14px 18px;margin:0;border-bottom:0;border-right:1px solid var(--line);overflow-y:auto;z-index:20}
+  nav.tabs::before{content:"AA";display:block;font:300 26px/1 "Cormorant Garamond",Georgia,serif;letter-spacing:4px;color:var(--cafe);padding:4px 12px 22px}
+  nav.tabs button{display:flex;align-items:center;padding:10px 12px;border-radius:12px;border-bottom:0;margin:0;font-size:20px;text-align:left;transition:background .18s ease,color .18s ease,transform .18s ease}
+  nav.tabs button:hover{background:var(--sel,rgba(127,127,127,.08))}
+  nav.tabs button[aria-selected="true"]{background:var(--sel,rgba(127,127,127,.12));color:var(--cafe)}
+  nav.tabs button .ti{width:22px;height:22px;margin-right:12px}
+  nav.tabs .n{margin-left:auto;vertical-align:0}
+  nav.tabs .nuevo{margin:auto 0 0;justify-content:center;border-radius:999px;font-size:14px;padding:10px 14px}
+}
+@media (prefers-reduced-motion:reduce){nav.tabs button{transition:none}}
+/* Formularios, fotos, entreno, camino y carrusel a pantalla completa (Alex 30/10), con entrada suave */
+#foOv,#ftOv,#ecOv,#cmOv,#crOv{padding:0;background:var(--bg)}
+#foOv>.respbox,#ftOv>.respbox,#ecOv>.respbox,#cmOv>.respbox,#crOv>.respbox{max-width:1180px;max-height:none;height:100%;border-radius:0;padding:18px 24px 40px;animation:ovin .22s ease both}
+@media (min-width:1000px){#foOv,#ftOv,#ecOv,#cmOv,#crOv{left:232px}}
+.respov:not([hidden])>.respbox{animation:ovin .2s ease both}
+@keyframes ovin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+#app.entra{animation:vista .2s ease both}
+@keyframes vista{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.respov>.respbox,#app.entra{animation:none!important}}
+.pgi{display:inline-flex;width:18px;height:18px;flex:none}.pgi svg{width:100%;height:100%}.pgx{opacity:.5;font-size:12px}
+@media (min-width:900px){
+  .pgbody{display:grid;grid-template-columns:200px minmax(0,1fr);gap:26px;align-items:start}
+  .pgnav{position:sticky;top:76px;flex-direction:column;gap:3px;margin:0;overflow:visible;padding:0}
+  .pgnav button{border:0;background:none;border-radius:12px;padding:10px 12px;width:100%;text-align:left}
+  .pgnav button:hover{background:var(--sel)}
+  .pgnav button[aria-pressed="true"]{background:var(--sel);color:var(--cafe);font-weight:500}
+  .pgnav button .pgx{margin-left:auto}
+}
+.calcab{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}.calcab h3{margin:0;min-width:150px;text-align:center;text-transform:capitalize;font:500 24px "Cormorant Garamond",Georgia,serif}
+.calcab small{color:var(--sec);margin-left:auto}
+.caltiles{margin-bottom:14px;display:grid!important;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}.caltiles .vtile{margin:0}
+.calgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr)) minmax(64px,.8fr);gap:4px}
+.calh{font-size:11.5px;letter-spacing:.08em;color:var(--sec);text-align:center;padding:4px 0}
+.calc{min-height:74px;border:1px solid var(--line);border-radius:10px;padding:5px 6px;background:var(--surface);display:flex;flex-direction:column;gap:3px;transition:transform .15s ease}
+.calc .cn{font-size:12px;color:var(--sec)}.calc.hoyc{border-color:var(--arena);box-shadow:0 0 0 1px var(--arena) inset}
+.calc.fuera{opacity:.35}.calc.antes{background:transparent;border-style:dashed}.calc.fut .cn{opacity:.6}
+.cis{display:flex;flex-wrap:wrap;gap:3px;font-size:14px;line-height:1}
+.cv{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:6px;font-size:13px}
+.cv.ok{background:#4E7A55;color:#fff;font-weight:600}.cv.fl{background:#B8924A;color:#fff;font-weight:600}.cv.no{background:#B5462F;color:#fff;font-weight:600}
+.calw{border-radius:10px;padding:6px 8px;display:flex;flex-direction:column;justify-content:center;font-size:12.5px;background:var(--sel);color:var(--sec)}
+.calw b{font-size:13px;color:var(--cafe)}.calw.ok{background:rgba(78,122,85,.18)}.calw.med{background:rgba(184,146,74,.2)}.calw.mal{background:rgba(181,70,47,.18)}.calw.na{background:transparent}
+.calley{font-size:12.5px;color:var(--sec);margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.nutpdf{width:100%;height:78vh;border:1px solid var(--line);border-radius:12px;background:#fff}
+@media (max-width:640px){.calc{min-height:56px;padding:3px}.cv{min-width:16px;height:16px;font-size:11px}.calgrid{grid-template-columns:repeat(7,minmax(0,1fr)) 54px;gap:3px}}
 </style>
 </head>
 <body>
@@ -486,13 +536,13 @@ details.lsec>summary{cursor:pointer;font:600 19px/1.2 "Cormorant Garamond",Georg
   </header>
 
   <nav class="tabs" role="tablist">
-    <button role="tab" id="tabHoy" aria-selected="false" data-tab="hoy">Hoy</button>
-    <button role="tab" id="tabRonda" aria-selected="false" data-tab="ronda">Reportes<span class="n" id="nRon"></span></button>
-    <button role="tab" id="tabLlam" aria-selected="false" data-tab="llamadas">Llamadas<span class="n" id="nLla"></span></button>
-    <button role="tab" id="tabClientes" aria-selected="true" data-tab="clientes">Clientes<span class="n" id="nCli"></span></button>
-    <button role="tab" id="tabLeads" aria-selected="false" data-tab="leads">Leads<span class="n" id="nLea"></span></button>
-    <button role="tab" id="tabTar" aria-selected="false" data-tab="tareas">Tareas<span class="n" id="nTar"></span></button>
-    <button role="tab" id="tabRed" aria-selected="false" data-tab="redes">Redes<span class="n" id="nRed"></span></button>
+    <button role="tab" id="tabHoy" aria-selected="false" data-tab="hoy"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4"/></svg></span>Hoy</button>
+    <button role="tab" id="tabRonda" aria-selected="false" data-tab="ronda"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M8.5 10h7M8.5 14h7M8.5 18h4"/></svg></span>Reportes<span class="n" id="nRon"></span></button>
+    <button role="tab" id="tabLlam" aria-selected="false" data-tab="llamadas"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h3l2 5-2.5 1.5a11 11 0 0 0 6 6L15 14l5 2v3a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></span>Llamadas<span class="n" id="nLla"></span></button>
+    <button role="tab" id="tabClientes" aria-selected="true" data-tab="clientes"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14a6.5 6.5 0 0 1 3.5 6"/></svg></span>Clientes<span class="n" id="nCli"></span></button>
+    <button role="tab" id="tabLeads" aria-selected="false" data-tab="leads"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 11-4.7"/><path d="M18 14v6M15 17h6"/></svg></span>Leads<span class="n" id="nLea"></span></button>
+    <button role="tab" id="tabTar" aria-selected="false" data-tab="tareas"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12.5l2.5 2.5 5-5.5"/></svg></span>Tareas<span class="n" id="nTar"></span></button>
+    <button role="tab" id="tabRed" aria-selected="false" data-tab="redes"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.4 5 5.4.6-4 3.7 1.1 5.4L12 15.5l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6z"/></svg></span>Redes<span class="n" id="nRed"></span></button>
     <button class="nuevo" id="btnNuevo">+ Nuevo</button>
   </nav>
 
@@ -632,6 +682,11 @@ function avisosCargar(fresco){
 }
 /* Recordatorio de cobro por WhatsApp, escrito en la voz de Alex (sin ¿ ¡). Alex lo revisa antes de enviarlo */
 /* Último cobro y siguiente de un cliente, en una línea, con el botón que toque */
+/* En el resumen de la ficha, el cobro solo si urge (Alex 30/10: lo de pagos, en su botón) */
+function cobroUrgente(cid){
+  var sig=(S.data.cobros||[]).filter(function(p){ return vivo(p)&&p.cliente_id===cid&&p.estado!=='Cobrado'&&esFecha(p.fecha); }).sort(function(a,b){ return a.fecha.localeCompare(b.fecha); })[0];
+  return sig&&sig.fecha<=sumar(hoy(),7)?cobroResumen(cid):'';
+}
 function cobroResumen(cid){
   var cs=(S.data.cobros||[]).filter(function(p){ return vivo(p)&&p.cliente_id===cid; }).sort(function(a,b){ return (a.fecha||'').localeCompare(b.fecha||''); });
   if(!cs.length) return '';
@@ -685,7 +740,10 @@ function cargar(){
 }
 
 /* ───────── pintar ───────── */
+var ULT_TAB='';
+function entraSuave(){ var a=$('#app'); if(!a||ULT_TAB===S.tab+(PG?'|'+PG.cid:'')) return; ULT_TAB=S.tab+(PG?'|'+PG.cid:''); a.classList.remove('entra'); void a.offsetWidth; a.classList.add('entra'); }
 function pintar(){
+  setTimeout(entraSuave,0);
   if(!S.data) return;
   if(PG) S.tab='clientes';
   $('#tabRonda').setAttribute('aria-selected',S.tab==='ronda');
@@ -933,7 +991,7 @@ function enlazar(){
   app.onclick=function(e){
     var b=e.target.closest('button'); if(!b) return;
     var art=b.closest('.fila'), t=art&&art.getAttribute('data-t'), id=art&&art.getAttribute('data-id');
-    if(b.classList.contains('cab')){ abrir(t+'|'+id); return; }
+    if(b.classList.contains('cab')){ if(t==='Clientes'){ irFicha(id); return; } abrir(t+'|'+id); return; }   // cliente: directo a su ficha grande (Alex 30/10)
     if(b.hasAttribute('data-avvisto')){ var aid=b.getAttribute('data-avvisto'), av=AV.lista.filter(function(x){ return x.id===aid; })[0]; AV.lista=AV.lista.filter(function(x){ return x.id!==aid; }); avPintar();
       api('avisoVisto',{id:aid,codigo:av&&av.codigo,tipo:av&&av.tipo}).catch(function(err){ if(av){ AV.lista.push(av); avPintar(); } alerta(err); }); return; }
     if(b.hasAttribute('data-avrec')){ AV.cargado=false; avPintar(); avisosCargar(true); return; }
@@ -1525,7 +1583,11 @@ function cmPie(){ return '<p class="estado-m" style="margin-top:14px">Los cambio
 
 /* ── Ficha completa del cliente en su propia pantalla (25/10) ── */
 var PG=null;   // {cid, sec}
-var PG_SECS=[['resumen','Resumen'],['entreno','🏋️ Su entreno'],['camino','🎮 Su camino'],['datos','Programa y pagos']];
+var PGI=function(d){ return '<span class="pgi" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'+d+'</svg></span>'; };
+var PG_SECS=[['resumen','Resumen','<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'],['calendario','Calendario','<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M8 14l1.8 1.8L13 12.5"/>'],
+  ['entreno','Entreno','<path d="M3 9v6M21 9v6M6 7v10M18 7v10M6 12h12"/>'],['nutricion','Nutrición','<path d="M7 3v8a2 2 0 0 0 4 0V3M9 11v10M16 21V3c-2 0-3 3-3 7s1 4 3 4"/>'],
+  ['camino','Su camino','<path d="M5 20c0-6 14-4 14-10a4 4 0 0 0-8 0"/><circle cx="5" cy="20" r="1.5"/><circle cx="15" cy="6" r="1.5"/>'],['datos','Programa y pagos','<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10.5h18M7 15h4"/>']];
+var PG_EXTRA=[['data-formsc','Formularios','<path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10A.5.5 0 0 1 7 20z"/><path d="M14 3.5V8h4M10 12h5M10 16h5"/>'],['data-fotosc','Fotos y carrusel','<rect x="3" y="6" width="18" height="14" rx="2.5"/><circle cx="12" cy="13" r="3.5"/><path d="M8.5 6l1.5-2.5h4L15.5 6"/>']];
 function irFicha(cid,sec){ PG={cid:cid,sec:sec||'resumen'}; S.tab='clientes'; try{ history.pushState({pg:1},'','#c/'+encodeURIComponent(cid)+'/'+PG.sec); }catch(e){} pintar(); window.scrollTo(0,0); }
 function salirFicha(){ var cid=PG&&PG.cid; PG=null; try{ history.pushState({},'',location.pathname+location.search); }catch(e){} S.abierta=cid?'Clientes|'+cid:S.abierta; pintar(); if(cid){ var el=$('.fila[data-t="Clientes"][data-id="'+CSS.escape(cid)+'"]'); if(el) el.scrollIntoView({block:'start'}); } }
 function pgDesdeHash(){ var m=/^#c\/([^/]+)\/?(\w*)/.exec(location.hash||''); PG=m?{cid:decodeURIComponent(m[1]),sec:m[2]||'resumen'}:null; }
@@ -1539,15 +1601,17 @@ function paginaCliente(){
   var h='<div class="pgcli"><div class="pgtop"><button class="btn" data-pgvolver>← Clientes</button>'+
     '<div class="pgnom"><span class="punto '+esc(c.semaforo)+'" title="'+esc(semTxt(c.semaforo))+'"></span><div><h2>'+esc(c.nombre||'Sin nombre')+'</h2><small>'+esc(sub)+'</small></div></div>'+
     (tel?'<a class="btn wa" href="https://wa.me/'+tel+'" target="_blank" rel="noopener">WhatsApp</a>':'')+'</div>'+
-    '<nav class="pgnav" aria-label="Secciones">'+PG_SECS.map(function(s){ return '<button data-pgsec="'+s[0]+'" aria-pressed="'+(PG.sec===s[0])+'">'+s[1]+'</button>'; }).join('')+
-    '<button data-formsc="'+esc(c.id)+'">📋 Formularios</button><button data-fotosc="'+esc(c.id)+'">📷 Fotos y carrusel</button></nav>'+
-    '<article class="fila abierta pgfila" data-t="Clientes" data-id="'+esc(c.id)+'"><div class="ficha">'+pgSeccion(c)+'</div></article></div>';
+    '<div class="pgbody"><nav class="pgnav" aria-label="Secciones">'+PG_SECS.map(function(s){ return '<button data-pgsec="'+s[0]+'" aria-pressed="'+(PG.sec===s[0])+'">'+PGI(s[2])+s[1]+'</button>'; }).join('')+
+    PG_EXTRA.map(function(x){ return '<button '+x[0]+'="'+esc(c.id)+'">'+PGI(x[2])+x[1]+' <span class="pgx" aria-hidden="true">↗</span></button>'; }).join('')+'</nav>'+
+    '<article class="fila abierta pgfila" data-t="Clientes" data-id="'+esc(c.id)+'"><div class="ficha">'+pgSeccion(c)+'</div></article></div></div>';
   return h;
 }
 function pgSeccion(c){
   var T='Clientes';
   if(PG.sec==='entreno') return '<div id="pgEnt"><div class="cargando" style="min-height:160px"></div></div>';
   if(PG.sec==='camino') return '<div id="pgCam"><div class="cargando" style="min-height:160px"></div></div>';
+  if(PG.sec==='calendario') return '<div id="pgCal"><div class="cargando" style="min-height:160px"></div></div>';
+  if(PG.sec==='nutricion') return nutriPagina(c);
   if(PG.sec==='datos') return '<div class="grupo"><h3>Programa</h3><div class="campos">'+
       campo(T,c,'nombre','Nombre')+campo(T,c,'nombre_whatsapp','Nombre en WhatsApp')+campo(T,c,'telefono','Teléfono (con prefijo)')+
       campo(T,c,'estado','Estado','select',EST_CLI)+campo(T,c,'seguimiento','Seguimiento','select',SEGUIM)+
@@ -1559,7 +1623,7 @@ function pgSeccion(c){
     '<div class="pie"><small>'+(c.actualizado?'Último cambio: '+esc(String(c.actualizado).replace('T',' ').slice(0,16)):'')+'</small><span>'+(c.archivado?'<button class="btn" data-desarchivar>Recuperar</button>':'<button class="btn peligro" data-archivar>Archivar</button>')+'</span></div>';
   // resumen
   return '<div class="pgcols"><div>'+
-      '<div class="grupo">'+cobroResumen(c.id)+nutriFicha(c)+'</div>'+altaFicha(c.id)+
+      '<div class="grupo">'+cobroUrgente(c.id)+nutriFicha(c)+'</div>'+altaFicha(c.id)+
       '<div class="grupo"><h3>Cómo está</h3><div class="semaf" role="group" aria-label="Semáforo">'+
         SEMAF.map(function(x){ return '<button data-semaf="'+x[0]+'" aria-pressed="'+((c.semaforo||'')===x[0])+'"><span class="punto '+x[0]+'"></span>'+x[1]+'</button>'; }).join('')+'</div>'+
         '<div class="campos" style="margin-top:10px">'+campo(T,c,'semaforo_nota','Nota rápida','area',null,true)+'</div></div>'+
@@ -1572,9 +1636,65 @@ function pgSeccion(c){
       rdDeCliente(c.id)+
     '</div></div>';
 }
+/* ── Calendario del cliente (Alex 30/10): una casilla por día con lo que hizo ── */
+var CAC={}, MESES_L=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function calSumarMes(ym,n){ var p=ym.split('-').map(Number), d=new Date(p[0],p[1]-1+n,1); return d.getFullYear()+'-'+pad(d.getMonth()+1); }
+function calDow(f){ var p=f.split('-').map(Number); return (new Date(p[0],p[1]-1,p[2]).getDay()+6)%7; }   // 0 = lunes
+var CAL_DSEM={lunes:0,martes:1,'miércoles':2,miercoles:2,jueves:3,viernes:4,'sábado':5,sabado:5,domingo:6};
+function calHtml(d){
+  if(!d) return '<div class="cargando" style="min-height:160px"></div>';
+  if(d.sinApp) return '<p class="aviso-vacio">Todavía no tiene la app: aquí verás cada día lo que hace.</p>';
+  var ym=d._mes||String(d.hoy).slice(0,7), H=String(d.hoy).slice(0,10), por={};
+  var dia=function(f){ return por[f]||(por[f]={e:[],peso:null,med:0,foto:0,pas:[],otro:[],falta:[]}); };
+  (d.entrenos||[]).forEach(function(e){ if(e.fecha&&e.hecho) dia(e.fecha).e.push(e); });
+  (d.peso||[]).forEach(function(x){ dia(x.fecha).peso=x.peso; });
+  (d.medidas||[]).forEach(function(f){ dia(f).med=1; });
+  (d.fotos||[]).forEach(function(f){ dia(f).foto=1; });
+  (d.extras||[]).forEach(function(x){ (/camin|paseo/i.test(x.tipo)?dia(x.fecha).pas:dia(x.fecha).otro).push(x); });
+  // Días que tocaban (solo si el día del plan tiene un único día de la semana) y no se hicieron esa semana
+  var semPorLunes={}; (d.semanas||[]).forEach(function(w){ semPorLunes[w.lunes]=w; });
+  (d.semanas||[]).forEach(function(w){ Object.keys(d.dias||{}).forEach(function(k){ var ds=CAL_DSEM[String(d.dias[k].ds||'').trim()]; if(ds==null) return;
+    var f=sumar(w.lunes,ds); if(f>=H) return;
+    var hecho=(d.entrenos||[]).some(function(e){ return e.w===w.w&&e.k===k&&e.hecho; }); if(!hecho) dia(f).falta.push(d.dias[k].n||k); }); });
+  var p=ym.split('-').map(Number), ini=ym+'-01', nd=new Date(p[0],p[1],0).getDate(), fin=ym+'-'+pad(nd);
+  var lunes0=sumar(ini,-calDow(ini)), filas=[], f=lunes0;
+  while(f<=fin){ filas.push(f); f=sumar(f,7); }
+  var primerLunes=(d.semanas&&d.semanas[0]&&d.semanas[0].lunes)||'';
+  // Resumen del mes
+  var R0={e:0,peso:0,med:0,foto:0,pas:0}; Object.keys(por).forEach(function(x){ if(x<ini||x>fin) return; var o=por[x]; R0.e+=o.e.length; if(o.peso!=null) R0.peso++; R0.med+=o.med; R0.foto+=o.foto; R0.pas+=o.pas.length; });
+  var semMes=(d.semanas||[]).filter(function(w){ var dom=sumar(w.lunes,6); return dom>=ini&&w.lunes<=fin&&dom<H; }), comp=semMes.filter(function(w){ return w.hechos>=w.objetivo; }).length;
+  var h='<div class="calcab"><button class="btn" data-calmes="-1" aria-label="Mes anterior">‹</button><h3>'+MESES_L[p[1]-1]+' '+p[0]+'</h3><button class="btn" data-calmes="1" aria-label="Mes siguiente">›</button>'+
+    '<small>semana '+esc(d.semana)+' de su programa'+(d.desde>1?' · en la app desde la semana '+esc(d.desde):'')+'</small></div>'+
+    '<div class="vtiles caltiles">'+tile('Entrenos',R0.e+'',semMes.length?comp+' de '+semMes.length+' semanas completas':'',null,semMes.length&&comp===semMes.length?'ok':'')+
+      tile('Pesajes',R0.peso+'','',null)+tile('Medidas',R0.med+'','',null)+tile('Fotos',R0.foto?'✓':'—',R0.foto?'':'sin fotos este mes',null)+tile('Paseos',R0.pas+'','aparte de los entrenos',null)+'</div>'+
+    '<div class="calgrid" role="grid" aria-label="Calendario de '+MESES_L[p[1]-1]+'"><div class="calh">L</div><div class="calh">M</div><div class="calh">X</div><div class="calh">J</div><div class="calh">V</div><div class="calh">S</div><div class="calh">D</div><div class="calh">Semana</div>';
+  filas.forEach(function(lun){
+    for(var i=0;i<7;i++){ var x=sumar(lun,i), o=por[x], fuera=x<ini||x>fin, antes=primerLunes&&x<primerLunes, fut=x>H;
+      var ic=[]; if(o){ o.e.forEach(function(e){ ic.push('<span class="cv '+(e.flojo?'fl':'ok')+'" title="'+esc((d.dias[e.k]&&d.dias[e.k].n)||e.k)+(e.flojo?' (tranquilo)':'')+'">✓</span>'); });
+        o.falta.forEach(function(n){ ic.push('<span class="cv no" title="Tocaba '+esc(n)+' y no lo hizo">✕</span>'); });
+        if(o.peso!=null) ic.push('<span class="cv" title="Peso: '+esc(o.peso)+' kg">⚖️</span>'); if(o.med) ic.push('<span class="cv" title="Medidas">📏</span>'); if(o.foto) ic.push('<span class="cv" title="Fotos">📸</span>');
+        o.pas.forEach(function(x2){ ic.push('<span class="cv" title="Paseo'+(x2.min?' · '+x2.min+' min':'')+'">🚶</span>'); }); o.otro.forEach(function(x2){ ic.push('<span class="cv" title="'+esc(x2.tipo)+'">＋</span>'); }); }
+      h+='<div class="calc'+(fuera?' fuera':'')+(antes?' antes':'')+(fut?' fut':'')+(x===H?' hoyc':'')+'" role="gridcell"><span class="cn">'+(+x.slice(8))+'</span><div class="cis">'+ic.join('')+'</div></div>'; }
+    var w=semPorLunes[lun], dom=sumar(lun,6), cerr=dom<H;
+    h+='<div class="calw'+(w?(w.hechos>=w.objetivo?' ok':w.hechos?' med':cerr?' mal':''):' na')+'">'+(w?'<b>S'+w.w+'</b><span>'+w.hechos+' de '+w.objetivo+'</span>':(primerLunes&&lun<primerLunes?'<span>antes de la app</span>':''))+'</div>';
+  });
+  h+='</div><p class="calley"><span class="cv ok">✓</span> entreno hecho <span class="cv fl">✓</span> tranquilo <span class="cv no">✕</span> tocaba y no lo hizo · ⚖️ peso · 📏 medidas · 📸 fotos · 🚶 paseo</p>'+
+    (Object.keys(d.dias||{}).some(function(k){ return CAL_DSEM[String(d.dias[k].ds||'').trim()]!=null; })?'':'<p class="estado-m">Sus días no tienen un día fijo de la semana (Días plan › dia_semana): por eso los que faltan salen solo en la columna «Semana».</p>');
+  return h;
+}
+/* ── Nutrición en la ficha: su PDF y el botón de adaptar ── */
+function nutriPagina(c){
+  var cod=String(c.codigo_app||'').trim();
+  return '<div class="grupo"><h3>Nutrición</h3>'+nutriFicha(c)+'</div>'+
+    (cod?'<div class="grupo"><h3>Su plan de alimentación <a class="linkbtn" style="float:right;padding:0" href="/nutricion?c='+encodeURIComponent(cod)+'" target="_blank" rel="noopener">Abrir en grande ↗</a></h3>'+
+      '<iframe class="nutpdf" src="/nutricion?c='+encodeURIComponent(cod)+'" title="Plan de alimentación de '+esc(c.nombre||'')+'" loading="lazy"></iframe></div>'
+      :'<p class="aviso-vacio">Sin código de la app: pon su código en «Programa y pagos» para ver aquí su plan.</p>');
+}
 function pgTrasPintar(){
   if(!PG) return; var c=buscar('Clientes',PG.cid); if(!c) return;
-  var vis=$('#pgVis'), ent=$('#pgEnt'), cam=$('#pgCam');
+  var vis=$('#pgVis'), ent=$('#pgEnt'), cam=$('#pgCam'), cal=$('#pgCal');
+  if(cal){ var pk=function(){ var el=$('#pgCal'); if(el) el.innerHTML=calHtml(CAC[c.id]); };
+    if(CAC[c.id]) pk(); if(!CAC[c.id]||!CAC[c.id]._fresco) api('calendarioCliente',{cliente_id:c.id}).then(function(d){ d._fresco=1; CAC[c.id]=d; pk(); }).catch(function(e){ var el=$('#pgCal'); if(el&&!CAC[c.id]) el.innerHTML='<p class="aviso-vacio">No he podido leer su app: '+esc(e.message)+'</p>'; }); }
   if(vis){ var pv=function(d){ var el=$('#pgVis'); if(el) el.innerHTML=d.sinApp?'<p class="aviso-vacio">Todavía no tiene la app.</p>':ecHtml(d,true); };
     if(ECC[c.id]) pv(ECC[c.id]); if(!ECC[c.id]||!ECC[c.id]._fresco) api('entrenoCliente',{cliente_id:c.id}).then(function(d){ d._fresco=1; ECC[c.id]=d; pv(d); }).catch(function(e){ var el=$('#pgVis'); if(el) el.innerHTML='<p class="aviso-vacio">No he podido leer la app: '+esc(e.message)+'</p>'; }); }
   if(ent){ var pe=function(d){ var el=$('#pgEnt'); if(el) el.innerHTML=ecHtml(d); };
@@ -1588,6 +1708,7 @@ document.addEventListener('click',function(e){
   var b=e.target.closest('button'); if(!b||!b.closest('.pgcli')) return;
   var c=buscar('Clientes',PG.cid); if(!c) return;
   if(b.hasAttribute('data-pgvolver')){ e.stopPropagation(); salirFicha(); return; }
+  if(b.hasAttribute('data-calmes')){ e.stopPropagation(); var dc=CAC[c.id]; if(!dc) return; dc._mes=calSumarMes(dc._mes||String(dc.hoy).slice(0,7),+b.getAttribute('data-calmes')); var el0=$('#pgCal'); if(el0) el0.innerHTML=calHtml(dc); return; }
   if(b.hasAttribute('data-pgsec')){ e.stopPropagation(); PG.sec=b.getAttribute('data-pgsec'); try{ history.replaceState({pg:1},'','#c/'+encodeURIComponent(c.id)+'/'+PG.sec); }catch(er){} pintar(); window.scrollTo(0,0); return; }
   if(b.hasAttribute('data-cmnodo')){ e.stopPropagation(); CMS[c.id]=b.getAttribute('data-cmnodo'); var el=$('#pgCam'); if(el){ el.innerHTML=cmHtml(c.id,c.nombre||'',CMC[c.id]); var dt=el.querySelector('.cmdet'); if(dt) dt.scrollIntoView({behavior:'smooth',block:'start'}); } return; }
   if(b.hasAttribute('data-ecpedir')||b.hasAttribute('data-cmdec')){ e.stopPropagation();
@@ -1672,7 +1793,7 @@ function enlazarRonda(){
       b.disabled=true; b.textContent='Pidiendo…'; nutriPedir(f.cliente_id,f.cliente,[ni&&ni.value.trim(),rc0.t].filter(String).join(' · '),'Revisión mensual').then(function(){ rguardar(f,{nutricion:'adaptar|'+hoy()},true); rrepintar(id); }).catch(function(er){ b.disabled=false; b.textContent='Adaptar plan'; alerta(er); }); return; }
     if(b.hasAttribute('data-formsr')){ FO_TAB='redes'; abrirFormularios(f.cliente_id,f.cliente); return; }
     if(b.hasAttribute('data-forms')){ FO_TAB='comp'; abrirFormularios(f.cliente_id,f.cliente); return; }
-    if(b.hasAttribute('data-ficha')){ var cid=f.cliente_id; if(!cid) return; S.tab='clientes'; S.fCli='Todos'; S.fSem=''; S.qCli=''; S.verArch=false; S.abierta=null; guardarLocal('panel_tab','clientes'); abrir('Clientes|'+cid,true); return; }
+    if(b.hasAttribute('data-ficha')){ var cid=f.cliente_id; if(!cid) return; guardarLocal('panel_tab','clientes'); irFicha(cid); return; }
     if(b.hasAttribute('data-copiar')){ var ta=$('textarea[data-rc="mensaje"]',art); var v=ta?ta.value:f.mensaje||''; (navigator.clipboard?navigator.clipboard.writeText(v):Promise.reject()).then(function(){ b.textContent='Copiado ✓'; setTimeout(function(){ b.textContent='Copiar'; },1600); }).catch(function(){ if(ta){ ta.focus(); ta.select(); } }); return; }
     if(b.hasAttribute('data-mest')){ rguardar(f,{mensaje_estado:b.getAttribute('data-mest')},true); rrepintar(id); return; }
     if(b.hasAttribute('data-hecho')){ var ya=rhecha(f);
@@ -3022,7 +3143,7 @@ function enlazarLlamadas(){
     }
     if(b.hasAttribute('data-lfin')){ lguardar(l,{seguimiento_paso:'fin',proximo_contacto:'',siguiente_paso:'Seguimiento terminado'},true); lrepintar(id); return; }
     if(b.hasAttribute('data-lcopiar')){ var t2=$('textarea[data-lc="seguimiento_msg"]',art), v=t2?t2.value:''; (navigator.clipboard?navigator.clipboard.writeText(v):Promise.reject()).then(function(){ b.textContent='Copiado ✓'; setTimeout(function(){ b.textContent='Copiar'; },1600); }).catch(function(){ if(t2){ t2.focus(); t2.select(); } }); return; }
-    if(b.hasAttribute('data-lficha')){ var cid=b.getAttribute('data-lficha'); S.tab='clientes'; S.fCli='Todos'; S.fSem=''; S.qCli=''; S.verArch=false; S.abierta=null; guardarLocal('panel_tab','clientes'); abrir('Clientes|'+cid,true); return; }
+    if(b.hasAttribute('data-lficha')){ var cid=b.getAttribute('data-lficha'); guardarLocal('panel_tab','clientes'); irFicha(cid); return; }
     if(b.hasAttribute('data-lentra')){ Object.keys(pend).forEach(enviar); LC.alta=id; LC.form=lnuevoForm(l); lrepintar(id); var fa=$('.lalta'); if(fa) fa.scrollIntoView({block:'start',behavior:'smooth'}); return; }
     if(b.hasAttribute('data-lcancelar')){ LC.alta=null; LC.form=null; lrepintar(id); return; }
     if(b.hasAttribute('data-lplan')){ var p=buscar('Planes',b.getAttribute('data-lplan')), F=LC.form; F.plan=p.id; F.programa=p.nombre; F.meses=p.meses; F.precio=p.precio; if(lcuotasDe(p).indexOf(+F.cuotas)<0) F.cuotas=1; lrecalc(F); lrepintar(id); return; }
@@ -3164,6 +3285,7 @@ function enlazarHoy(){
   if(add){ add.onclick=crear; inp.onkeydown=function(e){ if(e.key==='Enter'){ e.preventDefault(); crear(); } }; }
   app.onclick=function(e){
     var b=e.target.closest('button,a'); if(!b) return;
+    if(b.hasAttribute('data-abrir')&&/^Clientes\|/.test(b.getAttribute('data-abrir'))){ guardarLocal('panel_tab','clientes'); irFicha(b.getAttribute('data-abrir').split('|')[1]); return; }
     if(b.hasAttribute('data-abrir')){ var k=b.getAttribute('data-abrir').split('|'); S.tab='clientes'; S.fCli='Todos'; S.fSem=''; S.qCli=''; S.verArch=false; S.abierta=null; guardarLocal('panel_tab','clientes'); abrir(k[0]+'|'+k[1],true); return; }
     if(b.hasAttribute('data-irll')){ LC.abierta=b.getAttribute('data-irll'); S.tab='llamadas'; guardarLocal('panel_tab','llamadas'); pintar(); return; }
     if(b.hasAttribute('data-avvisto')){ var aid=b.getAttribute('data-avvisto'), av=AV.lista.filter(function(x){ return x.id===aid; })[0]; AV.lista=AV.lista.filter(function(x){ return x.id!==aid; }); tRepintar();

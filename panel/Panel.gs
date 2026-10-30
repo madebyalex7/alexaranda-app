@@ -63,6 +63,7 @@ function P_despachar(cuerpo) {
       case 'formularios': return { ok: true, data: FO_cliente(d.cliente_id, d.nombre) };
       case 'entrenoCliente': return { ok: true, data: EC_cliente(d.cliente_id) };
       case 'caminoCliente': return { ok: true, data: EV_cliente(d.cliente_id) };
+      case 'calendarioCliente': return { ok: true, data: CA_cliente(d.cliente_id) };
       case 'fotos': return { ok: true, data: FT_lista(d.cliente_id) };
       case 'fotoArchivo': return { ok: true, data: FT_archivo(d.id) };
       case 'avisos': return { ok: true, data: AV_cargar(!!d.fresco) };
@@ -993,4 +994,34 @@ function EV_cliente(cid) {
   ec.camino = { plan: plan, prog: L_progresion(D_leerOpc(ss, 'Progresión')), bloques: bloques, diasPlan: diasPlan,
     aj: { semana: L_int(aj.semana) || 1, bloque: aj.bloque || '', objetivo: aj.objetivo || '', porque: aj.porque || '', sig: aj.siguiente_bloque || '', sigTxt: aj.siguiente_bloque_texto || '', inicio: aj.fecha_inicio_semana1 || '', foco: aj.foco_tecnico || '' } };
   return ec;
+}
+
+// ═════════ Calendario de un cliente (Alex 30/10): qué hizo cada día del mes ═════════
+/*
+ * Devuelve todo lo fechado de su hoja de la app (pocas filas: cabe entero) y el panel pinta el mes:
+ *   entrenos [{fecha, w, k, hecho, flojo}], peso [{fecha, peso}], medidas [fecha], fotos [fecha], extras [{fecha, tipo, min}],
+ *   semanas: lunes de cada semana del programa con su objetivo y lo hecho, desde la primera semana en la app hasta la actual.
+ * Un día que tocaba y no se hizo solo se marca si ese día tiene «día de la semana» en Días plan; si no, la semana dice «2 de 3».
+ */
+function CA_cliente(cid) {
+  var cl = P_leer('Clientes').filter(function (c) { return c.id === cid; })[0];
+  if (!cl || !cl.codigo_app) return { sinApp: true };
+  var cli = D_cliente(String(cl.codigo_app).trim()); if (!cli) return { sinApp: true };
+  var D = S_cargar(cli), ss = SpreadsheetApp.openById(cli.hoja), zona = D.zona;
+  var f10 = function (v) { var t = String(v == null ? '' : v).slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : ''; };
+  var entrenos = D_leer(ss, 'Días', zona).map(function (f) {
+    return { fecha: f10(f.fecha) || (L_bool(f.hecho) ? f10(f.fin) || f10(f.actualizado) : ''), w: L_int(f.semana), k: String(f.dia || ''), hecho: L_bool(f.hecho), flojo: L_bool(f.flojo) };
+  }).filter(function (x) { return x.w && x.k && (x.hecho || x.flojo); });
+  var peso = D_leerOpc(ss, 'Peso', zona).map(function (f) { return { fecha: f10(f.fecha), peso: f.peso }; }).filter(function (x) { return x.fecha; });
+  var medidas = D_leerOpc(ss, 'Medidas', zona).map(function (f) { return f10(f.fecha); }).filter(String);
+  var fotos = D_leerOpc(ss, 'Fotos', zona).map(function (f) { return f10(f.fecha); }).filter(String);
+  var extras = D_leerOpc(ss, 'Extra', zona).map(function (f) { return { fecha: f10(f.fecha), tipo: String(f.tipo || ''), min: L_int(f.minutos) || 0 }; }).filter(function (x) { return x.fecha; });
+  var aj = L_ajustes(D_leer(ss, 'Ajustes')), semanas = [], desde = D.desdeApp || 1;
+  for (var w = desde; w <= D.semana; w++) {
+    var lun = L_lunesPrograma(aj, w); if (!lun) break;
+    var hechos = {}; entrenos.forEach(function (e) { if (e.w === w && e.hecho) hechos[e.k] = 1; });
+    semanas.push({ w: w, lunes: lun, objetivo: D.objetivo, hechos: Object.keys(hechos).length });
+  }
+  var dias = {}; (D.orden || []).forEach(function (k) { var d = D.dias[k]; if (d && k !== 'st') dias[k] = { n: d.n, ds: d.ds }; });
+  return { nombre: D.nombre, semana: D.semana, desde: desde, hoy: D.hoy || P_hoy(), entrenos: entrenos, peso: peso, medidas: medidas, fotos: fotos, extras: extras, semanas: semanas, dias: dias };
 }
