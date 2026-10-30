@@ -404,6 +404,24 @@ function L_diasHechos(diasSemana, entreno, objetivo) {
   return Math.min(n, objetivo);
 }
 
+/** Fotos de control (Alex 30/10): cada 4 semanas del programa, el viernes (semana 4, 8, 12…) toca fotos + peso + medidas.
+ *  Viernes vigente: el de esta semana si es de control; el de la semana pasada si lo era (para seguir recordándolo). '' si no toca. */
+function L_viernesControl(semana, hoy) {
+  var dow = L_dowIso(hoy), lunes = L_sumarDias(hoy, -((dow + 6) % 7));
+  if (semana >= 4 && semana % 4 === 0) return L_sumarDias(lunes, 4);
+  if (semana > 4 && (semana - 1) % 4 === 0) return L_sumarDias(lunes, -3);
+  return '';
+}
+/** Qué aviso de fotos toca hoy: miércoles antes, el viernes y cada 48 h después (hasta 8 días) mientras no las suba. null = ninguno */
+function L_avisoFotos(semana, hoy, fotos, nombre) {
+  var vi = L_viernesControl(semana, hoy); if (!vi) return null;
+  if ((fotos || []).some(function (f) { return String(f).slice(0, 10) >= L_sumarDias(vi, -3); })) return null;
+  var n = L_diasEntre(vi, hoy), quien = nombre ? nombre + ', ' : '';
+  if (n === -2) return { marca: vi + '|x', titulo: 'El viernes toca fotos 📸', texto: quien + 'este viernes toca fotos, peso y medidas. Con la misma luz y la misma ropa que la otra vez, y listo.' };
+  if (n === 0) return { marca: vi + '|v', titulo: 'Hoy toca fotos, peso y medidas 📸', texto: (nombre ? 'Buenos días, ' + nombre + '. ' : 'Buenos días. ') + 'Hoy es día de control: fotos, peso y medidas. 5 minutos y me ayudan muchísimo a ver todo lo que cambias.' };
+  if (n > 0 && n <= 8 && n % 2 === 0) return { marca: vi + '|r' + n, titulo: 'Te faltan tus fotos 📸', texto: quien + 'me faltan tus fotos de control del viernes. Cuando puedas, las subes en «Progreso» y ya está.' };
+  return null;
+}
 /** Candado (Alex 30/10): null = abierto. Solo se cierra si Alex lo pone y falta algo; si algo falla al mirarlo, abierto */
 function L_candado(aj, fotos, peso) {
   try {
@@ -1306,7 +1324,7 @@ function autorizar() { DriveApp.getRootFolder(); SpreadsheetApp.openById(MAESTRA
 // El Worker de Cloudflare pregunta cada 15 min qué avisos tocan (X_pendientes) y manda un «toque» al móvil.
 // El móvil (sw.js) pide entonces el texto con la acción «avisoPush». Las suscripciones van en la maestra › «Avisos móvil».
 var PUSH_KEY = '__PUSH_KEY__';
-var PUSH_CAB = ['codigo', 'endpoint', 'zona', 'aviso_peso', 'aviso_entreno', 'alta', 'ultimo_titulo', 'ultimo_texto', 'ultimo_url', 'ultimo_en', 'envio_peso', 'envio_entreno'];
+var PUSH_CAB = ['codigo', 'endpoint', 'zona', 'aviso_peso', 'aviso_entreno', 'alta', 'ultimo_titulo', 'ultimo_texto', 'ultimo_url', 'ultimo_en', 'envio_peso', 'envio_entreno', 'envio_fotos'];
 function X_tabla() {
   var m = SpreadsheetApp.openById(MAESTRA_ID), sh = m.getSheetByName('Avisos móvil');
   if (!sh) {
@@ -1362,6 +1380,7 @@ function X_pendientes() {
   if (ES_BETA) return { enviar: [] };   // la beta no avisa a ningún móvil
   return D_conBloqueo(function () {
     var t = X_tabla(), i = function (c) { return t.cab.indexOf(c); };
+    if (t.cab.indexOf('envio_fotos') < 0 && t.cab.length) { t.sh.getRange(1, t.cab.length + 1).setNumberFormat('@').setValue('envio_fotos'); t.cab.push('envio_fotos'); t.filas.forEach(function (f) { while (f.length < t.cab.length) f.push(''); }); }
     if (!t.filas.length) return { enviar: [] };
     var clientes = {}; D_leer(SpreadsheetApp.openById(MAESTRA_ID), 'Registro clientes').forEach(function (c) { if (L_bool(c.activa)) clientes[String(c.codigo).trim()] = c; });
     var ahora = new Date(), datos = {}, enviar = [];
@@ -1371,7 +1390,7 @@ function X_pendientes() {
       try {
         var ss = SpreadsheetApp.openById(String(c.hoja_datos_id).trim()), tz = ss.getSpreadsheetTimeZone();
         var aj = L_ajustes(D_leer(ss, 'Ajustes'));
-        return (datos[cod] = { aj: aj, tz: tz, dias: X_crudo(ss, 'Días'), registro: X_crudo(ss, 'Registro'), peso: X_crudo(ss, 'Peso') });
+        return (datos[cod] = { aj: aj, tz: tz, dias: X_crudo(ss, 'Días'), registro: X_crudo(ss, 'Registro'), peso: X_crudo(ss, 'Peso'), fotos: X_crudo(ss, 'Fotos') });
       } catch (e) { return (datos[cod] = null); }
     };
     t.filas.forEach(function (f, r) {
@@ -1390,13 +1409,19 @@ function X_pendientes() {
           }
         });
       }
-      // 2) Pesarse: los miércoles (3) a la hora elegida, si aún no lo ha apuntado hoy y le toca esa semana. Una vez
+      // 2) Pesarse: los viernes (5, Alex 30/10; antes miércoles) a la hora elegida, si aún no lo ha apuntado hoy y le toca esa semana. Una vez
       var tzm = ''; try { tzm = t.sh.getParent().getSpreadsheetTimeZone(); } catch (e) {}
       var hp = f[i('aviso_peso')] instanceof Date ? Utilities.formatDate(f[i('aviso_peso')], tzm || TZ, 'HH:mm') : String(f[i('aviso_peso')] || 'no');
       var ep = f[i('envio_peso')] instanceof Date ? Utilities.formatDate(f[i('envio_peso')], tzm || TZ, 'yyyy-MM-dd') : String(f[i('envio_peso')] || '');
       var enPausa = !!(d.aj.pausa_desde && d.aj.pausa_hasta && hoyL >= d.aj.pausa_desde && hoyL <= d.aj.pausa_hasta);   // en pausa, nada de avisos de peso
       var fq = d.aj.peso_frecuencia, semPeso = fq === 'semanal' || fq === 'libre' || (fq === 'quincenal' && (d.aj.semana - d.aj.peso_desde_semana) % 2 === 0);
-      if (!msg && !enPausa && /^\d\d:\d\d$/.test(hp) && dow === '3' && semPeso && hh >= hp && hh < '12:00' && d.aj.semana >= d.aj.peso_desde_semana && ep !== 'd' + hoyL && ep !== hoyL) {
+      // 3) Fotos de control (cada 4 viernes): van antes que el peso ese día porque ya lo incluyen. Con cualquier aviso activado, de 9:00 a 21:00
+      if (!msg && !enPausa && (/^\d\d:\d\d$/.test(hp) || L_bool(f[i('aviso_entreno')])) && hh >= (/^\d\d:\d\d$/.test(hp) && hp > '09:00' ? hp : '09:00') && hh < '21:00') {
+        var fotosF = (d.fotos || []).map(function (x) { return x.fecha instanceof Date ? Utilities.formatDate(x.fecha, zona, 'yyyy-MM-dd') : String(x.fecha || '').slice(0, 10); });
+        var af = L_avisoFotos(L_int(d.aj.semana), hoyL, fotosF, d.aj.nombre);
+        if (af && i('envio_fotos') >= 0 && String(f[i('envio_fotos')]) !== af.marca) msg = { titulo: af.titulo, texto: af.texto, url: '/?v=prog', campo: 'envio_fotos', valor: af.marca };
+      }
+      if (!msg && !enPausa && /^\d\d:\d\d$/.test(hp) && dow === '5' && semPeso && hh >= hp && hh < '12:00' && d.aj.semana >= d.aj.peso_desde_semana && ep !== 'd' + hoyL && ep !== hoyL) {
         var yaHoy = d.peso.some(function (p) { return String(D_valor(p.fecha, d.tz)) === hoyL && L_num(p.peso) !== ''; });
         if (!yaHoy) msg = { titulo: 'Hoy toca pesarse ⚖️', texto: 'Buenos días' + (d.aj.nombre ? ', ' + d.aj.nombre : '') + '. En ayunas, después del baño y antes de comer o beber. Lo apuntas en la app y listo ' + cz, url: '/?v=prog', campo: 'envio_peso', valor: 'd' + hoyL };
       }

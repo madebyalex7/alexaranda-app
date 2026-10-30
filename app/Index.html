@@ -138,6 +138,13 @@ textarea{width:100%;font:inherit;font-size:14px;padding:10px 12px;border-radius:
 .tabbar .in{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
 .tabbar button{appearance:none;border:0;background:none;font:inherit;padding:14px 0;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);cursor:pointer}
 .tabbar button.on{color:var(--fg);font-weight:500}
+/* Barra de abajo con iconos (Alex 30/10) */
+.tabbar button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 10px;font-size:10px;letter-spacing:.1em;-webkit-tap-highlight-color:transparent}
+.tabbar .tbi{display:flex;align-items:center;justify-content:center;width:52px;height:30px;border-radius:999px;transition:background .25s ease,transform .25s cubic-bezier(.3,1.6,.5,1)}
+.tabbar .tbi svg{width:23px;height:23px}
+.tabbar button.on .tbi{background:var(--soft);transform:translateY(-1px) scale(1.04);color:var(--accent-2)}
+.tabbar button:active .tbi{transform:scale(.92)}
+@media (prefers-reduced-motion:reduce){.tabbar .tbi{transition:none}}
 .sum{display:grid;gap:10px}
 .row{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
 .pill{font-size:11px;letter-spacing:.14em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:var(--soft);color:var(--muted);white-space:nowrap}
@@ -592,6 +599,11 @@ details.calplega[open] .calver{display:none}
 @keyframes candIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @keyframes candPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
 @media (prefers-reduced-motion:reduce){.candado,.cand-ic{animation:none}}
+.avfotos{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:18px;padding:12px 14px;margin:0 0 14px;font:inherit;color:var(--fg);cursor:pointer;animation:candIn .35s ease both}
+.avfotos.hoy{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}.avfotos.tarde{border-color:#C0553A}
+.avfotos span:nth-child(2){flex:1;display:flex;flex-direction:column;gap:2px}.avfotos small{color:var(--muted);font-size:13px}
+.avf-ic{width:38px;height:38px;border-radius:12px;background:var(--soft);display:flex;align-items:center;justify-content:center;color:var(--accent-2)}.avf-ic .ic{width:22px;height:22px}
+.avf-go{font-size:24px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -606,10 +618,10 @@ details.calplega[open] .calver{display:none}
 </div></div>
 <div class="wrap" id="app"></div>
 <nav class="tabbar" aria-label="Secciones"><div class="in">
-  <button id="t-hub" class="on" type="button">Inicio</button>
-  <button id="t-home" type="button">Entreno</button>
-  <button id="t-week" type="button">Semana</button>
-  <button id="t-prog" type="button">Progreso</button>
+  <button id="t-hub" class="on" type="button"><span class="tbi" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5L12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15v-5.5h-6v5.5H5.5A1.5 1.5 0 0 1 4 19z"/></svg></span><span class="tbt">Inicio</span></button>
+  <button id="t-home" type="button"><span class="tbi" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9v6M21 9v6M6 6.5v11M18 6.5v11M6 12h12"/></svg></span><span class="tbt">Entreno</span></button>
+  <button id="t-week" type="button"><span class="tbi" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><circle cx="8.5" cy="14.5" r="1" fill="currentColor"/><circle cx="12" cy="14.5" r="1" fill="currentColor"/></svg></span><span class="tbt">Semana</span></button>
+  <button id="t-prog" type="button"><span class="tbi" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5h16"/><path d="M6 16l4-5 3.5 3L19 7"/><path d="M15 7h4v4"/></svg></span><span class="tbt">Progreso</span></button>
 </div></nav>
 <div class="timer" id="timer" hidden><span class="tt"></span><span class="tv"></span><button type="button" id="skip">Saltar</button></div>
 <div class="vmodal" id="vmodal" hidden role="dialog" aria-modal="true" aria-labelledby="vtit">
@@ -1866,18 +1878,20 @@ function avisoInicio(){
 /* ═════════ Entrada: tres cartas (Entrenamiento · Mi progreso · Alimentación) ═════════ */
 const DOW = ()=>new Date().getDay();   // 0 domingo … 2 martes … 5 viernes
 const pesoHoy = ()=>((D.mp || {}).pesos || []).find(x=>x.f === hoyLocal());
-/* Báscula (Alex, 23/10): una vez por semana, los miércoles, en ayunas. Ajustes › peso_frecuencia: semanal · quincenal · libre · no */
+/* Báscula (Alex, 30/10; antes miércoles): los viernes sí o sí, en ayunas; el martes, si quiere. Ajustes › peso_frecuencia: semanal · quincenal · libre · no */
 const FREC = ()=>(D.mp || {}).pesoFrec || "semanal";
 const semanaDePeso = ()=>{ const f = FREC(), d = (D.mp || {}).pesoDesde || 1; return D.semana >= d && f !== "no" && (f !== "quincenal" || (D.semana - d) % 2 === 0); };
-const tocaPeso = ()=>DOW() === 3 && semanaDePeso() && !pesoHoy();
+const tocaPeso = ()=>DOW() === 5 && semanaDePeso() && !pesoHoy();
+const pesoOpcional = ()=>DOW() === 2 && semanaDePeso() && !pesoHoy() && FREC() !== "no";
 function hub(){
   const rec = recomendado(), hh = hechoHoy(), n = nHechos(), md = mejorDato();
   const ent = hh ? ["Hoy ya está hecho 💪", "Descansa y recupera"] : rec ? [`Hoy te toca: ${dd(rec).n}`, dd(rec).t + (dd(rec).ds ? " · entreno del " + dd(rec).ds : "")] : n >= OBJ() ? ["Semana completa 🎉", "Todos tus días hechos"] : ["Tu semana", "Elige tu día"];
-  const prog = tocaPeso() ? ["Hoy toca pesarse ⚖️", "En ayunas, después del baño"] : md ? [md.big + " " + md.txt, "Lo que más has mejorado"] : ["Peso, fotos y medidas", "Aquí verás todo lo que vas consiguiendo"];
+  const prog = tocaPeso() ? ["Hoy toca pesarse ⚖️", "En ayunas, después del baño"] : pesoOpcional() ? ["Si quieres, pésate hoy", "Es opcional: el que cuenta es el del viernes"] : md ? [md.big + " " + md.txt, "Lo que más has mejorado"] : ["Peso, fotos y medidas", "Aquí verás todo lo que vas consiguiendo"];
   const carta = (id, t, sub, icono, extra, cls)=>`<button type="button" class="fcard ${cls || ""}" data-go="${id}"><span class="fc-in"><span class="fc-back" aria-hidden="true"><span class="la1">A</span><span class="la2">A</span></span>
       <span class="fc-front"><span class="fc-ic">${ic(icono)}</span><span class="fc-k">${t}</span><span class="fc-t">${esc(sub[0])}</span><span class="fc-s">${esc(sub[1])}</span>${extra || ""}</span></span></button>`;
   app.innerHTML = `${cabecera(`<div class="hbtns"><button class="palbtn" id="ajHub" type="button">Ajustes</button></div>`)}
   ${avisoAbierto()}
+  ${avisoFotos()}
   <h1>${saludo()}, ${esc(D.nombre)}</h1>
   ${nuncaDosVeces()}
   <p class="sub hubsub">${esc(fraseHub())}</p>
@@ -1893,6 +1907,24 @@ function hub(){
   document.getElementById("ajHub").onclick = ()=>{ ir("home"); setTimeout(()=>{ const a = document.getElementById("ajbtn"); if(a) a.click(); }, 60); };
   enlazaAbierto(); enlazaAvisos();
   girarCartas();
+}
+/* Fotos de control (Alex 30/10): cada 4 semanas, el viernes. Aviso desde el miércoles y, si no las sube, sigue arriba hasta 8 días después.
+   La misma regla que L_viernesControl de Code.gs (los avisos al móvil van cada 48 h). */
+function viernesControl(){
+  const w = D.semana, h = hoyLocal(), dow = new Date(h + "T12:00:00").getDay(), lun = sumaDias(h, -((dow + 6) % 7));
+  if(w >= 4 && w % 4 === 0) return sumaDias(lun, 4);
+  if(w > 4 && (w - 1) % 4 === 0) return sumaDias(lun, -3);
+  return "";
+}
+function avisoFotos(){
+  try{
+    const vi = viernesControl(); if(!vi) return "";
+    if(((D.mp || {}).fotos || []).some(f=>String(f.f) >= sumaDias(vi, -3))) return "";
+    const h = hoyLocal(), n = Math.round((new Date(h + "T12:00:00") - new Date(vi + "T12:00:00")) / 864e5);
+    if(n < -2 || n > 8) return "";
+    const t = n < 0 ? ["El viernes toca fotos 📸", "Fotos, peso y medidas. Con la misma luz y la misma ropa que la otra vez."] : n === 0 ? ["Hoy toca fotos, peso y medidas 📸", "5 minutos y me ayudan muchísimo a ver todo lo que cambias."] : ["Te faltan tus fotos de control 📸", "Las del viernes. Cuando puedas, las subes y listo."];
+    return `<button type="button" class="avfotos ${n > 0 ? "tarde" : n === 0 ? "hoy" : ""}" data-go="prog"><span class="avf-ic" aria-hidden="true">${ic("fotos")}</span><span><b>${t[0]}</b><small>${t[1]}</small></span><span class="avf-go" aria-hidden="true">›</span></button>`;
+  }catch(e){ return ""; }
 }
 /* Alimentación (25/10): su plan en PDF, para verlo en el móvil o descargarlo e imprimirlo. Lo sirve el Worker sin compartir el archivo de Drive */
 function vistaNutri(){
@@ -2037,7 +2069,7 @@ function msgPesoGuardado(){
 }
 function vistaProg(){
   const mp = D.mp || {}, pd = mp.pesoDesde || 1, ph = pesoHoy(), md = mejorDato(), m = mp.medidas || [], ult = m[m.length - 1] || {}, pri = m[0] || {};
-  const prox = FREC() === "quincenal" ? "el miércoles que te toque" : DOW() < 3 ? "este miércoles" : DOW() === 3 ? "el miércoles" : "el miércoles que viene";
+  const prox = FREC() === "quincenal" ? "el viernes que te toque" : DOW() >= 1 && DOW() < 5 ? "este viernes" : DOW() === 5 ? "el viernes" : "el viernes que viene";
   const fotosF = [...new Set((mp.fotos || []).map(x=>x.f))].sort();
   app.innerHTML = `${cabecera()}
   <h1>Mi progreso</h1><p class="sub">Lo que vas consiguiendo, ${esc(D.nombre)}</p>
@@ -2048,7 +2080,7 @@ function vistaProg(){
     ${ph ? `<p class="phoy">Hoy: <b>${lsGet(kOcultar) ? "apuntado" : num(ph.p) + " kg"}</b> ✓ <button type="button" class="lnk" id="pCambiar">Cambiar</button></p>` : ""}
     <div class="pform ${ph ? "oculto" : ""}" id="pForm">
       <p class="ptit">${tocaPeso() ? "Hoy toca pesarse ⚖️" : `Te toca pesarte ${prox}${FREC() === "libre" ? " · ¿te has pesado hoy?" : ""}`}</p>
-      <p class="sub small">Una vez por semana, los miércoles: en ayunas, después del baño y antes de comer o beber.</p>
+      <p class="sub small">Los viernes, sí o sí: en ayunas, después del baño y antes de comer o beber. El martes, si te apetece, también.</p>
       ${D.sexo !== "h" ? `<div class="chips pciclo">${[["antes","Esta semana me va a venir la regla"],["con","La tengo"]].map(([v, t])=>`<button type="button" class="chip ${PCICLO === v ? "on" : ""}" data-pc="${v}" aria-pressed="${PCICLO === v}">${t}</button>`).join("")}</div>` : ""}
       ${selFecha("peso", "Peso de")}
       <div class="pinrow"><input type="text" inputmode="decimal" id="pIn" placeholder="Ej. 64,2" autocomplete="off" value="${ph ? num(ph.p) : ""}"><span class="ud">kg</span><button class="mini" id="pOk" type="button">Guardar</button></div>
@@ -2154,7 +2186,7 @@ function enlazaSelFecha(){
 function avisoPesoLinea(){
   if(!pushSoportado()) return "";
   const a = lsGet("avisos_" + CODIGO);
-  return `<p class="sub small pav">⏰ ${a && a.peso && a.peso !== "no" ? `Te aviso los miércoles a las ${a.peso}` : "¿Quieres que te avise para pesarte?"} · <button type="button" class="lnk" id="pAv">${a ? "Cambiar" : "Sí, avísame"}</button></p>`;
+  return `<p class="sub small pav">⏰ ${a && a.peso && a.peso !== "no" ? `Te aviso los viernes a las ${a.peso}` : "Quieres que te avise para pesarte?"} · <button type="button" class="lnk" id="pAv">${a ? "Cambiar" : "Sí, avísame"}</button></p>`;
 }
 function enlazaProg(){
   const pin = document.getElementById("pIn"), pok = document.getElementById("pOk");
@@ -2316,7 +2348,7 @@ async function activarAvisos(pref){
 }
 function tarjetaAvisos(){
   if(!pushSoportado() || lsGet(kAv) || lsGet(kAv + "_no")) return "";
-  return `<div class="avcard" id="avCard"><div class="label">${ic("agenda")} ¿Te aviso?</div><p>Te mando un aviso al móvil los <b>miércoles a las 7:30</b> para pesarte, y si un día se te queda <b>el entreno abierto</b>. Nada más, sin agobiar.</p>
+  return `<div class="avcard" id="avCard"><div class="label">${ic("agenda")} Te aviso?</div><p>Te mando un aviso al móvil los <b>viernes a las 7:30</b> para pesarte, el día de tus <b>fotos de control</b> y si un día se te queda <b>el entreno abierto</b>. Nada más, sin agobiar.</p>
     <div class="yb"><button type="button" class="ysi" id="avSi">Sí, avísame</button><button type="button" class="yno" id="avNo">Ahora no</button></div></div>`;
 }
 function enlazaAvisos(){
@@ -2330,7 +2362,7 @@ function abrirAvisos(){
   const a = lsGet(kAv) || {peso: "07:30", entreno: true};
   const s = document.createElement("div"); s.className = "colsheet"; s.setAttribute("role", "dialog");
   s.innerHTML = `<div class="csbox"><div class="label">Avisos al móvil</div>
-    <label class="tog" for="avP"><span>Pesarme los miércoles<small>A la hora que elijas, solo si aún no lo has apuntado</small></span>
+    <label class="tog" for="avP"><span>Pesarme los viernes<small>A la hora que elijas, solo si aún no lo has apuntado</small></span>
       <select id="avP">${["no","06:30","07:00","07:30","08:00","08:30","09:00","09:30","10:00"].map(h=>`<option value="${h}" ${a.peso === h ? "selected" : ""}>${h === "no" ? "No, gracias" : h}</option>`).join("")}</select></label>
     <label class="tog" for="avE"><span>Entreno abierto<small>Si empiezas y pasan 45 min sin apuntar nada</small></span><input type="checkbox" id="avE" ${a.entreno !== false ? "checked" : ""}></label>
     <button class="cta" id="avG" type="button">Guardar</button></div>`;

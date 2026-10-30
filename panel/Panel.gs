@@ -688,7 +688,7 @@ function LL_probar() { return JSON.stringify(LL_sincronizar()); }
  *   molestia  · 6 o más en un ejercicio o en «Avisar de una molestia» (rojo); 4-5 dos semanas seguidas en el mismo (ámbar)
  *   abierto   · entreno empezado hace más de 2 horas sin terminar
  *   nota      · nota en «Algo que contarme» (esta semana o la anterior)
- *   peso      · peso del miércoles sin apuntar (de jueves a domingo, si se pesa cada semana)
+ *   peso      · peso del viernes sin apuntar (sábado y domingo, si se pesa cada semana) y fotos de control sin subir
  * Alex pulsa «Visto» y desaparece (pestaña AvisosVistos). Se guardan 5 minutos en caché.
  */
 var AV_CACHE = 'avisos_panel_v1';
@@ -809,12 +809,16 @@ function AV_cliente(ss) {
     });
   });
 
-  // Peso del miércoles
-  if (aj.peso_frecuencia === 'semanal' && S >= aj.peso_desde_semana && dHoy >= 3) {
-    var mie = L_sumarDias(lunes, 2);
-    if (!peso.some(function (r) { return String(r.fecha).slice(0, 10) >= mie && r.peso !== ''; }))
-      out.push({ clave: 'peso|' + mie, tipo: 'peso', nivel: 'ambar', titulo: 'No ha apuntado el peso del miércoles', detalle: 'Miércoles ' + AV_fecha(mie) + '.' });
+  // Peso del viernes (Alex 30/10; antes miércoles): vale el del jueves o el fin de semana
+  if (aj.peso_frecuencia === 'semanal' && S >= aj.peso_desde_semana && dHoy >= 5) {
+    var vie = L_sumarDias(lunes, 4);
+    if (!peso.some(function (r) { return String(r.fecha).slice(0, 10) >= L_sumarDias(vie, -1) && r.peso !== ''; }))
+      out.push({ clave: 'peso|' + vie, tipo: 'peso', nivel: 'ambar', titulo: 'No ha apuntado el peso del viernes', detalle: 'Viernes ' + AV_fecha(vie) + '.' });
   }
+  // Fotos de control (cada 4 viernes) sin subir, desde el sábado
+  var viC = L_viernesControl(S, hoy);
+  if (viC && hoy > viC && L_diasEntre(viC, hoy) <= 8 && !D_leerOpc(ss, 'Fotos', zona).some(function (r) { return String(r.fecha).slice(0, 10) >= L_sumarDias(viC, -3); }))
+    out.push({ clave: 'fotos|' + viC, tipo: 'peso', nivel: 'ambar', titulo: 'No ha subido las fotos de control', detalle: 'Tocaban el viernes ' + AV_fecha(viC) + '. La app se las recuerda cada 48 h.' });
   return out;
 }
 function AV_fecha(iso) { var p = String(iso).split('-'); return p.length === 3 ? (+p[2]) + '/' + (+p[1]) : String(iso); }
