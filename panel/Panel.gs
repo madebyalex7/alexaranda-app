@@ -671,8 +671,10 @@ function LL_crearCliente(leadId, a) {
   var resumen = [l.preocupacion && 'Le preocupa: ' + l.preocupacion, partes && 'Lo hablado en la llamada:\n' + partes, l.notas_llamada && 'Notas de la llamada: ' + l.notas_llamada,
     l.ultima_resumen && 'Última conversación: ' + l.ultima_resumen, (a.lugar || a.dias) && 'Empieza en ' + String(a.lugar || '').toLowerCase() + (a.dias ? ', ' + a.dias + ' días por semana (si en el formulario dice menos, mandan los del formulario)' : ''),
     a.nota_pago && 'Pago: ' + a.nota_pago, a.notas && 'Notas de Alex para el alta: ' + a.notas].filter(Boolean).join('\n');
-  var alta = P_nuevo('Altas', { fecha: P_hoy(), cliente_id: cli.id, cliente: nombre, lead_id: l.id, telefono: cli.telefono, instagram: a.instagram || l.instagram,
-    programa: programa, inicio: inicio, resumen: resumen, estado: 'pendiente' });
+  var filaAlta = a.alta_id ? P_leer('Altas').filter(function (x) { return x.id === a.alta_id; })[0] : null;   // ya tenía fila en Altas: se completa, no se duplica
+  var campoAlta = { fecha: filaAlta ? filaAlta.fecha : P_hoy(), cliente_id: cli.id, cliente: nombre, lead_id: l.id, telefono: cli.telefono, instagram: a.instagram || l.instagram,
+    programa: programa, inicio: inicio, resumen: resumen, estado: filaAlta ? filaAlta.estado : 'pendiente' };
+  var alta = filaAlta ? P_guardar('Altas', filaAlta.id, campoAlta) : P_nuevo('Altas', campoAlta);
   var lead = P_guardar('Leads', l.id, { nombre: l.nombre || nombre, whatsapp: l.whatsapp || cli.telefono, estado: 'Cerrado', llamada_estado: 'cerrado', cliente_id: cli.id, ultima_fecha: P_hoy(), proximo_contacto: '', siguiente_paso: 'Cliente: ' + programa });
   return { cliente: cli, cobros: nuevos, alta: alta, lead: lead };
 }
