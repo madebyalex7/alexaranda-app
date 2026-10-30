@@ -1,0 +1,6 @@
+# Claves y lo construido (lleva las claves): nunca a GitHub
+secretos/*
+!secretos/claves.example.json
+dist/
+node_modules/
+.DS_Store
