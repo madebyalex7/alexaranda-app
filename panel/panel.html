@@ -485,9 +485,9 @@ nav.tabs .ti svg{width:100%;height:100%}
 }
 @media (prefers-reduced-motion:reduce){nav.tabs button{transition:none}}
 /* Formularios, fotos, entreno, camino y carrusel a pantalla completa (Alex 30/10), con entrada suave */
-#foOv,#ftOv,#ecOv,#cmOv,#crOv{padding:0;background:var(--bg)}
-#foOv>.respbox,#ftOv>.respbox,#ecOv>.respbox,#cmOv>.respbox,#crOv>.respbox{max-width:1180px;max-height:none;height:100%;border-radius:0;padding:18px 24px 40px;animation:ovin .22s ease both}
-@media (min-width:1000px){#foOv,#ftOv,#ecOv,#cmOv,#crOv{left:232px}}
+#foOv,#ftOv,#ecOv,#cmOv,#crOv,#nuOv,#caOv{padding:0;background:var(--bg)}
+#foOv>.respbox,#ftOv>.respbox,#ecOv>.respbox,#cmOv>.respbox,#crOv>.respbox,#nuOv>.respbox,#caOv>.respbox{max-width:1180px;max-height:none;height:100%;border-radius:0;padding:18px 24px 40px;animation:ovin .22s ease both}
+@media (min-width:1000px){#foOv,#ftOv,#ecOv,#cmOv,#crOv,#nuOv,#caOv{left:232px}}
 .respov:not([hidden])>.respbox{animation:ovin .2s ease both}
 @keyframes ovin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 #app.entra{animation:vista .2s ease both}
@@ -1552,7 +1552,7 @@ function cuerpo(f,d){
           (st==='aplicado'?'':'<div class="racc">'+(st==='propuesto'?'<button class="btn prim" data-aplicar>'+(['nota_semana','pausa','semana_suave','series_repes','cambiar_ejercicio','ajuste'].indexOf(c.tipo)>=0?'Aplicar':'Aprobar')+'</button>':'')+(st!=='descartado'?'<button class="btn" data-cest="descartado">No</button>':'<button class="btn" data-cest="propuesto">Recuperar</button>')+'</div>'+
             '<div class="pedir"><input type="text" data-ped="cambio" placeholder="Cómo lo cambiarías?" aria-label="Cómo cambiarías este cambio"><button class="btn" data-pedir="cambio">Cambiar</button></div>')+'</div>'; }).join(''):'<p class="aviso-vacio">Esta semana no propongo cambios.</p>')+
     '</section>':'';
-  var pie='<section class="rsec ancho2"><h3>Tu nota <small>para su seguimiento</small>'+' <button class="linkbtn" data-forms style="margin-left:auto;padding:0">📋 Formularios</button> <button class="linkbtn" data-formsr style="padding:0;margin-left:12px">⭐ Para redes</button>'+(f.cliente_id?' <button class="linkbtn" data-fotosr style="padding:0;margin-left:12px">📷 Fotos</button>':'')+(f.cliente_id?' <button class="linkbtn" data-ficha style="padding:0;margin-left:12px">Ver su ficha →</button>':'')+'</h3><textarea class="nota-alex" data-rc="nota_alex" placeholder="Lo que quieras que tenga en cuenta: lo paso a su ficha.">'+esc(f.nota_alex||'')+'</textarea>'+
+  var pie='<section class="rsec ancho2"><h3>Tu nota <small>para su seguimiento</small>'+' <button class="linkbtn" data-forms style="margin-left:auto;padding:0">📋 Formularios</button> <button class="linkbtn" data-formsr style="padding:0;margin-left:12px">⭐ Para redes</button>'+(f.cliente_id?' <button class="linkbtn" data-fotosr style="padding:0;margin-left:12px">📷 Fotos</button> <button class="linkbtn" data-entrr style="padding:0;margin-left:12px">🏋️ Su entreno</button> <button class="linkbtn" data-nutrr style="padding:0;margin-left:12px">🥗 Nutrición</button> <button class="linkbtn" data-calr style="padding:0;margin-left:12px">📅 Calendario</button>':'')+(f.cliente_id?' <button class="linkbtn" data-ficha style="padding:0;margin-left:12px">Ver su ficha →</button>':'')+'</h3><textarea class="nota-alex" data-rc="nota_alex" placeholder="Lo que quieras que tenga en cuenta: lo paso a su ficha.">'+esc(f.nota_alex||'')+'</textarea>'+
       '<div class="rpie" style="margin-top:12px"><small class="estado-m">'+(rhecha(f)?'✓ Hecho'+(f.revisado?' el '+esc(fCorta(String(f.revisado).slice(0,10))):''):'')+'</small>'+
       (rhecha(f)?(sig?'<button class="btn prim" data-siguiente>Siguiente: '+esc(sig.cliente)+' →</button>':'<span class="estado-m ok">Todos hechos ✓</span>'):'<button class="btn prim" data-revisar="1">Hecho ✓ · siguiente</button>')+'</div></section>';
   return banners+vistazo(f,d)+mensual+(men?nutriSeccion(f,d)+aaSeccion(f):'')+(vi?semana+mensaje+comoVa+cambios:semana+comoVa+mensaje+cambios)+pie;
@@ -1802,6 +1802,15 @@ function pgSeccion(c){
       rdDeCliente(c.id)+
     '</div></div>';
 }
+/* Desde una revisión, ver su nutrición o su calendario sin salir (Alex 30/10) */
+function ovGrande(id,titulo,cuerpo){ var o=$('#'+id); if(!o){ o=document.createElement('div'); o.id=id; o.className='respov'; o.setAttribute('role','dialog'); document.body.appendChild(o); }
+  o.hidden=false; o.innerHTML='<div class="respbox"><div class="resphead"><h2>'+titulo+'</h2><button class="ib" data-ovx aria-label="Cerrar">✕</button></div><div class="ovc">'+cuerpo+'</div></div>';
+  o.onclick=function(e){ if(e.target===o||(e.target.closest&&e.target.closest('[data-ovx]'))){ o.hidden=true; return; }
+    var b=e.target.closest&&e.target.closest('[data-calmes]'); if(b&&o._cid){ var dc=CAC[o._cid]; if(!dc) return; dc._mes=calSumarMes(dc._mes||String(dc.hoy).slice(0,7),+b.getAttribute('data-calmes')); $('.ovc',o).innerHTML=calHtml(dc); } };
+  return o; }
+function abrirNutri(cid,nombre){ var c=buscar('Clientes',cid)||{}; ovGrande('nuOv','Nutrición · '+esc(nombre||''),nutriPagina(c)); }
+function abrirCal(cid,nombre){ var o=ovGrande('caOv','Calendario · '+esc(nombre||''),calHtml(CAC[cid])); o._cid=cid;
+  if(!CAC[cid]||!CAC[cid]._fresco) api('calendarioCliente',{cliente_id:cid}).then(function(d){ d._fresco=1; CAC[cid]=d; if(!o.hidden) $('.ovc',o).innerHTML=calHtml(d); }).catch(function(e){ if(!o.hidden&&!CAC[cid]) $('.ovc',o).innerHTML='<p class="aviso-vacio">No he podido leer su app: '+esc(e.message)+'</p>'; }); }
 /* ── Calendario del cliente (Alex 30/10): una casilla por día con lo que hizo ── */
 var CAC={}, MESES_L=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 function calSumarMes(ym,n){ var p=ym.split('-').map(Number), d=new Date(p[0],p[1]-1+n,1); return d.getFullYear()+'-'+pad(d.getMonth()+1); }
@@ -1955,6 +1964,9 @@ function enlazarRonda(){
     if(b.hasAttribute('data-aamsg')){ var dd1=FOC[f.cliente_id||f.cliente], c1=dd1&&foComparar(dd1.formularios||[]), x1=c1&&c1.textos[+b.getAttribute('data-aamsg')]; if(!x1) return;
       var ta2=$('textarea[data-rc="mensaje"]',art); rguardar(f,{mensaje:meterEnMensaje(ta2?ta2.value:f.mensaje,foTextoMsg(x1,f.cliente,true))},true); rrepintar(id); return; }
     if(b.hasAttribute('data-fotosr')){ abrirFotos(f.cliente_id,f.cliente); return; }
+    if(b.hasAttribute('data-entrr')){ abrirEntreno(f.cliente_id,f.cliente); return; }
+    if(b.hasAttribute('data-nutrr')){ abrirNutri(f.cliente_id,f.cliente); return; }
+    if(b.hasAttribute('data-calr')){ abrirCal(f.cliente_id,f.cliente); return; }
     if(b.hasAttribute('data-nutri')){ var nq=b.getAttribute('data-nutri'), ni=$('input[data-nutrip]',art), rc0=nutriReco(rj(f.datos,{}));
       if(nq==='mantener'){ rguardar(f,{nutricion:'mantener|'+hoy()},true); rrepintar(id); return; }
       b.disabled=true; b.textContent='Pidiendo…'; nutriPedir(f.cliente_id,f.cliente,[ni&&ni.value.trim(),rc0.t].filter(String).join(' · '),'Revisión mensual').then(function(){ rguardar(f,{nutricion:'adaptar|'+hoy()},true); rrepintar(id); }).catch(function(er){ b.disabled=false; b.textContent='Adaptar plan'; alerta(er); }); return; }
