@@ -682,8 +682,9 @@ function waU(tel,txt){ tel=String(tel||'').replace(/\D/g,''); var t=txt?encodeUR
 window.addEventListener('click',function(e){ var a=e.target.closest&&e.target.closest('a[href*="wa.me/"],a[href*="web.whatsapp.com/send"]'); if(!a) return;
   var u; try{ u=new URL(a.href); }catch(er){ return; } var tel=u.hostname==='web.whatsapp.com'?u.searchParams.get('phone'):u.pathname.replace(/\D/g,'');
   if(!tel){ e.preventDefault(); e.stopImmediatePropagation(); alerta(new Error('Esta ficha no tiene teléfono. Ponlo en su ficha antes de escribirle, para no equivocarte de chat.')); return; }
-  // Con la app de WhatsApp Web ya abierta, Chrome solo la trae al frente y no abre el chat: el mensaje queda copiado para pegarlo
-  var tx=u.searchParams.get('text'); if(!WA_MOVIL&&tx&&navigator.clipboard) navigator.clipboard.writeText(tx).then(function(){ var v=a.textContent; a.textContent='Mensaje copiado ✓'; setTimeout(function(){ a.textContent=v; },2500); }).catch(function(){}); },true);   // sin número, WhatsApp deja elegir el chat a mano
+  // Con la app de WhatsApp Web abierta, Chrome solo la trae al frente y no abre el chat: el mensaje queda copiado para pegarlo
+  var tx=u.searchParams.get('text'); if(!WA_MOVIL&&tx&&navigator.clipboard) navigator.clipboard.writeText(tx).then(function(){ var v=a.textContent; a.textContent='Mensaje copiado ✓'; setTimeout(function(){ a.textContent=v; },2500); }).catch(function(){});
+  if(!WA_MOVIL){ e.preventDefault(); var w=window.open(a.href,'whatsapp'); if(w) w.focus(); } },true);   // siempre la misma ventana con nombre, para no abrir una pestaña por mensaje   // sin número, WhatsApp deja elegir el chat a mano
 
 /* ───────── red ───────── */
 function api(accion, datos, keepalive){
