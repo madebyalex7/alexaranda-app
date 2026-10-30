@@ -1478,10 +1478,12 @@ function totalCal(items){ const R = rondasCal(items), pre = items.filter(x=>x.pr
 function animaAltura(el, cambia){
   let quieto = false; try{ quieto = matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){}
   if(quieto || !el.animate){ cambia(); return; }
-  const h0 = el.offsetHeight; cambia(); const h1 = el.offsetHeight; if(h0 === h1) return;
+  const cl = el.className, ab = el.open, h0 = el.offsetHeight; cambia(); const h1 = el.offsetHeight; if(h0 === h1) return;
+  const cierra = h1 < h0;
+  if(cierra){ el.className = cl; if(ab !== undefined) el.open = ab; }   // al plegar, el contenido sigue visible y se desvanece mientras se cierra
   el.style.overflow = "hidden";
-  const a = el.animate([{height: h0 + "px", opacity: h1 < h0 ? 1 : .6}, {height: h1 + "px", opacity: 1}], {duration: 340, easing: "cubic-bezier(.22,.8,.24,1)"});
-  a.onfinish = a.oncancel = ()=>{ el.style.overflow = ""; };
+  const a = el.animate([{height: h0 + "px", opacity: cierra ? 1 : .35}, {height: h1 + "px", opacity: cierra ? .25 : 1}], {duration: cierra ? 560 : 480, easing: "cubic-bezier(.4,0,.2,1)"});
+  a.onfinish = a.oncancel = ()=>{ if(cierra) cambia(); el.style.overflow = ""; };
 }
 /* Calentamiento hecho (todas las casillas): se pliega solo y se puede volver a abrir (Alex 30/10) */
 function calHecho(items, k, wu){ return !!k && (wu || []).length >= totalCal(items); }
