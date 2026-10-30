@@ -577,6 +577,7 @@ nav.tabs .tipol{font-size:19px;line-height:1;align-items:center;justify-content:
 .dbt{min-width:0}.dbt small{display:block;color:var(--sec);font-size:13px;margin-top:2px}.dbv{color:#C0553A;font-weight:600;font-size:13px}.dbf{color:var(--sec);font-size:13px}
 .rfila.r-alerta{border-left:4px solid #C0553A;background:rgba(192,62,44,.08)}
 .dbacc{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;flex:none}
+.ralerta.aud{background:rgba(90,120,170,.15);border-color:#6F8FBF}.ralerta .aupt{list-style:disc;padding-left:20px;margin:6px 0 8px}.ralerta .aupt li{display:list-item;border:0;padding:2px 0}
 </style>
 </head>
 <body>
@@ -1337,14 +1338,18 @@ document.addEventListener('click',function(e){ var b=e.target.closest&&e.target.
   (navigator.clipboard?navigator.clipboard.writeText(t.propuesta||''):Promise.reject()).then(function(){ b.textContent='Copiado ✓'; setTimeout(function(){ b.textContent='Copiar respuesta'; },1600); }).catch(function(){ alerta(new Error('No se ha podido copiar')); }); },true);
 function deudasDe(f,d){ if(!f.cliente_id) return []; var l=tareasVivas().filter(function(t){ return t.cliente_id===f.cliente_id; }), o=((d&&d.debo)||[]).map(function(x){ return x.tarea_id; });
   return l.sort(function(a,b){ var ia=o.indexOf(a.id), ib=o.indexOf(b.id); ia=ia<0?999:ia; ib=ib<0?999:ib; return ia-ib||String(a.fecha||'9').localeCompare(String(b.fecha||'9')); }); }
+function audioHay(d){ var a=d&&d.audio; return !!(a&&(a.por_que||(a.puntos||[]).length)); }
+document.addEventListener('click',function(e){ var b=e.target.closest&&e.target.closest('[data-aucopia]'); if(!b) return; e.stopPropagation(); var f=rbuscar(b.getAttribute('data-aucopia')), a=f&&rj(f.datos,{}).audio; if(!a) return;
+  (navigator.clipboard?navigator.clipboard.writeText((a.puntos||[]).map(function(x){ return '- '+x; }).join('\n')):Promise.reject()).then(function(){ b.textContent='Copiado ✓'; setTimeout(function(){ b.textContent='Copiar puntos'; },1600); }).catch(function(){ alerta(new Error('No se ha podido copiar')); }); },true);
 function molAlerta(d){ return ((d&&d.molestias)||[]).filter(function(m){ return m&&m.alerta===true; }); }
 function alertasTarjeta(f,d){
   var h='', ml=molAlerta(d), de=deudasDe(f,d), H=hoy();
   if(ml.length) h+='<section class="rsec ancho2 ralerta mol"><h3>🚨 Molestia</h3>'+ml.map(function(m){ return '<p><b>'+esc(m.zona||'')+' · '+(+m.valor||0)+'/10</b>'+(m.nota?' — '+esc(m.nota):'')+'</p>'; }).join('')+'</section>';
+  var au=d&&d.audio; if(audioHay(d)) h+='<section class="rsec ancho2 ralerta aud"><h3>🎙️ Mejor en audio</h3>'+(au.por_que?'<p>'+esc(au.por_que)+'</p>':'')+((au.puntos||[]).length?'<ul class="aupt">'+au.puntos.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul><div class="racc"><button class="btn" data-aucopia="'+esc(f.id)+'">Copiar puntos</button></div>':'')+'</section>';
   if(de.length) h+='<section class="rsec ancho2 ralerta deb"><h3>⚠️ Le debes</h3><ul>'+de.map(function(t){ var v=esFecha(t.fecha)&&t.fecha<H; var ct=esContestar(t); return '<li class="'+(ct?'dbc':'')+'"><div class="dbt"><b>'+(ct?'💬 ':'')+esc(t.tarea||'')+'</b>'+(esFecha(t.fecha)?' <span class="'+(v?'dbv':'dbf')+'">'+esc(fCorta(t.fecha))+'</span>':'')+(t.propuesta?'<small>'+esc(t.propuesta)+'</small>':'')+'</div><span class="dbacc">'+btnCopiarResp(t)+'<button class="btn" data-dbhecho="'+esc(t.id)+'">Hecho</button></span></li>'; }).join('')+'</ul></section>';
   return h;
 }
-function tecVisibles(f,d){ var de=deudasDe(f,d).length, ml=molAlerta(d).length; return String(f.tener_en_cuenta||'').split('\n').map(function(x){ return x.replace(/^[-·•]\s*/,'').trim(); }).filter(String).filter(function(x){ return !(de&&/^⚠️\s*LE DEBES/i.test(x))&&!(ml&&/^🚨\s*MOLESTIA/i.test(x)); }); }
+function tecVisibles(f,d){ var de=deudasDe(f,d).length, ml=molAlerta(d).length, au=audioHay(d); return String(f.tener_en_cuenta||'').split('\n').map(function(x){ return x.replace(/^[-·•]\s*/,'').trim(); }).filter(String).filter(function(x){ return !(de&&/^⚠️\s*LE DEBES/i.test(x))&&!(ml&&/^🚨\s*MOLESTIA/i.test(x))&&!(au&&/^🎙️?\s*MEJOR EN AUDIO/i.test(x)); }); }
 document.addEventListener('click',function(e){ var b=e.target.closest&&e.target.closest('[data-dbhecho]'); if(!b) return; e.stopPropagation(); var t=(S.data.tareas||[]).filter(function(x){ return x.id===b.getAttribute('data-dbhecho'); })[0]; if(!t) return; var art=b.closest('.rfila'), rid=art&&art.getAttribute('data-rid');
   var rep=function(){ if(rid&&S.tab==='ronda') rrepintar(rid); $('#nTar').textContent=tareasVivas().filter(function(x){ var g=tGrupo(x); return g==='vencida'||g==='hoy'; }).length||''; };
   tGuardar(t,{estado:'hecha',hecha_el:hoy()},true); rep(); toastDeshacer('Hecho ✓',function(){ tGuardar(t,{estado:'pendiente',hecha_el:''},true); rep(); }); },true);
