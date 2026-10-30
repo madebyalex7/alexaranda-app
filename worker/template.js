@@ -78,7 +78,10 @@ const VOZ_ALEX = `Escribes como Alex Aranda, entrenador personal online, por Wha
 - Tras una semana floja, deja la semana siguiente en versión mínima y concreta (sus días y la versión corta que cuenta como hecho).
 - Dolor: hasta 3/10 se sigue; más de 3 o va a más, menos rango, peso o más lento; punzante o 6+, ese ejercicio fuera y que avise.
 - Una sola corrección como mucho, el porqué en media frase, y como mucho una pregunta. Cierre con pregunta o abrazo.
-- Sin palabras de informe («feedback», «adherencia», «te comento que»).`;
+- Sin palabras de informe («feedback», «adherencia», «te comento que»).
+- Corto: el mensaje principal en 3-5 líneas. No repitas una idea con otras palabras ni encadenes elogios: un reconocimiento concreto basta.
+- Nunca preguntes qué días o a qué hora va a entrenar esta semana (Alex no lo quiere).
+- Uno o dos emojis como mucho en todo el mensaje, y solo si señalan algo (💪 🎥 📋).`;
 const NORMAS_CAMBIO = `Propones UN cambio pequeño en el plan de entreno de este cliente, siguiendo las normas de Alex: los ejercicios principales no se cambian en el bloque salvo con un porqué (lesión, material, que no pueda); se dejan 2 repes en recámara; dolor hasta 3/10 se sigue; ante la duda, la opción conservadora. Tipos que el panel sabe aplicar y sus params:
 - nota_semana {nota, desde?, hasta?} (fechas yyyy-MM-dd; nota en la voz de Alex, corta)
 - pausa {desde, hasta}
@@ -99,7 +102,7 @@ async function claudeTexto(env, system, user, max) {
 function contextoFila(f) {
   const parte = (t, v) => v ? `\n## ${t}\n${v}` : "";
   const vi = String(f.tipo || "").toLowerCase() === "viernes", mens = /revision|mensual/.test(String(f.tipo || "").toLowerCase());
-  const tipo = mens ? "\n## Qué mensaje es\nMensaje de la REVISIÓN MENSUAL: empieza por su logro más visible del mes con un dato concreto (constancia, centímetros, fuerza, cómo se siente), después lo que ha aprendido y el foco del mes que viene. Sin juicios sobre el cuerpo." : vi ? "\n## Qué mensaje es\nMensaje del VIERNES: 2-3 líneas (4 como mucho). Cierra la semana con un reflejo concreto de lo que ha hecho, recuerda el formulario semanal si toca y anima al finde. Sin preguntas que pidan respuesta larga y sin hablar de técnica." : "\n## Qué mensaje es\nMensaje del LUNES: aplauso concreto de su semana, algo de su formulario o de la app, cómo se plantea la semana (qué días y a qué hora) y como mucho una pregunta más.";
+  const tipo = mens ? "\n## Qué mensaje es\nMensaje de la REVISIÓN MENSUAL: empieza por su logro más visible del mes con un dato concreto (constancia, centímetros, fuerza, cómo se siente), después lo que ha aprendido y el foco del mes que viene. Sin juicios sobre el cuerpo." : vi ? "\n## Qué mensaje es\nMensaje del VIERNES: 2-3 líneas (4 como mucho). Cierra la semana con un reflejo concreto de lo que ha hecho, recuerda el formulario semanal si toca y anima al finde. Sin preguntas que pidan respuesta larga y sin hablar de técnica." : "\n## Qué mensaje es\nMensaje del LUNES: un reconocimiento concreto de su semana, algo de su formulario o de la app y, si hace falta, una idea para esta semana. Como mucho una pregunta y nunca sobre qué días o a qué hora entrenará.";
   return `Cliente: ${f.cliente}${tipo}${parte("Cómo le habla Alex", f.voz)}${parte(vi ? "Su finde" : "Su semana (personal)", f.semana_personal)}${parte("Su semana (entreno)", f.semana_entreno)}${parte("Datos", f.datos)}${parte("Progreso", f.progreso)}${parte("A tener en cuenta", f.tener_en_cuenta)}`;
 }
 async function rondaIA(b, env) {
@@ -127,6 +130,26 @@ async function rondaIA(b, env) {
   }
   if (s && s.ok) s.data = { fila: s.data, ia: true };
   return s;
+}
+
+// «Modificar» (Alex 30/10): tres versiones del mensaje a la vez para elegir una; no se guarda nada hasta que Alex elige
+const TRES_VERSIONES = `Devuelve SOLO un JSON con tres versiones del mismo mensaje, sin texto fuera del JSON:
+{"cercano": "...", "directo": "...", "corto": "..."}
+- cercano: más cálido y personal, que se note que Alex le conoce (algo concreto suyo).
+- directo: más firme y al grano, sin perder el cariño; sin «tienes que» ni «deberías».
+- corto: 2-3 líneas como mucho.
+Las tres con las mismas reglas de voz y con los mismos hechos (no inventes nada que no esté en el contexto).`;
+async function rondaVersiones(b, env) {
+  if (!env || !env.ANTHROPIC_API_KEY) return { ok: false, error: "Para las 3 versiones hace falta la IA conectada (ANTHROPIC_API_KEY en Cloudflare)" };
+  const g = await google({ panel: true, k: PANEL_KEY, accion: "rondaFila", datos: { id: b.id } });
+  if (!g || !g.ok) return g || { ok: false, error: "Google no responde ahora" };
+  const f = g.data, actual = b.actual != null ? String(b.actual) : (f.mensaje || ""), pet = String(b.peticion || "").slice(0, 1000);
+  if (f.mensaje_estado === "enviado") return { ok: false, error: "Ese mensaje ya está enviado" };
+  const raw = await claudeTexto(env, VOZ_ALEX + "\n\n" + TRES_VERSIONES, `${contextoFila(f)}\n\n## Mensaje propuesto ahora\n${actual || "(ninguno)"}${pet ? "\n\n## Lo que pide Alex además\n" + pet : ""}`, 1400);
+  let j; try { j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); } catch (e) { return { ok: false, error: "La respuesta no se entendió; prueba otra vez" }; }
+  const versiones = [["cercano", "Más cercano"], ["directo", "Más directo"], ["corto", "Más corto"]].map(([k, t]) => ({ tipo: k, titulo: t, texto: String(j[k] || "").trim() })).filter(v => v.texto);
+  if (!versiones.length) return { ok: false, error: "No han salido versiones; prueba otra vez" };
+  return { ok: true, data: { versiones } };
 }
 
 // ───────── Llamadas: preparar la llamada y mensaje de seguimiento (API de Claude) ─────────
@@ -223,7 +246,7 @@ export default {
     if (u.pathname === "/panel/ia" && req.method === "POST") {
       let b = {}; try { b = JSON.parse(await req.text()); } catch (e) { return js({ ok: false, error: "JSON no válido" }, 400); }
       if (b.k !== PANEL_KEY) return js({ ok: false, error: "No autorizado" }, 403);
-      try { return js(await (b.que === "lead" ? leadIA(b, env) : rondaIA(b, env))); } catch (e) { return js({ ok: false, error: String(e.message || e).slice(0, 300) }, 502); }
+      try { return js(await (b.que === "lead" ? leadIA(b, env) : b.que === "versiones" ? rondaVersiones(b, env) : rondaIA(b, env))); } catch (e) { return js({ ok: false, error: String(e.message || e).slice(0, 300) }, 502); }
     }
     if (u.pathname === "/icon.png") {
       const b = Uint8Array.from(atob(ICON), c => c.charCodeAt(0));

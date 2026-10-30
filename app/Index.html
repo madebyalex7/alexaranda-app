@@ -145,6 +145,9 @@ textarea{width:100%;font:inherit;font-size:14px;padding:10px 12px;border-radius:
 .pill.fl{background:var(--soft);color:var(--accent-2)}
 .big{font-family:var(--display);font-size:54px;line-height:1;margin:6px 0}
 .pasos{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.paseos{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 10px;background:var(--soft);border-radius:14px;padding:10px 14px;margin:6px 0 4px}
+.paseos span{display:flex;align-items:center;gap:8px;font-size:14px}.paseos span .ic{width:18px;height:18px;color:var(--accent-2)}
+.paseos b{font-size:22px;font-weight:500}.paseos small{grid-column:1/-1;color:var(--muted);font-size:12.5px}
 .pasos .pr{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
 .pasos small{color:var(--muted);font-size:12.5px}
 .mover{margin-top:16px}
@@ -1057,6 +1060,15 @@ function minutosDia(k){
   if(d.vc && d.vc.length) s += 3 * 60;
   return Math.max(10, Math.round(s / 300) * 5);
 }
+/* Paseos aparte de los entrenos y del resto de extras (Alex 30/10): no suman ni restan entrenos */
+const esPaseo = x=>/camin|paseo/i.test(x.tipo || "");
+function resumenMover(){
+  const ex = (D.extras || []).slice().sort((a, b)=>a.fecha < b.fecha ? -1 : 1), pa = ex.filter(esPaseo), ot = ex.filter(x=>!esPaseo(x));
+  if(!ex.length) return "";
+  const min = pa.reduce((a, x)=>a + (+x.min || 0), 0);
+  return `${pa.length ? `<div class="paseos"><span>${ic("caminar")} Paseos esta semana</span><b>${pa.length}</b>${min ? `<small>${min} min en total · aparte de tus entrenos</small>` : `<small>aparte de tus entrenos</small>`}</div>` : ""}
+  ${ot.length ? `<div class="label" style="margin-top:6px">Otros extras de esta semana</div><div class="xdots">${ot.map(x=>`<span class="xd">${esc(x.tipo)}${x.min ? " · " + x.min + " min" : ""}</span>`).join("")}</div>` : ""}`;
+}
 /* Franja L-D: punto en los días entrenados (fecha de «fin» o «actualizado») y otro pequeño en los de extra */
 function franjaSemana(){
   if(!D.lunes) return "";
@@ -1794,7 +1806,7 @@ function semana(){
   ${D.racha ? `<p class="racha" style="margin:-6px 0 14px">${fuego()} ${D.racha} ${D.racha === 1 ? "semana completa" : "semanas completas seguidas"}</p>` : ""}
   <div class="circs" role="list">${ENT().map(k=>{ const h = !!D.est.hechos[k], cb = cubierto(k), fl = !!D.est.flojo[k], cl = h ? (fl ? "fl" : "ok") : cb ? "cb" : ""; return `<div class="circ ${cl}" role="listitem" aria-label="${esc(dd(k).n)}: ${h ? (fl ? "hecho en versión tranquila" : "hecho") : cb ? "hecho con Sin tiempo" : "pendiente"}"><i>${h && !fl ? "✓" : ""}</i><span>${esc(dd(k).n)}</span><small>${esc(dd(k).t)}</small>${dd(k).ds ? `<small class="ds">${esc(dd(k).ds)}</small>` : ""}</div>`; }).join("")}</div>
   <div class="leyenda"><span><b class="l1"></b>Hecho</span><span><b class="l2"></b>Día tranquilo</span><span><b class="l3"></b>Con «Sin tiempo»</span><span><b></b>Pendiente</span></div>
-  ${D.extras.length ? `<div class="label" style="margin-top:6px">Extra de esta semana</div><div class="xdots">${D.extras.slice().sort((a, b)=>a.fecha < b.fecha ? -1 : 1).map(x=>`<span class="xd">${esc(x.tipo)}${x.min ? " · " + x.min + " min" : ""}</span>`).join("")}</div>` : ""}
+  ${resumenMover()}
   <div class="label" style="margin-top:22px">Tu progreso en este bloque</div>
   ${D.progreso.length ? `<div class="sum" style="margin-top:8px">${D.progreso.map(p=>{ const d = Math.round((p.now - p.ini) * 10) / 10; return `<div class="row"><span>${esc(p.nm.replace(" con mancuernas", "").replace(" con mancuerna", ""))}</span><span class="pill ${d > 0 ? "ok" : ""}">${String(p.ini).replace(".", ",")} → ${String(p.now).replace(".", ",")} kg${d > 0 ? " · +" + String(d).replace(".", ",") : ""}</span></div>`; }).join("")}</div>`
     : `<p class="sub" style="font-size:13.5px;margin-top:6px">En cuanto apuntes tus pesos, aquí verás cómo van subiendo en los ejercicios principales.</p>`}

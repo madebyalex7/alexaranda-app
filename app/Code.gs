@@ -315,9 +315,9 @@ function L_desdeInicio(porSemEj, dias, entreno) {
  * Medallas: totales de las semanas ya cerradas (antes de la actual). El front suma la semana en curso.
  * Devuelve { entrenos, semCompletas, mejorRacha, marcas, extras, test, mes, semBloque }.
  */
-function L_logros(t, diasIdx, porSemEj, dias, S, aj, entreno, objetivo) {
+function L_logros(t, diasIdx, porSemEj, dias, S, aj, entreno, objetivo, desde) {
   var entrenos = 0, semCompletas = 0, mejorRacha = 0, racha = 0;
-  for (var w = 1; w < S; w++) {
+  for (var w = desde || 1; w < S; w++) {
     var n = L_diasHechos(diasIdx[w] || {}, entreno, objetivo);
     entrenos += n;
     if (n >= objetivo) { semCompletas++; racha++; if (racha > mejorRacha) mejorRacha = racha; } else racha = 0;
@@ -400,12 +400,22 @@ function L_diasHechos(diasSemana, entreno, objetivo) {
   return Math.min(n, objetivo);
 }
 
-function L_racha(historial, semana, objetivo) {
-  objetivo = objetivo || 3;
+/** Primera semana del programa que vivió en ESTA app (Alex 30/10: las de antes de migrar no son entrenos saltados).
+ *  Ajustes › semana_app_desde si Alex la pone; si no, la primera semana con algo apuntado (Días o Registro); sin nada, la actual */
+function L_primeraSemana(diasIdx, registro, aj, S) {
+  var fija = L_int(aj && aj.semana_app_desde); if (fija >= 1) return Math.min(fija, S);
+  var min = S;
+  Object.keys(diasIdx || {}).forEach(function (w) { w = L_int(w); var d = diasIdx[w] || {};
+    if (w >= 1 && w < min && Object.keys(d).some(function (k) { return d[k] && (d[k].hecho || d[k].inicio || d[k].flojo); })) min = w; });
+  (registro || []).forEach(function (r) { var w = L_int(r.semana); var algo = function (v) { return v !== '' && v != null; }; if (w >= 1 && w < min && (algo(r.peso) || algo(r.repes) || L_bool(r.hecho))) min = w; });
+  return min;
+}
+function L_racha(historial, semana, objetivo, desde) {
+  objetivo = objetivo || 3; desde = desde || 1;
   var porSem = {};
   historial.forEach(function (h) { porSem[L_int(h.semana)] = L_int(h.dias_hechos); });
   var n = 0;
-  for (var w = semana - 1; w >= 1; w--) {
+  for (var w = semana - 1; w >= desde; w--) {
     if (porSem[w] >= objetivo) n++; else break;
   }
   return n;
@@ -654,6 +664,7 @@ function L_construir(t) {
   t.pasos.forEach(function (p) { if (p.fecha) pasos[String(p.fecha)] = L_int(p.pasos); });
 
   var lunes = L_lunesPrograma(aj, S);
+  var desdeApp = L_primeraSemana(diasIdx, t.registro, aj, S);
   var proximo = L_proximo(prog, t.plan, t.agenda, S, lunes, t.hoy, aj);
   var desdeInicio = L_desdeInicio(porSemEj, dias, entreno);
 
@@ -663,13 +674,13 @@ function L_construir(t) {
     ajustes: { paleta: aj.paleta || t.paletaMaestra || 'marca', crono: aj.crono, objetivo_pasos: pasosObj }, sexo: aj.sexo,
     nivel: aj.nivel, pesosDisp: aj.pesos_disponibles,
     orden: orden, dias: dias, hist: hist, est: est, reg: reg, entreno: entreno, objetivo: objetivo,
-    racha: L_racha(t.historial, S, objetivo), progreso: progBloque, notaAlex: notaAlex, vped: vped,
+    racha: L_racha(t.historial, S, objetivo, desdeApp), desdeApp: desdeApp, progreso: progBloque, notaAlex: notaAlex, vped: vped,
     extras: extras, pasos: pasos, hoy: t.hoy,
     nutri: aj.nutricion_pdf ? { fecha: aj.nutricion_fecha || '' } : null,
     notasSemana: notasSemana, recordatorio: recordatorio, textoCal: aj.texto_calentamiento, movilidad: aj.movilidad,
     proximo: proximo, desdeInicio: desdeInicio,
     correcciones: correcciones, corrSup: corrSup, porque: aj.porque,
-    logros: L_logros(t, diasIdx, porSemEj, dias, S, aj, entreno, objetivo),
+    logros: L_logros(t, diasIdx, porSemEj, dias, S, aj, entreno, objetivo, desdeApp),
     mp: L_miProgreso(t, aj),
     semAnt: S > 1 && diasIdx[S - 1] ? L_diasHechos(diasIdx[S - 1], entreno, objetivo) : null   // solo si ya usaba la app la semana pasada
   };

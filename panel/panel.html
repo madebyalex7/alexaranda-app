@@ -459,6 +459,15 @@ details.lsec>summary{cursor:pointer;font:600 19px/1.2 "Cormorant Garamond",Georg
 .pgfila{border:0!important;background:none!important;box-shadow:none!important}.pgfila>.ficha{padding:0!important;border:0!important}
 .pgcols{display:grid;grid-template-columns:1.1fr 1fr;gap:18px}@media(max-width:900px){.pgcols{grid-template-columns:1fr}}
 .pgir{margin:0 0 10px;display:block}
+.v3{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0 6px}
+.v3lista{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:8px 0 12px}
+.v3op{border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;animation:v3in .25s ease both}
+.v3op:nth-child(2){animation-delay:.05s}.v3op:nth-child(3){animation-delay:.1s}
+.v3op .v3t{font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.7}
+.v3op p{margin:0;font-size:14px;line-height:1.45;flex:1}
+.estado-m.err{color:#c0553a}
+@keyframes v3in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.v3op{animation:none}}
 </style>
 </head>
 <body>
@@ -1203,6 +1212,7 @@ function vistazo(f,d){
   if(d.fotos&&(d.fotos.proxima||d.fotos.ultima)){ var fp=d.fotos, hh=hoy(), dd=esFecha(fp.proxima)?Math.round((new Date(fp.proxima)-new Date(hh))/864e5):null, pasado=dd!=null&&dd<0&&fp.estado!=='hecha';
     T.push(tile('Fotos y medidas',fp.estado==='hecha'&&!esFecha(fp.proxima)?'✓':(dd==null?'—':pasado?'Pasado':dd===0?'Hoy':'en '+dd+' <small>'+(dd===1?'día':'días')+'</small>'),
       (esFecha(fp.proxima)?(pasado?'Tocaban el ':'Toca el ')+esc(fCorta(fp.proxima)):'')+(esFecha(fp.ultima)?' · últimas: '+esc(fCorta(fp.ultima)):'')+(fp.carpeta?' · <a href="'+esc(fp.carpeta)+'" target="_blank" rel="noopener">ver fotos</a>':''),null,pasado?'mal':'')); }
+  if(d.paseos!=null&&d.paseos!=='') T.push(tile('Paseos',esc(String(d.paseos)),'aparte de los entrenos',null));
   if(d.formulario) T.push(tile('Formulario',d.formulario.fecha?'✓':'Sin hacer',d.formulario.fecha?esc(fCorta(d.formulario.fecha)):'',null,d.formulario.fecha?'ok':'mal'));
   var td=tiraDias(d);
   if(!T.length&&!td) return '';
@@ -1230,6 +1240,36 @@ function meterEnMensaje(txt,t){
   if(txt.indexOf(t)>=0) return txt.split('\n\n'+t).join('').split(t+'\n\n').join('').split(t).join('').replace(/\n{3,}/g,'\n\n').trim();   // quitar si ya estaba
   if(ps.length>=3) { ps.splice(ps.length-1,0,t); return ps.join('\n\n'); }   // antes del cierre
   return txt+(txt?'\n\n':'')+t;
+}
+/* «Modificar» (Alex 30/10): tres versiones a la vez (más cercano, más directo, más corto) y se elige una */
+var RV={};   // id de tarjeta → {cargando, err, versiones}
+function tresVersiones(f){
+  if(f.mensaje_estado==='enviado') return '';
+  var v=RV[f.id]||{};
+  var h='<div class="v3"><button class="btn prim" data-v3'+(v.cargando?' disabled':'')+'>'+(v.cargando?'Escribiendo 3 versiones…':v.versiones?'↻ Otras 3 versiones':'✨ Modificar · 3 versiones')+'</button>'+
+    (R.ia?'':'<span class="estado-m">Necesita la IA conectada en Cloudflare</span>')+'</div>';
+  if(v.err) h+='<p class="estado-m err">No ha salido: '+esc(v.err)+'. Prueba otra vez; si sigue, usa los botones de abajo.</p>';
+  if(v.versiones) h+='<div class="v3lista">'+v.versiones.map(function(x,i){ return '<div class="v3op"><div class="v3t">'+esc(x.titulo)+'</div><p>'+esc(x.texto).replace(/\n/g,'<br>')+'</p><button class="btn" data-v3usar="'+i+'">Usar esta</button></div>'; }).join('')+'</div>';
+  return h;
+}
+function pedirVersiones(f,art){
+  var ta=art&&$('textarea[data-rc="mensaje"]',art), actual=ta?ta.value:(f.mensaje||'');
+  if(pend['Ronda|'+f.id]) enviar('Ronda|'+f.id);
+  RV[f.id]={cargando:true}; rrepintar(f.id);
+  var ctl=window.AbortController?new AbortController():null, tmo=setTimeout(function(){ if(ctl) ctl.abort(); },60000);
+  fetch('/panel/ia',{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},signal:ctl?ctl.signal:undefined,body:JSON.stringify({k:KEY,id:f.id,que:'versiones',actual:actual})})
+    .then(function(r){ return r.json().catch(function(){ throw new Error('el servidor no ha respondido bien ('+r.status+')'); }); })
+    .then(function(j){ if(!j||!j.ok) throw new Error((j&&j.error)||'no ha funcionado'); RV[f.id]={versiones:j.data.versiones}; })
+    .catch(function(e){ RV[f.id]={err:e.name==='AbortError'?'tarda demasiado':String(e.message||e)}; })
+    .then(function(){ clearTimeout(tmo); rrepintar(f.id); });
+}
+function usarVersion(f,i,btn){
+  var x=(RV[f.id]&&RV[f.id].versiones||[])[i]; if(!x) return;
+  var art=btn.closest('.rfila'), ta=art&&$('textarea[data-rc="mensaje"]',art);
+  btn.disabled=true; btn.textContent='Guardando…';
+  if(pend['Ronda|'+f.id]) enviar('Ronda|'+f.id);
+  api('rondaNuevoMensaje',{id:f.id,texto:x.texto,peticion:x.titulo,actual:ta?ta.value:f.mensaje}).then(function(fila){ rponer(fila); delete RV[f.id]; rrepintar(f.id); flash(); })
+    .catch(function(e){ btn.disabled=false; btn.textContent='Usar esta'; alerta(e); });
 }
 function siguientePend(id){ var o=R.filas.filter(function(x){ return !rhecha(x)&&x.id!==id; }); return o.length?o[0]:null; }
 function cuerpo(f,d){
@@ -1276,7 +1316,7 @@ function cuerpo(f,d){
         (f.mensaje_estado==='descartado'?'':'<button class="btn" data-mest="descartado">No enviar</button>')+' '+est+'</div>'+
       (telDe(f)?'':'<p class="estado-m" style="margin:6px 0 0">Sin teléfono guardado: WhatsApp te pedirá elegir el chat.</p>')+
       (f.mensaje_estado==='enviado'?'':'<div class="lab" style="margin-top:12px">Cambiar el mensaje'+(R.ia?'':' <span class="estado-m">(sin la API conectada, lo rehago en el siguiente chequeo)</span>')+'</div>')+
-      anadirMsg(f,d)+opcionesMsg(f,d)+
+      anadirMsg(f,d)+tresVersiones(f)+opcionesMsg(f,d)+
       (f.mensaje_estado==='enviado'?'':'<div class="pedir"><input type="text" data-ped="mensaje" placeholder="O escribe lo que quieras: «pregúntale por la boda», «sin emojis»…" aria-label="Pedir otro cambio del mensaje"><button class="btn" data-pedir="mensaje">Cambiar</button></div>')+
       (vers.length?'<details class="versiones"><summary>Versiones anteriores ('+vers.length+')</summary>'+vers.slice().reverse().map(function(v){ return '<p>'+esc(v.texto)+(v.peticion?'<br><i>Pediste: «'+esc(v.peticion)+'»</i>':'')+'</p>'; }).join('')+'</details>':'')+
     '</section>';
@@ -1644,6 +1684,8 @@ function enlazarRonda(){
       var ta1=$('textarea[data-rc="mensaje"]',art), nuevo=meterEnMensaje(ta1?ta1.value:f.mensaje,ad0.texto);
       rguardar(f,{mensaje:nuevo},true); rrepintar(id); return; }
     if(b.hasAttribute('data-opc')){ rIA(f,'mensaje','',b.getAttribute('data-opc'),b); return; }
+    if(b.hasAttribute('data-v3')){ pedirVersiones(f,art); return; }
+    if(b.hasAttribute('data-v3usar')){ usarVersion(f,+b.getAttribute('data-v3usar'),b); return; }
     if(b.hasAttribute('data-revisar')){
       var si=b.getAttribute('data-revisar')==='1'; rguardar(f,{revisado:si?hoy():''},true);
       if(si){ var orden=R.filas.filter(function(x){ return !rhecha(x); }); R.abierta=orden.length?orden[0].id:null; guardarLocal('ronda_abierta',R.abierta||''); rrepintar(R.abierta||id,!!R.abierta); }
