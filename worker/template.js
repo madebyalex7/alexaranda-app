@@ -125,7 +125,7 @@ async function rondaIA(b, env) {
     const c = cs.find(x => x.cid === b.cid); if (!c) return { ok: false, error: "No encuentro ese cambio" };
     if (c.estado === "aplicado") return { ok: false, error: "Ese cambio ya está aplicado" };
     const raw = await claudeTexto(env, NORMAS_CAMBIO, `${contextoFila(f)}\n\n## Cambio propuesto ahora\n${JSON.stringify({ titulo: c.titulo, porque: c.porque, tipo: c.tipo, params: c.params })}\n\n## Lo que pide Alex\n${pet}`, 900);
-    let n; try { n = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); } catch (e) { return { ok: false, error: "La respuesta no se entendió; prueba otra vez" }; }
+    let n; try { n = jsonIA(raw); } catch (e) { return { ok: false, error: "La respuesta no se entendió; prueba otra vez" }; }
     s = await google({ panel: true, k: PANEL_KEY, accion: "rondaReemplazarCambio", datos: { id: f.id, cid: b.cid, nuevo: n } });
   }
   if (s && s.ok) s.data = { fila: s.data, ia: true };
@@ -139,6 +139,23 @@ const TRES_VERSIONES = `Devuelve SOLO un JSON con tres versiones del mismo mensa
 - directo: más firme y al grano, sin perder el cariño; sin «tienes que» ni «deberías».
 - corto: 2-3 líneas como mucho.
 Las tres con las mismas reglas de voz y con los mismos hechos (no inventes nada que no esté en el contexto).`;
+/* JSON de la IA: a veces mete saltos de línea reales dentro de los textos, o un bloque ```json. Se arregla antes de leerlo */
+function jsonIA(raw) {
+  const t = String(raw).slice(String(raw).indexOf("{"), String(raw).lastIndexOf("}") + 1);
+  let out = "", dentro = false, esc = false;
+  for (const ch of t) {
+    if (dentro) {
+      if (esc) { out += ch; esc = false; continue; }
+      if (ch === "\\") { out += ch; esc = true; continue; }
+      if (ch === '"') { dentro = false; out += ch; continue; }
+      if (ch === "\n") { out += "\\n"; continue; }
+      if (ch === "\r") continue;
+      if (ch === "\t") { out += "\\t"; continue; }
+      out += ch;
+    } else { if (ch === '"') dentro = true; out += ch; }
+  }
+  return JSON.parse(out);
+}
 async function rondaVersiones(b, env) {
   if (!env || !env.ANTHROPIC_API_KEY) return { ok: false, error: "Para las 3 versiones hace falta la IA conectada (ANTHROPIC_API_KEY en Cloudflare)" };
   const g = await google({ panel: true, k: PANEL_KEY, accion: "rondaFila", datos: { id: b.id } });
@@ -146,7 +163,7 @@ async function rondaVersiones(b, env) {
   const f = g.data, actual = b.actual != null ? String(b.actual) : (f.mensaje || ""), pet = String(b.peticion || "").slice(0, 1000);
   if (f.mensaje_estado === "enviado") return { ok: false, error: "Ese mensaje ya está enviado" };
   const raw = await claudeTexto(env, VOZ_ALEX + "\n\n" + TRES_VERSIONES, `${contextoFila(f)}\n\n## Mensaje propuesto ahora\n${actual || "(ninguno)"}${b.extra ? "\n\n## Esta semana, además (de su app)\n" + String(b.extra).slice(0, 600) + "\nSi no se pesó o no mandó los vídeos pedidos, recuérdaselo con una frase corta, sin reproche." : ""}${pet ? "\n\n## Lo que pide Alex además\n" + pet : ""}`, 1400);
-  let j; try { j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); } catch (e) { return { ok: false, error: "La respuesta no se entendió; prueba otra vez" }; }
+  let j; try { j = jsonIA(raw); } catch (e) { return { ok: false, error: "La respuesta no se entendió; prueba otra vez" }; }
   const versiones = [["cercano", "Más cercano"], ["directo", "Más directo"], ["corto", "Más corto"]].map(([k, t]) => ({ tipo: k, titulo: t, texto: String(j[k] || "").trim() })).filter(v => v.texto);
   if (!versiones.length) return { ok: false, error: "No han salido versiones; prueba otra vez" };
   return { ok: true, data: { versiones } };
@@ -173,7 +190,7 @@ async function correccionIA(b, env) {
   const abiertas = c.correcciones.filter(x => !/superad/i.test(x.estado)).map(x => `- ${x.fecha} · ${x.ejercicio_id}: ${x.texto}`).join("\n") || "(ninguna)";
   const ctx = `Cliente: ${c.cliente}${c.voz ? "\n## Cómo le habla Alex\n" + c.voz : ""}\n## Sus ejercicios (ejercicio_id: nombre)\n${ejs}\n## Correcciones abiertas\n${abiertas}${b.nota ? "\n## Lo que añade Alex\n" + String(b.nota).slice(0, 1500) : ""}\n## Transcripción de Cap\n${tr}`;
   const raw = await claudeTexto(env, VOZ_ALEX + "\n\n" + CORRECCION, ctx, 3500);
-  let j; try { j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); } catch (e) { return { ok: false, error: "La respuesta no se entendió; prueba otra vez" }; }
+  let j; try { j = jsonIA(raw); } catch (e) { return { ok: false, error: "La respuesta no se entendió; prueba otra vez" }; }
   const ids = new Set(c.ejercicios.map(e => e.id));
   const out = { mensaje: String(j.mensaje || "").split("{{CAP}}").join(cap || "(enlace de Cap)"), aviso: String(j.aviso || ""),
     correcciones: (j.correcciones || []).filter(x => x && ids.has(x.ejercicio_id) && x.texto),
