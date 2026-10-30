@@ -676,13 +676,12 @@ var EUR2 = new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',minimu
 function euros(v){ var s=String(v==null?'':v).trim(); if(!s) return ''; if(isNaN(parseFloat(s.replace(',','.')))) return s; return EUR2.format(num(s)); }
 function vivo(r){ return !r.archivado; }
 
-/* WhatsApp en el ordenador (Alex 30/10): enlace normal a web.whatsapp.com/send (su Business), que Chrome abre en la app de WhatsApp Web instalada. La app de escritorio es su número personal: no usarla. En el móvil, wa.me abre la app */
-window.addEventListener('click',function(e){ var a=e.target.closest&&e.target.closest('a[href*="wa.me/"]'); if(!a) return;
-  var u; try{ u=new URL(a.href); }catch(er){ return; } if(!/(^|\.)wa\.me$/.test(u.hostname)) return;
-  var tel=u.pathname.replace(/\D/g,''), tx=u.searchParams.get('text')||'';
-  if(!tel){ e.preventDefault(); e.stopImmediatePropagation(); alerta(new Error('Esta ficha no tiene teléfono. Ponlo en su ficha antes de escribirle, para no equivocarte de chat.')); return; }   // sin número, WhatsApp deja elegir el chat a mano
-  if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1)) return;   // por dispositivo, no por ancho: una ventana estrecha del Mac caía en wa.me y abría la app personal
-  a.href='https://web.whatsapp.com/send?phone='+tel+'&text='+encodeURIComponent(tx); a.target='_blank'; },true);
+/* WhatsApp (Alex 30/10): todos los botones salen de aquí. En el ordenador, siempre web.whatsapp.com/send: Chrome lo abre en su app de WhatsApp Web (su Business). wa.me, api.whatsapp.com y whatsapp:// abren la app del Mac, que es su número personal. En el móvil, wa.me */
+var WA_MOVIL=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>4);
+function waU(tel,txt){ tel=String(tel||'').replace(/\D/g,''); var t=txt?encodeURIComponent(txt):''; if(WA_MOVIL) return 'https://wa.me/'+tel+(t?'?text='+t:''); return 'https://web.whatsapp.com/send?phone='+tel+(t?'&text='+t:''); }
+window.addEventListener('click',function(e){ var a=e.target.closest&&e.target.closest('a[href*="wa.me/"],a[href*="web.whatsapp.com/send"]'); if(!a) return;
+  var u; try{ u=new URL(a.href); }catch(er){ return; } var tel=u.hostname==='web.whatsapp.com'?u.searchParams.get('phone'):u.pathname.replace(/\D/g,'');
+  if(!tel){ e.preventDefault(); e.stopImmediatePropagation(); alerta(new Error('Esta ficha no tiene teléfono. Ponlo en su ficha antes de escribirle, para no equivocarte de chat.')); } },true);   // sin número, WhatsApp deja elegir el chat a mano
 
 /* ───────── red ───────── */
 function api(accion, datos, keepalive){
@@ -786,7 +785,7 @@ function waCobro(p){
   var fl=esFecha(p.fecha)?(+p.fecha.slice(8,10))+' de '+MES[+p.fecha.slice(5,7)-1]:'';
   var t=p.fecha<h?('Hola '+nom+'!\n\nTe escribo por la cuota del programa del '+fl+(imp?' ('+imp+')':'')+', que no me consta todavía. Si ya la has hecho, dímelo y lo apunto, vale?\n\nUn abrazo!')
     :('Hola '+nom+'!\n\nTe recuerdo que '+(p.fecha===h?'hoy':'el '+fl)+' toca la cuota del programa'+(imp?' ('+imp+')':'')+'. Cuando la tengas hecha me dices, vale?\n\nUn abrazo!');
-  var tel=avTel(c); return 'https://wa.me/'+(tel||'')+'?text='+encodeURIComponent(t);
+  var tel=avTel(c); return waU(tel,t);
 }
 function avTel(a){ var d=String(a.telefono||'').replace(/[^0-9]/g,'').replace(/^00/,''); return /^[6789]\d{8}$/.test(d)?'34'+d:d; }
 function avisosHtml(){
@@ -797,7 +796,7 @@ function avisosHtml(){
   else h+='<ul class="corta avl">'+AV.lista.map(function(a){ var tel=avTel(a);
     return '<li class="av-'+esc(a.nivel)+'"><span class="punto '+(a.nivel==='rojo'?'rojo':'amarillo')+'"></span>'+
       '<button class="quien" '+(a.cliente_id?'data-abrir="Clientes|'+esc(a.cliente_id)+'"':'disabled')+'><b>'+esc(a.cliente)+' · '+esc(a.titulo)+'</b><span>'+esc(a.detalle||'')+'</span></button>'+
-      '<span class="avacc"><a class="btn wa" href="https://wa.me/'+(tel||'')+'" target="_blank" rel="noopener">WhatsApp</a><button class="btn" data-avvisto="'+esc(a.id)+'">Visto</button></span></li>'; }).join('')+'</ul>';
+      '<span class="avacc"><a class="btn wa" href="'+waU(tel)+'" target="_blank" rel="noopener">WhatsApp</a><button class="btn" data-avvisto="'+esc(a.id)+'">Visto</button></span></li>'; }).join('')+'</ul>';
   if(AV.errores.length) h+='<p class="estado-m">No he podido leer: '+esc(AV.errores.join(' · '))+'</p>';
   return h+'</section>';
 }
@@ -1254,7 +1253,7 @@ function rpend(f){ return rj(f.cambios,[]).filter(function(c){ return c.estado==
 function rhecha(f){ return !!f.revisado||f.mensaje_estado==='enviado'||f.mensaje_estado==='descartado'; }
 function fLarga(s){ if(!esFecha(s)) return s||''; var p=s.split('-'); var d=new Date(+p[0],+p[1]-1,+p[2]); return ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'][d.getDay()]+' '+(+p[2])+' de '+['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][+p[1]-1]; }
 function telDe(f){ var c=R.clientes[f.cliente_id]||{}; var d=String(c.telefono||'').replace(/[^0-9]/g,'').replace(/^00/,''); return /^[6789]\d{8}$/.test(d)?'34'+d:d; }
-function waHref(f){ var t=encodeURIComponent(f.mensaje||''); var tel=telDe(f); return tel?'https://wa.me/'+tel+'?text='+t:'https://wa.me/?text='+t; }
+function waHref(f){ var tel=telDe(f); return waU(tel,f.mensaje||''); }
 function esViernes(){ return R.tipo==='viernes'; }
 function esMensual(){ return R.tipo==='mensual'; }
 /* Renovación y cobros (de la ficha del cliente en el panel) */
@@ -1394,7 +1393,7 @@ function formBloque(d){ var fo=d.formulario; if(!fo) return ''; if(/sin hacer/i.
 var ALD={dolor:[]};
 function alTel(cid){ var c=cid&&buscar('Clientes',cid); return c?avTel({telefono:c.telefono||''}):''; }
 function alAcciones(t,cid){ cid=cid||(t&&t.cliente_id); var pr=t&&t.propuesta||'', tel=alTel(cid);
-  return '<div class="racc">'+(t&&t.estado!=='hecha'?'<button class="btn prim" data-alhecho="'+esc(t.id)+'">Hecho</button>':'')+(pr?'<button class="btn" data-dbcopia="'+esc(t.id)+'">Copiar respuesta</button>':'')+(cid?'<a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+(tel||'')+(pr?'?text='+encodeURIComponent(pr):'')+'">Abrir WhatsApp</a><button class="btn" data-alficha="'+esc(cid)+'">Abrir su ficha</button>':'')+(t?'<button class="btn" data-aleditar="'+esc(t.id)+'">Editar</button>':'')+'</div>'; }
+  return '<div class="racc">'+(t&&t.estado!=='hecha'?'<button class="btn prim" data-alhecho="'+esc(t.id)+'">Hecho</button>':'')+(pr?'<button class="btn" data-dbcopia="'+esc(t.id)+'">Copiar respuesta</button>':'')+(cid?'<a class="btn wa" target="_blank" rel="noopener" href="'+waU(tel,pr)+'">Abrir WhatsApp</a><button class="btn" data-alficha="'+esc(cid)+'">Abrir su ficha</button>':'')+(t?'<button class="btn" data-aleditar="'+esc(t.id)+'">Editar</button>':'')+'</div>'; }
 function alTareaHtml(t){ var nt=String(t.notas||'').replace(/^\s*DETALLE:\s*/i,''), mt=[esFecha(t.fecha)?'Para el '+fCorta(t.fecha):'',t.origen?'de '+t.origen:'',esFecha(t.creada)?'creada el '+fCorta(t.creada):''].filter(Boolean).join(' · ');
   return (nt?'<p class="aldt">'+esc(nt)+'</p>':'')+(t.propuesta?'<span class="allb">Propuesta</span><p class="alpr">'+esc(t.propuesta)+'</p>':'')+(mt?'<p class="almeta">'+esc(mt)+'</p>':'')+alAcciones(t); }
 function alTareaZona(cid,zona){ var z=String(zona||'').toLowerCase(); return tareasVivas().filter(function(t){ var x=String(t.tarea||'').toLowerCase(); return t.cliente_id===cid&&/decidir qu[eé] hacer/.test(x)&&(!z||x.indexOf(z)>=0); })[0]||null; }
@@ -1536,7 +1535,7 @@ function cvCargar(){ CV.cargando=true; CV.err='';
     .catch(function(e){ CV.cargando=false; CV.err=e.message; if(S.tab==='ronda'&&R.tipo==='videos') pintarRonda(); }); }
 function cvEjNombre(r,id){ var e=((r&&r.ejercicios)||[]).filter(function(x){ return x.id===id; })[0]; return e?e.nombre:id; }
 function cvSelect(r,v,attr,i){ return '<select '+attr+'="'+i+'" aria-label="Ejercicio">'+((r&&r.ejercicios)||[]).map(function(e){ return '<option value="'+esc(e.id)+'"'+(e.id===v?' selected':'')+'>'+esc(e.nombre)+'</option>'; }).join('')+'</select>'; }
-function cvWa(c,txt){ var d=String(c.telefono||'').replace(/[^0-9]/g,'').replace(/^00/,''); if(/^[6789]\d{8}$/.test(d)) d='34'+d; return 'https://wa.me/'+(d||'')+'?text='+encodeURIComponent(txt||''); }
+function cvWa(c,txt){ var d=String(c.telefono||'').replace(/[^0-9]/g,'').replace(/^00/,''); if(/^[6789]\d{8}$/.test(d)) d='34'+d; return waU(d,txt||''); }
 function pintarVideos(sel){
   var app=$('#app');
   if(!CV.cargado){ app.innerHTML=sel+(CV.err?'<div class="pantalla"><h2>No se han podido cargar los vídeos</h2><p>'+esc(CV.err)+'</p><p><button class="btn prim" data-cvotra>Volver a cargar</button></p></div>':'<div class="cargando"></div>'); if(!CV.cargando&&!CV.err) cvCargar(); enlazarVideos(); return; }
@@ -1712,7 +1711,7 @@ function pintarNuevos(sel){
       '<span class="rtit"><span class="nvbar" aria-hidden="true"><i style="width:'+Math.round(dia*100/14)+'%"></i></span>'+esc((ch.filter(function(x){ return x.urg; })[0]||{}).t||(d||!c.codigo_app?'Todo en marcha':'Mirando su app…'))+'</span></button></div>'+
       (ab?'<div class="rcuerpo"><section class="rsec ancho2">'+altaFicha(c.id)+accesoHtml(c.id)+'<div class="racc" style="margin-top:8px"><button class="btn" data-nvver="entreno">🏋️ Ver su entreno</button><button class="btn" data-nvver="nutricion">🥗 Ver su nutrición</button></div></section><section class="rsec"><h3>Lista de control</h3><ul class="nvlista">'+ch.map(function(x){ return '<li class="'+(x.ok?'ok':x.urg?'mal':'')+'"><span class="nvc" aria-hidden="true">'+(x.ok?'✓':x.urg?'!':'·')+'</span><b>'+esc(x.t)+'</b><small>'+esc(x.sub)+'</small></li>'; }).join('')+'</ul></section>'+
         '<section class="rsec"><h3>Estas semanas, pídele</h3><ul class="tec">'+nvRecordatorios(c).map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul>'+
-        '<div class="racc" style="margin-top:12px">'+(tel?'<a class="btn wa" href="https://wa.me/'+tel+'" target="_blank" rel="noopener">WhatsApp</a>':'')+'<button class="btn" data-nvficha>Su ficha y calendario →</button></div></section></div>':'')+'</article>'; }).join('')+'</div>';
+        '<div class="racc" style="margin-top:12px">'+(tel?'<a class="btn wa" href="'+waU(tel)+'" target="_blank" rel="noopener">WhatsApp</a>':'')+'<button class="btn" data-nvficha>Su ficha y calendario →</button></div></section></div>':'')+'</article>'; }).join('')+'</div>';
   app.innerHTML=h;
   app.onclick=function(e){ var b=e.target.closest('button,a'); if(!b) return;
     if(b.hasAttribute('data-nvnuevo')){ irAlta(null); return; }
@@ -2001,7 +2000,7 @@ function paginaCliente(){
   var sub=[c.programa, c.estado!=='Activo'?c.estado:'', fin?'caduca '+fCorta(fin)+' ('+relativo(fin)+')':'', pc?'próximo cobro '+fCorta(pc.fecha):''].filter(Boolean).join(' · ');
   var h='<div class="pgcli"><div class="pgtop"><button class="btn" data-pgvolver>← Clientes</button>'+
     '<div class="pgnom"><span class="punto '+esc(c.semaforo)+'" title="'+esc(semTxt(c.semaforo))+'"></span><div><h2>'+esc(c.nombre||'Sin nombre')+'</h2><small>'+esc(sub)+'</small></div></div>'+
-    (tel?'<a class="btn wa" href="https://wa.me/'+tel+'" target="_blank" rel="noopener">WhatsApp</a>':'')+'</div>'+
+    (tel?'<a class="btn wa" href="'+waU(tel)+'" target="_blank" rel="noopener">WhatsApp</a>':'')+'</div>'+
     '<div class="pgbody"><nav class="pgnav" aria-label="Secciones">'+PG_SECS.map(function(s){ return '<button data-pgsec="'+s[0]+'" aria-pressed="'+(PG.sec===s[0])+'">'+PGI(s[2])+s[1]+'</button>'; }).join('')+
     PG_EXTRA.map(function(x){ return '<button '+x[0]+'="'+esc(c.id)+'">'+PGI(x[2])+x[1]+' <span class="pgx" aria-hidden="true">↗</span></button>'; }).join('')+'</nav>'+
     '<article class="fila abierta pgfila" data-t="Clientes" data-id="'+esc(c.id)+'"><div class="ficha">'+pgSeccion(c)+'</div></article></div></div>';
@@ -3452,7 +3451,7 @@ function lcuerpo(l){
   var e=l.llamada_estado||'agendada', tel=telLead(l), ig=igLead(l), gu=rj(l.guion,{});
   var h='<section class="rsec"><h3>Contacto</h3><div class="racc" style="margin:0 0 10px">'+
     (ig?'<a class="btn" href="https://instagram.com/'+encodeURIComponent(ig)+'" target="_blank" rel="noopener">Instagram</a>':'')+
-    (tel?'<a class="btn wa" href="https://wa.me/'+tel+'" target="_blank" rel="noopener">WhatsApp</a>':'')+
+    (tel?'<a class="btn wa" href="'+waU(tel)+'" target="_blank" rel="noopener">WhatsApp</a>':'')+
     (!ig&&!tel?'<span class="estado-m">Sin Instagram ni teléfono: añádelos abajo.</span>':'')+'</div>'+
     '<div class="campos">'+lcampo(l,'nombre','Nombre')+lcampo(l,'llamada','Llamada','datetime-local')+lcampo(l,'instagram','Instagram','text',false,'@usuario')+lcampo(l,'whatsapp','WhatsApp','tel',false,'con prefijo: 34…')+
     lcampo(l,'preocupacion','Qué le preocupa / objetivo','area',true)+'</div></section>';
@@ -3481,7 +3480,7 @@ function lresultado(l){
     h+='<p class="estado-m">'+(e==='no_presentado'?'No se presentó.':'No entró'+(l.motivo_no?': '+esc(l.motivo_no):'')+'.')+(SEG_TXT[paso]?' Seguimiento: mensaje '+SEG_TXT[paso]+(esFecha(l.proximo_contacto)?' ('+esc(fCorta(l.proximo_contacto))+', '+esc(relativo(l.proximo_contacto))+')':''):' Seguimiento terminado.')+'</p>';
     if(SEG_TXT[paso]){
       h+='<textarea class="msg lseg" data-lc="seguimiento_msg" placeholder="'+(LC.ia?'Pulsa «Proponer mensaje».':'Te lo dejo propuesto en el chequeo de las 6:00 del día que toca.')+'">'+esc(l.seguimiento_msg||'')+'</textarea>'+
-        '<div class="racc">'+(telLead(l)?'<a class="btn wa" data-lwa href="https://wa.me/'+telLead(l)+'?text='+encodeURIComponent(l.seguimiento_msg||'')+'" target="_blank" rel="noopener">Abrir en WhatsApp</a>':'')+
+        '<div class="racc">'+(telLead(l)?'<a class="btn wa" data-lwa href="'+waU(telLead(l),l.seguimiento_msg||'')+'" target="_blank" rel="noopener">Abrir en WhatsApp</a>':'')+
         (igLead(l)?'<a class="btn" href="https://ig.me/m/'+encodeURIComponent(igLead(l))+'" target="_blank" rel="noopener">Abrir en Instagram</a>':'')+
         '<button class="btn" data-lcopiar>Copiar</button><button class="btn prim" data-lescrito>Escrito ✓</button><button class="btn" data-lfin>No escribir más</button></div>'+
         (LC.ia?'<div class="pedir"><input type="text" data-ped="seguimiento" placeholder="«más corto», «menciona lo de su espalda»…" aria-label="Indicaciones para el mensaje"><button class="btn" data-lia="seguimiento">'+(l.seguimiento_msg?'Otra versión':'Proponer mensaje')+'</button></div>':'');
@@ -3519,7 +3518,7 @@ function btnApp(al,espera){ var c=(S.data.clientes||[]).filter(function(x){ retu
   if(!fo) return '<p class="estado-m">⏳ Esperando su formulario inicial'+(FOC[al.cliente_id]?'':' · mirando…')+'</p>';
   if(!c.codigo_app) return '<p class="estado-m">✓ Formulario recibido el '+esc(fCorta(String(fo.fecha).slice(0,10)))+'. Falta su código de la app en la ficha para mandarle su usuario.</p>';
   return '<div class="bienv"><b>'+(al.app_enviada?'✓ Usuario de la app enviado':'✓ Formulario recibido el '+esc(fCorta(String(fo.fecha).slice(0,10)))+' · mándale su app')+'</b><textarea data-bienv="'+esc(al.id)+'" rows="8">'+esc(msgApp(al))+'</textarea>'+
-    '<div class="racc"><a class="btn'+(al.app_enviada?'':' prim')+'" data-appwa="'+esc(al.id)+'" target="_blank" rel="noopener" href="https://wa.me/'+tel+'?text='+encodeURIComponent(msgApp(al))+'">Abrir en WhatsApp</a></div>'+
+    '<div class="racc"><a class="btn'+(al.app_enviada?'':' prim')+'" data-appwa="'+esc(al.id)+'" target="_blank" rel="noopener" href="'+waU(tel,msgApp(al))+'">Abrir en WhatsApp</a></div>'+
     '<p class="estado-m">Su propuesta de plan la prepara el Proyecto al recibir el formulario. Cuando la apruebes, dale a «✅ OK al plan» y se abre sola si ya tiene fotos y peso.</p></div>'; }
 function formIniDe(al){ var d=FOC[al.cliente_id]; if(!d){ if(!al._foPed&&typeof foCargar==='function'){ al._foPed=1; foCargar(al.cliente_id,al.cliente,function(){ var y=scrollY; pintar(); scrollTo(0,y); }); } return null; }
   return (d.formularios||[]).filter(function(f){ return /inicial/i.test(String(f.tipo||'')); })[0]||null; }
@@ -3528,12 +3527,12 @@ document.addEventListener('click',function(e){ var a=e.target.closest&&e.target.
 function btnBienvenida(al){ if(!al||!al.listo) return ''; var c=(S.data.clientes||[]).filter(function(x){ return x.id===al.cliente_id; })[0]||{}, tel=String(al.telefono||c.telefono||'').replace(/\D/g,'');
   if(!c.codigo_app) return '<p class="estado-m">Todo listo, pero falta su código de la app en la ficha.</p>';
   return '<div class="bienv"><b>'+(al.bienvenida_enviada?'✓ Bienvenida enviada el '+esc(fCorta(al.bienvenida_enviada)):'✅ Todo listo para arrancar')+'</b><textarea data-bienv="'+esc(al.id)+'" rows="7">'+esc(msgBienvenida(al))+'</textarea>'+
-    '<div class="racc"><a class="btn'+(al.bienvenida_enviada?'':' prim')+'" data-bienvwa="'+esc(al.id)+'" target="_blank" rel="noopener" href="https://wa.me/'+tel+'?text='+encodeURIComponent(msgBienvenida(al))+'">Abrir en WhatsApp</a><a class="btn" target="_blank" rel="noopener" href="'+esc(appUrl(c.codigo_app))+'">Ver su app</a></div></div>'; }
+    '<div class="racc"><a class="btn'+(al.bienvenida_enviada?'':' prim')+'" data-bienvwa="'+esc(al.id)+'" target="_blank" rel="noopener" href="'+waU(tel,msgBienvenida(al))+'">Abrir en WhatsApp</a><a class="btn" target="_blank" rel="noopener" href="'+esc(appUrl(c.codigo_app))+'">Ver su app</a></div></div>'; }
 document.addEventListener('input',function(e){ var t=e.target; if(!t.hasAttribute||!t.hasAttribute('data-bienv')) return; var a=t.parentNode.querySelector('[data-bienvwa]'); if(a) a.href=a.href.split('?')[0]+'?text='+encodeURIComponent(t.value); });
 document.addEventListener('click',function(e){ var a=e.target.closest&&e.target.closest('[data-bienvwa]'); if(!a) return; var id=a.getAttribute('data-bienvwa'), l=((LC&&LC.altas)||[]).concat(S.data.altas||[]).filter(function(x){ return x.id===id; });
   if(l.length&&!l[0].bienvenida_enviada){ var f=hoy(); l.forEach(function(x){ x.bienvenida_enviada=f; }); api('guardar',{tabla:'Altas',id:id,campos:{bienvenida_enviada:f,paso:'Bienvenida enviada el '+f+' · arranca'}}).catch(alerta); } },true);
 function btnFormIni(al){ if(al.estado==='hecha'||al.listo) return ''; var tel=String(al.telefono||'').replace(/\D/g,'');
-  return '<a class="btn'+(al.formulario_enviado?'':' prim')+'" data-formini="'+esc(al.id)+'" target="_blank" rel="noopener" href="'+(tel?'https://wa.me/'+tel:'https://wa.me/')+'?text='+encodeURIComponent(msgFormIni(al.cliente))+'">📝 '+(al.formulario_enviado?'Volver a mandar el formulario inicial':'Mandar formulario inicial')+'</a>'; }
+  return '<a class="btn'+(al.formulario_enviado?'':' prim')+'" data-formini="'+esc(al.id)+'" target="_blank" rel="noopener" href="'+waU(tel,msgFormIni(al.cliente))+'">📝 '+(al.formulario_enviado?'Volver a mandar el formulario inicial':'Mandar formulario inicial')+'</a>'; }
 document.addEventListener('click',function(e){ var a=e.target.closest&&e.target.closest('[data-formini]'); if(!a) return; var id=a.getAttribute('data-formini'), al=((LC&&LC.altas)||[]).concat(S.data.altas||[]).filter(function(x){ return x.id===id; })[0];
   if(al&&!al.formulario_enviado){ al.formulario_enviado=hoy(); api('guardar',{tabla:'Altas',id:id,campos:{formulario_enviado:hoy()}}).catch(alerta); setTimeout(function(){ if(S.tab==='llamadas') pintarLlamadas(); },400); } },true);
 /* --- alta --- */
@@ -3657,7 +3656,7 @@ function enlazarLlamadas(){
     if(tr&&el.hasAttribute('data-lp')){ var p=buscar('Planes',tr.getAttribute('data-plid')); if(!p) return; var k=el.getAttribute('data-lp'), v=el.type==='checkbox'?(el.checked?'Sí':'No'):el.value; p[k]=v; var c={}; c[k]=v; programar('Planes',p.id,c,inm||el.type==='checkbox'); return; }
     var art=el.closest('.lfila'); if(!art) return; var id=art.getAttribute('data-lid'), l=lbuscar(id); if(!l) return;
     if(el.hasAttribute('data-lc')){ var c2={}, kk=el.getAttribute('data-lc'); if(kk==='llamada'&&!inm) return; c2[kk]=kk==='llamada'?conDesfase(el.value):el.value; lguardar(l,c2,inm);
-      if(el.getAttribute('data-lc')==='seguimiento_msg'){ var a=$('a[data-lwa]',art); if(a) a.href='https://wa.me/'+telLead(l)+'?text='+encodeURIComponent(el.value); }
+      if(el.getAttribute('data-lc')==='seguimiento_msg'){ var a=$('a[data-lwa]',art); if(a) a.href=waU(telLead(l),el.value); }
       if(['nombre','instagram','llamada'].indexOf(el.getAttribute('data-lc'))>=0&&inm){ /* cabecera */ var tmp=document.createElement('div'); tmp.innerHTML=ltarjeta(l); var cab=$('.rc',art), nc=$('.rc',tmp); if(cab&&nc) cab.innerHTML=nc.innerHTML; }
       return; }
     if(el.hasAttribute('data-lg')){ var g=rj(l.guion,{}); g[el.getAttribute('data-lg')]=el.value; lguardar(l,{guion:JSON.stringify(g)},inm); return; }
@@ -3687,7 +3686,7 @@ function entregasCargar(){
 function esPromesa(t){ return !!String(t.cliente_id||'').trim()&&!/^(Nutrición|Entreno):/.test(String(t.tarea||'')); }   // las peticiones del propio panel no son promesas
 function prGrupo(f){ var h=hoy(); if(!esFecha(f)) return 'Más adelante'; if(f<h) return 'Vencidas'; if(f===h) return 'Hoy'; var n=dias(h,f); return n===1?'Mañana':n<=7?'Esta semana':'Más adelante'; }
 function filaPromesa(t){ var c=buscar('Clientes',t.cliente_id)||{}, tel=avTel({telefono:c.telefono||''}), v=esFecha(t.fecha)&&t.fecha<hoy()?dias(t.fecha,hoy()):0;
-  return '<li data-prid="'+esc(t.id)+'"><span class="punto '+(v?'rojo':'amarillo')+'"></span><button class="quien" data-alt="tarea|'+esc(t.id)+'"><b>'+(esContestar(t)?'💬 ':'')+esc(c.nombre||t.cliente||'')+' · '+esc(t.tarea||'')+'</b><span>'+(v?'Hace '+v+(v===1?' día':' días')+' · ':'')+(esFecha(t.fecha)?esc(fCorta(t.fecha)):'sin fecha')+'</span></button><span class="avacc"><a class="btn wa" href="https://wa.me/'+(tel||'')+'" target="_blank" rel="noopener">WhatsApp</a>'+btnCopiarResp(t)+'<button class="btn" data-prhecho="'+esc(t.id)+'">Hecho</button></span></li>'; }
+  return '<li data-prid="'+esc(t.id)+'"><span class="punto '+(v?'rojo':'amarillo')+'"></span><button class="quien" data-alt="tarea|'+esc(t.id)+'"><b>'+(esContestar(t)?'💬 ':'')+esc(c.nombre||t.cliente||'')+' · '+esc(t.tarea||'')+'</b><span>'+(v?'Hace '+v+(v===1?' día':' días')+' · ':'')+(esFecha(t.fecha)?esc(fCorta(t.fecha)):'sin fecha')+'</span></button><span class="avacc"><a class="btn wa" href="'+waU(tel)+'" target="_blank" rel="noopener">WhatsApp</a>'+btnCopiarResp(t)+'<button class="btn" data-prhecho="'+esc(t.id)+'">Hecho</button></span></li>'; }
 function hoyTienes(dolor,llamadas,cobros){
   var h=hoy(), dow=new Date(h+'T12:00:00').getDay(), fil=[];
   var fila=function(ic,t,sub,attr,cl){ return '<li class="'+(cl||'')+'"><span class="ctic" aria-hidden="true">'+ic+'</span><button class="quien" '+(attr||'disabled')+'><b>'+esc(t)+'</b><span>'+esc(sub||'')+'</span></button></li>'; };
@@ -3902,8 +3901,8 @@ function pintarHoy(soloSecs){
   else if(!ent.length&&!pesoA.length) html+='<p class="aviso-vacio">Todo entregado.</p>';
   else html+='<ul class="corta enl">'+ent.map(function(e){ var tel=avTel(e), que=e.tipo==='formulario'?'Formulario «'+(e.formulario||'')+'»':(EN_TXT[e.tipo]||e.tipo);
       return '<li data-eid="'+esc(e.id)+'"><span class="punto '+(e.dias>=3?'rojo':'amarillo')+'"></span><button class="quien" '+(e.cliente_id?'data-abrir="Clientes|'+esc(e.cliente_id)+'"':'disabled')+'><b>'+esc(e.cliente)+' · '+esc(que)+'</b><span>'+(e.dias>0?'Tocaba desde el '+esc(fCorta(e.desde))+' ('+e.dias+(e.dias===1?' día':' días')+')':'Toca desde hoy')+(e.notas?' · '+esc(e.notas):'')+'</span></button>'+
-        '<span class="avacc"><a class="btn wa" href="https://wa.me/'+(tel||'')+'" target="_blank" rel="noopener">WhatsApp</a><button class="btn" data-eest="hecha">Hecho</button><button class="btn" data-eest="no_aplica" title="Ya no hace falta">No</button></span></li>'; }).join('')+
-    pesoA.map(function(a){ var tel=avTel(a); return '<li><span class="punto amarillo"></span><button class="quien" '+(a.cliente_id?'data-abrir="Clientes|'+esc(a.cliente_id)+'"':'disabled')+'><b>'+esc(a.cliente)+' · Peso</b><span>'+esc(a.titulo)+' · '+esc(a.detalle||'')+'</span></button><span class="avacc"><a class="btn wa" href="https://wa.me/'+(tel||'')+'" target="_blank" rel="noopener">WhatsApp</a><button class="btn" data-avvisto="'+esc(a.id)+'">Visto</button></span></li>'; }).join('')+'</ul>';
+        '<span class="avacc"><a class="btn wa" href="'+waU(tel)+'" target="_blank" rel="noopener">WhatsApp</a><button class="btn" data-eest="hecha">Hecho</button><button class="btn" data-eest="no_aplica" title="Ya no hace falta">No</button></span></li>'; }).join('')+
+    pesoA.map(function(a){ var tel=avTel(a); return '<li><span class="punto amarillo"></span><button class="quien" '+(a.cliente_id?'data-abrir="Clientes|'+esc(a.cliente_id)+'"':'disabled')+'><b>'+esc(a.cliente)+' · Peso</b><span>'+esc(a.titulo)+' · '+esc(a.detalle||'')+'</span></button><span class="avacc"><a class="btn wa" href="'+waU(tel)+'" target="_blank" rel="noopener">WhatsApp</a><button class="btn" data-avvisto="'+esc(a.id)+'">Visto</button></span></li>'; }).join('')+'</ul>';
   html+='</section>';
   var renov=[]; (S.data.clientes||[]).filter(function(c){ return vivo(c)&&c.estado==='Activo'; }).forEach(function(c){ avisosRenov(c.id).forEach(function(x){ if(!x.cobro) renov.push({c:c,x:x}); }); });
   html+=restoHoy()+miSemana(renov);
