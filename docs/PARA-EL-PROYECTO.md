@@ -38,3 +38,6 @@ Al terminar un plan de nutrición, poner en **Ajustes** de su hoja `nutricion_pd
 
 ## 10. Pasos
 La app ya no pide los pasos de ayer (Alex 30/10): van en el formulario semanal o mensual. La pestaña Pasos de cada hoja se queda como está.
+
+## Campos que lee la tarjeta del lunes (30/10)
+En `datos.historia`: `peso`, `peso_nota`, `energia`, `animo`, `sueno`, `entrenos`, `objetivo`. En `datos.formulario`: `tipo`, `fecha`, `estado`, `enlace` y `respuestas` (`[{pregunta, respuesta}]`). En `progreso`, `dir` admite además `costo`, `molestia` y `saltado`. En `datos.molestias`, `fecha` si la hay.
