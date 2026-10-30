@@ -571,6 +571,12 @@ nav.tabs .ti{transition:transform .18s ease}
 .revgraf .spark{width:100%;height:96px;margin-top:6px}
 .hoytienes li.mal b{color:#C0553A}
 nav.tabs .tipol{font-size:19px;line-height:1;align-items:center;justify-content:center;opacity:1}
+.ralerta{border-radius:14px;padding:12px 14px;margin-bottom:10px;border:1.5px solid}
+.ralerta h3{margin:0 0 6px}.ralerta p{margin:4px 0}.ralerta ul{list-style:none;margin:0;padding:0}.ralerta li{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:7px 0;border-top:1px solid rgba(127,127,127,.25)}.ralerta li:first-child{border-top:0}
+.ralerta.deb{background:rgba(214,158,46,.16);border-color:#C9962E}.ralerta.mol{background:rgba(192,62,44,.17);border-color:#C0553A}
+.dbt{min-width:0}.dbt small{display:block;color:var(--sec);font-size:13px;margin-top:2px}.dbv{color:#C0553A;font-weight:600;font-size:13px}.dbf{color:var(--sec);font-size:13px}
+.rfila.r-alerta{border-left:4px solid #C0553A;background:rgba(192,62,44,.08)}
+.dbacc{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;flex:none}
 </style>
 </head>
 <body>
@@ -1275,6 +1281,7 @@ function tarjeta(f){
   if(e.objetivo!=null) chips.push('<span class="mini '+((+e.hechos||0)>=(+e.objetivo||0)?'v':(+e.hechos||0)>0?'a':'r')+'">'+(+e.hechos||0)+'/'+(+e.objetivo||0)+' entrenos</span>');
   if(c.sube) chips.push('<span class="mini v">↑'+c.sube+'</span>');
   if(c.baja) chips.push('<span class="mini r">↓'+c.baja+'</span>');
+  var ndb=deudasDe(f,d).length; if(ndb) chips.unshift('<span class="mini r">⚠️ le debes '+ndb+'</span>');
   if(pc) chips.push('<span class="mini a">'+pc+' cambio'+(pc>1?'s':'')+'</span>');
   var rv=avisosRenov(f.cliente_id), rvR=rv.filter(function(x){return !x.cobro;}), rvC=rv.filter(function(x){return x.cobro;});
   if(rvR.length) chips.push('<span class="mini '+(rvR.some(function(x){return x.n==='r';})?'r':'a')+'">renovar</span>');
@@ -1282,7 +1289,7 @@ function tarjeta(f){
   if(d.oportunidad) chips.push('<span class="mini a">⭐ '+esc(d.oportunidad.tipo==='grandslam'?'Grand Slam':'oportunidad')+'</span>');
   if(esMensual()&&f.fecha) chips.unshift('<span class="mini n">'+esc(fCorta(f.fecha))+'</span>');
   if(f.mensaje_estado==='enviado') chips.push('<span class="mini v">✓ enviado</span>'); else if(f.mensaje_estado==='descartado') chips.push('<span class="mini n">sin mensaje</span>'); else if(f.mensaje) chips.push('<span class="mini n">mensaje listo</span>');
-  return '<article class="rfila'+(ab?' abierta':'')+(hecha?' hecha':'')+'" data-rid="'+esc(f.id)+'"><div class="rhead">'+
+  return '<article class="rfila'+(ab?' abierta':'')+(hecha?' hecha':'')+(/^🚨/.test(String(f.titular||''))?' r-alerta':'')+'" data-rid="'+esc(f.id)+'"><div class="rhead">'+
     '<button class="rcheck" data-hecho aria-pressed="'+hecha+'" title="'+(hecha?'Hecho (toca para quitarlo)':'Marcar como hecho')+'" aria-label="'+(hecha?'Quitar hecho de ':'Marcar hecho ')+esc(f.cliente)+'">'+'<span class="cbox" aria-hidden="true">'+(hecha?'✓':'')+'</span></button>'+
     '<button class="rc" aria-expanded="'+ab+'"><span class="punto '+esc(f.semaforo||'')+'"></span><span class="rnom">'+esc(f.cliente)+(String(f.ejemplo).toUpperCase()==='TRUE'?'<span class="ejemplo">ejemplo</span>':'')+'</span><span class="rchips">'+chips.join('')+'</span>'+
     '<span class="rtit">'+esc(f.titular||'')+'</span></button></div>'+
@@ -1320,8 +1327,27 @@ function resumenCorto(f,d){ var e=d.entrenos||{}, x=semExtra(f), ms=(d.molestias
   if(x) o.push(tile('Peso del viernes',x.peso?'✓':'✕',x.peso?esc(String(x.peso.peso).replace('.',','))+' kg':'no lo apuntó',null,x.peso?'ok':'mal'),tile('Vídeos',x.videos?'🎥 '+x.videos:'—',x.videos?'grabados':x.pedidos?'pedidos sin grabar':'no pedidos',null,x.videos?'ok':x.pedidos?'mal':''));
   if(ms.length) o.push(tile('Molestia',mx+'<small>/10</small>',esc(ms.map(function(m){ return m.zona; }).join(' · ')),null,mx>3?'mal':''));
   if(c.sube+c.baja) o.push(tile('Cargas','<span class="dv">↑'+c.sube+'</span> <span class="'+(c.baja?'dn':'')+'">↓'+c.baja+'</span>','',null));
-  var tec=String(f.tener_en_cuenta||'').split('\n').map(function(t){ return t.replace(/^[-·•]\s*/,'').trim(); }).filter(String).slice(0,2);
+  var tec=tecVisibles(f,d).slice(0,2);
   return '<section class="rsec ancho2"><div class="vtiles rcorto">'+o.join('')+'</div>'+(tec.length?'<ul class="tec" style="margin-top:8px">'+tec.map(function(t){ return '<li>'+esc(t)+'</li>'; }).join('')+'</ul>':'')+'</section>'; }
+/* Lo que debo a cada cliente (Alex 30/10): filas de Tareas pendientes con su cliente_id; una sola fuente, nada se copia a la tarjeta. datos.debo solo da el orden */
+/* «<Cliente>: contestar…» (Alex 30/10): con 💬 y un botón que copia la respuesta propuesta */
+function esContestar(t){ return /^[^:]+:\s*contestar/i.test(String(t.tarea||'')); }
+function btnCopiarResp(t){ return esContestar(t)&&t.propuesta?'<button class="btn" data-dbcopia="'+esc(t.id)+'">Copiar respuesta</button>':''; }
+document.addEventListener('click',function(e){ var b=e.target.closest&&e.target.closest('[data-dbcopia]'); if(!b) return; e.stopPropagation(); var t=(S.data.tareas||[]).filter(function(x){ return x.id===b.getAttribute('data-dbcopia'); })[0]; if(!t) return;
+  (navigator.clipboard?navigator.clipboard.writeText(t.propuesta||''):Promise.reject()).then(function(){ b.textContent='Copiado ✓'; setTimeout(function(){ b.textContent='Copiar respuesta'; },1600); }).catch(function(){ alerta(new Error('No se ha podido copiar')); }); },true);
+function deudasDe(f,d){ if(!f.cliente_id) return []; var l=tareasVivas().filter(function(t){ return t.cliente_id===f.cliente_id; }), o=((d&&d.debo)||[]).map(function(x){ return x.tarea_id; });
+  return l.sort(function(a,b){ var ia=o.indexOf(a.id), ib=o.indexOf(b.id); ia=ia<0?999:ia; ib=ib<0?999:ib; return ia-ib||String(a.fecha||'9').localeCompare(String(b.fecha||'9')); }); }
+function molAlerta(d){ return ((d&&d.molestias)||[]).filter(function(m){ return m&&m.alerta===true; }); }
+function alertasTarjeta(f,d){
+  var h='', ml=molAlerta(d), de=deudasDe(f,d), H=hoy();
+  if(ml.length) h+='<section class="rsec ancho2 ralerta mol"><h3>🚨 Molestia</h3>'+ml.map(function(m){ return '<p><b>'+esc(m.zona||'')+' · '+(+m.valor||0)+'/10</b>'+(m.nota?' — '+esc(m.nota):'')+'</p>'; }).join('')+'</section>';
+  if(de.length) h+='<section class="rsec ancho2 ralerta deb"><h3>⚠️ Le debes</h3><ul>'+de.map(function(t){ var v=esFecha(t.fecha)&&t.fecha<H; var ct=esContestar(t); return '<li class="'+(ct?'dbc':'')+'"><div class="dbt"><b>'+(ct?'💬 ':'')+esc(t.tarea||'')+'</b>'+(esFecha(t.fecha)?' <span class="'+(v?'dbv':'dbf')+'">'+esc(fCorta(t.fecha))+'</span>':'')+(t.propuesta?'<small>'+esc(t.propuesta)+'</small>':'')+'</div><span class="dbacc">'+btnCopiarResp(t)+'<button class="btn" data-dbhecho="'+esc(t.id)+'">Hecho</button></span></li>'; }).join('')+'</ul></section>';
+  return h;
+}
+function tecVisibles(f,d){ var de=deudasDe(f,d).length, ml=molAlerta(d).length; return String(f.tener_en_cuenta||'').split('\n').map(function(x){ return x.replace(/^[-·•]\s*/,'').trim(); }).filter(String).filter(function(x){ return !(de&&/^⚠️\s*LE DEBES/i.test(x))&&!(ml&&/^🚨\s*MOLESTIA/i.test(x)); }); }
+document.addEventListener('click',function(e){ var b=e.target.closest&&e.target.closest('[data-dbhecho]'); if(!b) return; e.stopPropagation(); var t=(S.data.tareas||[]).filter(function(x){ return x.id===b.getAttribute('data-dbhecho'); })[0]; if(!t) return; var art=b.closest('.rfila'), rid=art&&art.getAttribute('data-rid');
+  var rep=function(){ if(rid&&S.tab==='ronda') rrepintar(rid); $('#nTar').textContent=tareasVivas().filter(function(x){ var g=tGrupo(x); return g==='vencida'||g==='hoy'; }).length||''; };
+  tGuardar(t,{estado:'hecha',hecha_el:hoy()},true); rep(); toastDeshacer('Hecho ✓',function(){ tGuardar(t,{estado:'pendiente',hecha_el:''},true); rep(); }); },true);
 function vistazo(f,d){
   var hs=(d.historia||[]).slice(esMensual()?-12:-6), et=hs.map(function(x){ return 'Semana '+(x.semana||''); }), e=d.entrenos||{}, T=[];
   var ult=hs[hs.length-1]||{}, ant=hs[hs.length-2]||{};
@@ -1603,7 +1629,7 @@ function siguientePend(id){ var o=R.filas.filter(function(x){ return !rhecha(x)&
 function cuerpo(f,d){
   var vi=esViernes(), e=d.entrenos||{};
   var prog=rj(f.progreso,[]), FL={sube:'↑',igual:'=',baja:'↓'};
-  var tec=String(f.tener_en_cuenta||'').split('\n').map(function(x){return x.replace(/^[-·•]\s*/,'').trim();}).filter(String);
+  var tec=tecVisibles(f,d);
   var vers=rj(f.mensaje_versiones,[]);
   var est=f.mensaje_estado==='enviado'?'<span class="estado-m ok">✓ Enviado</span>':f.mensaje_estado==='rehacer'?'<span class="estado-m esp">Pedido: «'+esc(f.mensaje_peticion||'otra versión')+'». '+(R.ia?'':'Lo rehago en el siguiente chequeo.')+'</span>':f.mensaje_estado==='descartado'?'<span class="estado-m">No se envía</span>':'';
   var cs=rj(f.cambios,[]), sig=siguientePend(f.id), men=esMensual();
@@ -1660,10 +1686,11 @@ function cuerpo(f,d){
       '<div class="rpie" style="margin-top:12px"><small class="estado-m">'+(rhecha(f)?'✓ Hecho'+(f.revisado?' el '+esc(fCorta(String(f.revisado).slice(0,10))):''):'')+'</small>'+
       (rhecha(f)?(sig?'<button class="btn prim" data-siguiente>Siguiente: '+esc(sig.cliente)+' →</button>':'<span class="estado-m ok">Todos hechos ✓</span>'):'<button class="btn prim" data-revisar="1">Hecho ✓ · siguiente</button>')+'</div></section>';
   var ban2=!vi&&subirHtml(f)?'<section class="rsec ancho2 rbans">'+subirHtml(f)+'</section>':'';
-  if(men) return banners+revSeccion(f)+vistazo(f,d)+ban2+mensual+semana+comoVa+aaSeccion(f)+nutriSeccion(f,d)+mensaje+cambios+pie;
+  var alarmas=alertasTarjeta(f,d);
+  if(men) return alarmas+banners+revSeccion(f)+vistazo(f,d)+ban2+mensual+semana+comoVa+aaSeccion(f)+nutriSeccion(f,d)+mensaje+cambios+pie;
   /* Lunes y viernes (Alex 30/10): lo justo arriba y el mensaje; el resto, recogido */
   var mas=semana+comoVa+vistazo(f,d);
-  return banners+ban2+resumenCorto(f,d)+mensaje+(cs.length?cambios:'')+'<details class="rsec ancho2 rmas"><summary>Ver más de su semana</summary><div class="rcuerpo">'+mas+(cs.length?'':cambios)+'</div></details>'+pie;
+  return alarmas+banners+ban2+resumenCorto(f,d)+mensaje+(cs.length?cambios:'')+'<details class="rsec ancho2 rmas"><summary>Ver más de su semana</summary><div class="rcuerpo">'+mas+(cs.length?'':cambios)+'</div></details>'+pie;
 }
 
 /* ── Su entreno (ficha): plan visual + datos que importan (25/10) ── */
@@ -3560,7 +3587,7 @@ function entregasCargar(){
 function esPromesa(t){ return !!String(t.cliente_id||'').trim()&&!/^(Nutrición|Entreno):/.test(String(t.tarea||'')); }   // las peticiones del propio panel no son promesas
 function prGrupo(f){ var h=hoy(); if(!esFecha(f)) return 'Más adelante'; if(f<h) return 'Vencidas'; if(f===h) return 'Hoy'; var n=dias(h,f); return n===1?'Mañana':n<=7?'Esta semana':'Más adelante'; }
 function filaPromesa(t){ var c=buscar('Clientes',t.cliente_id)||{}, tel=avTel({telefono:c.telefono||''}), v=esFecha(t.fecha)&&t.fecha<hoy()?dias(t.fecha,hoy()):0;
-  return '<li data-prid="'+esc(t.id)+'"><span class="punto '+(v?'rojo':'amarillo')+'"></span><button class="quien" data-abrir="Clientes|'+esc(t.cliente_id)+'"><b>'+esc(c.nombre||t.cliente||'')+' · '+esc(t.tarea||'')+'</b><span>'+(v?'Hace '+v+(v===1?' día':' días')+' · ':'')+(esFecha(t.fecha)?esc(fCorta(t.fecha)):'sin fecha')+'</span></button><span class="avacc"><a class="btn wa" href="https://wa.me/'+(tel||'')+'" target="_blank" rel="noopener">WhatsApp</a><button class="btn" data-prhecho="'+esc(t.id)+'">Hecho</button></span></li>'; }
+  return '<li data-prid="'+esc(t.id)+'"><span class="punto '+(v?'rojo':'amarillo')+'"></span><button class="quien" data-abrir="Clientes|'+esc(t.cliente_id)+'"><b>'+(esContestar(t)?'💬 ':'')+esc(c.nombre||t.cliente||'')+' · '+esc(t.tarea||'')+'</b><span>'+(v?'Hace '+v+(v===1?' día':' días')+' · ':'')+(esFecha(t.fecha)?esc(fCorta(t.fecha)):'sin fecha')+'</span></button><span class="avacc"><a class="btn wa" href="https://wa.me/'+(tel||'')+'" target="_blank" rel="noopener">WhatsApp</a>'+btnCopiarResp(t)+'<button class="btn" data-prhecho="'+esc(t.id)+'">Hecho</button></span></li>'; }
 function hoyTienes(dolor,llamadas,cobros){
   var h=hoy(), dow=new Date(h+'T12:00:00').getDay(), fil=[];
   var fila=function(ic,t,sub,attr,cl){ return '<li class="'+(cl||'')+'"><span class="ctic" aria-hidden="true">'+ic+'</span><button class="quien" '+(attr||'disabled')+'><b>'+esc(t)+'</b><span>'+esc(sub||'')+'</span></button></li>'; };
@@ -3585,7 +3612,7 @@ function hoyTienes(dolor,llamadas,cobros){
 }
 /* Lo demás de Hoy, recogido: se abre si hace falta */
 function restoHoy(){
-  var nv=nuevos(), ctl=controlesSemana(), prR=tareasVivas().filter(esPromesa).filter(function(t){ return ['Esta semana','Más adelante'].indexOf(prGrupo(t.fecha))>=0; }).sort(function(a,b){ return String(a.fecha).localeCompare(String(b.fecha)); }), h='';
+  var nv=nuevos(), ctl=controlesSemana(), prR=tareasVivas().filter(esPromesa).filter(function(t){ return esFecha(t.fecha)&&['Esta semana','Más adelante'].indexOf(prGrupo(t.fecha))>=0; }).sort(function(a,b){ return String(a.fecha).localeCompare(String(b.fecha)); }), h='';
   h+='<details class="bloque lsec"><summary>🤝 Otras promesas <span class="n">'+prR.length+'</span></summary>'+(prR.length?'<ul class="corta avl">'+prR.map(filaPromesa).join('')+'</ul>':'')+bloquePromesaForm()+'</details>';
   if(ctl.length) h+='<details class="bloque lsec"><summary>📅 Controles de esta semana <span class="n">'+ctl.length+'</span></summary><ul class="corta">'+ctl.map(function(x){ return '<li><span class="ctic" aria-hidden="true">'+(x.tipo==='control'?'📸':x.tipo==='revision'?'📋':'⏳')+'</span><button class="quien" data-abrir="Clientes|'+esc(x.c.id)+'"><b>'+esc(x.dia)+' · '+esc(x.c.nombre)+'</b><span>'+esc(x.t)+(x.sub?' · '+esc(x.sub):'')+'</span></button></li>'; }).join('')+'</ul></details>';
   if(nv.length) h+='<details class="bloque lsec"><summary>🐥 Pollitos <span class="n">'+nv.length+'</span></summary><ul class="corta">'+nv.map(function(c){ return '<li><button class="quien" data-irnuevo="'+esc(c.id)+'"><b>'+esc(c.nombre)+'</b><span>'+(nvDia(c)<1?'empieza el '+esc(fCorta(cArranque(c))):'día '+nvDia(c)+' de 14')+'</span></button></li>'; }).join('')+'</ul></details>';

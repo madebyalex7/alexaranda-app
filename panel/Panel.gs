@@ -26,7 +26,7 @@ var P_TABLAS = {
   // Recorte de cada foto para el carrusel (Alex 25/10): la original no se toca; z = zoom, x/y = encuadre (−1 a 1), cara = «ocultar cara», tipo = frente/lado/espalda
   FotosAjuste: { pref: 'fa', cols: ['id', 'foto_id', 'cliente_id', 'z', 'x', 'y', 'cara', 'tipo', 'luz', 'actualizado', 'archivado'] },
   // Tareas de Alex (las añaden los chats y Alex; una fila por tarea, nunca se reescribe la tabla entera)
-  Tareas: { pref: 't', cols: ['id', 'tarea', 'cliente', 'cliente_id', 'prioridad', 'fecha', 'estado', 'origen', 'creada', 'hecha_el', 'notas', 'actualizado', 'archivado'] },
+  Tareas: { pref: 't', cols: ['id', 'tarea', 'cliente', 'cliente_id', 'prioridad', 'fecha', 'estado', 'origen', 'creada', 'hecha_el', 'notas', 'actualizado', 'archivado', 'propuesta'] },
   // Lo que cada cliente tiene que entregar (formularios que no son el semanal, fotos, medidas, peso). Lo apunta la lectura de las 6:00;
   // el panel comprueba solo si ya está hecho (hoja de respuestas de formularios y hoja de su app)
   Entregas: { pref: 'e', cols: ['id', 'cliente_id', 'cliente', 'codigo_app', 'tipo', 'formulario', 'desde', 'estado', 'hecha_el', 'como', 'notas', 'actualizado', 'archivado'] },
