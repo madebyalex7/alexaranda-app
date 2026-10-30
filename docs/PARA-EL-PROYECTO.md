@@ -14,3 +14,12 @@ La app ya no cuenta como saltadas las semanas de antes de que el cliente usara e
 
 ## 3. Paseos aparte (lectura del formulario semanal o mensual)
 Los paseos salen del formulario. Si se apuntan en `datos.paseos` (número de días o texto corto), el panel los enseña en su propia casilla, aparte de los entrenos, y no cuentan como entreno fallado.
+
+## 4. Altas nuevas: candado de la app (skill `inicia-nuevo-cliente`)
+- Al crear la hoja «App · Nombre» de un cliente nuevo, poner en **Ajustes**: `candado` = `TRUE`. Así su entreno y su alimentación salen cerrados hasta que tenga fotos + peso y Alex dé el OK al plan.
+- El OK lo da Alex desde el panel («✅ OK al plan» en su ficha o en Reportes › Nuevos): escribe `plan_ok` con la fecha. Si algo no cuadra, «🔓 Desbloquear ya» (`desbloqueado` = `TRUE`).
+- Los clientes que ya existen no tienen `candado`: no cambia nada para ellos. Ante cualquier error, la app se abre.
+- Cuando llega el formulario inicial, el panel propone el mensaje con su usuario de la app y los vídeos de la app y del seguimiento (Llamadas › 🎬 Vídeos de las altas). La propuesta de plan automática al recibir el formulario sigue siendo cosa del Proyecto (decidido el 30/10).
+
+## 5. Correcciones de vídeo hechas desde el panel
+Reportes › 🎥 Vídeos deja una fila en **Aplicados** (`tipo` = `correccion`, `detalle` con el enlace de Cap, el mensaje, las correcciones y los vídeos pedidos). Ya quedan escritas en la pestaña Correcciones de su hoja y en Vídeos pedidos de la maestra; falta pasarlas a `<cliente>-correcciones.md` y a su estado, y marcar `pasado_a_docs`.

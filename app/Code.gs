@@ -182,6 +182,10 @@ function L_ajustes(filas) {
     nutricion_fecha: String(a.nutricion_fecha || '').slice(0, 10),
     nivel: /^exp|^avan|^inter/i.test(String(a.nivel || '').trim()) ? 'exp' : 'nuevo',          // Ajustes › nivel: nuevo (por defecto) o experiencia
     pesos_disponibles: String(a.pesos_disponibles || '').trim(),                              // p. ej. «2,4,6,8,10» (mancuernas de casa)
+    semana_app_desde: L_int(a.semana_app_desde),                                             // primera semana en esta app (si Alex la fija; Alex 30/10)
+    // Candados de la app para clientes nuevos (Alex 30/10): entreno y nutrición cerrados hasta tener fotos, peso y el OK de Alex al plan.
+    // Solo si Alex pone candado; desbloqueado = abrirlo ya, pase lo que pase. Ante cualquier duda, abierto.
+    candado: L_bool(a.candado), desbloqueado: L_bool(a.desbloqueado), plan_ok: String(a.plan_ok || '').trim(),
     dias_semana: L_int(a.dias_semana),
     texto_calentamiento: String(a.texto_calentamiento || ''),
     movilidad: String(a.movilidad || ''),
@@ -400,6 +404,16 @@ function L_diasHechos(diasSemana, entreno, objetivo) {
   return Math.min(n, objetivo);
 }
 
+/** Candado (Alex 30/10): null = abierto. Solo se cierra si Alex lo pone y falta algo; si algo falla al mirarlo, abierto */
+function L_candado(aj, fotos, peso) {
+  try {
+    if (!aj || !aj.candado || aj.desbloqueado) return null;
+    var f = (fotos || []).some(function (x) { return x && x.archivo_id; });
+    var p = (peso || []).some(function (x) { return x && x.peso !== '' && x.peso != null && isFinite(Number(String(x.peso).replace(',', '.'))); });
+    var ok = !!aj.plan_ok;
+    return f && p && ok ? null : { fotos: f, peso: p, plan: ok };
+  } catch (e) { return null; }
+}
 /** Primera semana del programa que vivió en ESTA app (Alex 30/10: las de antes de migrar no son entrenos saltados).
  *  Ajustes › semana_app_desde si Alex la pone; si no, la primera semana con algo apuntado (Días o Registro); sin nada, la actual */
 function L_primeraSemana(diasIdx, registro, aj, S) {
@@ -665,6 +679,7 @@ function L_construir(t) {
 
   var lunes = L_lunesPrograma(aj, S);
   var desdeApp = L_primeraSemana(diasIdx, t.registro, aj, S);
+  var candado = L_candado(aj, t.fotos, t.peso);
   var proximo = L_proximo(prog, t.plan, t.agenda, S, lunes, t.hoy, aj);
   var desdeInicio = L_desdeInicio(porSemEj, dias, entreno);
 
@@ -674,7 +689,7 @@ function L_construir(t) {
     ajustes: { paleta: aj.paleta || t.paletaMaestra || 'marca', crono: aj.crono, objetivo_pasos: pasosObj }, sexo: aj.sexo,
     nivel: aj.nivel, pesosDisp: aj.pesos_disponibles,
     orden: orden, dias: dias, hist: hist, est: est, reg: reg, entreno: entreno, objetivo: objetivo,
-    racha: L_racha(t.historial, S, objetivo, desdeApp), desdeApp: desdeApp, progreso: progBloque, notaAlex: notaAlex, vped: vped,
+    racha: L_racha(t.historial, S, objetivo, desdeApp), desdeApp: desdeApp, candado: candado, progreso: progBloque, notaAlex: notaAlex, vped: vped,
     extras: extras, pasos: pasos, hoy: t.hoy,
     nutri: aj.nutricion_pdf ? { fecha: aj.nutricion_fecha || '' } : null,
     notasSemana: notasSemana, recordatorio: recordatorio, textoCal: aj.texto_calentamiento, movilidad: aj.movilidad,

@@ -56,4 +56,17 @@ assert.equal(new Date(vp[vp.length - 1][4] + 'T12:00:00Z').getUTCDay(), 2, 'hast
 assert.equal(PANEL.sh.Aplicados.data.length, 2, 'queda apuntado en Aplicados');
 assert.deepEqual(Object.keys(APP1.sh).sort(), ['Ajustes', 'Correcciones', 'Plan', 'Registro'], 'no crea ni toca otras pestañas');
 assert.throws(() => api('videosGuardar', { cliente_id: 'c2' }), /no tiene la app/);
+// Candado: lo que escribe el panel (R_ajuste) es lo que lee la app (L_ajustes → L_candado). Ante la duda, abierto.
+const aj = () => ctx.L_ajustes(ctx.D_leer(APP1, 'Ajustes'));
+assert.equal(ctx.L_candado(aj(), [], []), null, 'sin candado: abierto');
+ctx.R_ajuste(APP1, 'candado', 'TRUE');
+assert.deepEqual(JSON.parse(JSON.stringify(ctx.L_candado(aj(), [], []))), { fotos: false, peso: false, plan: false });
+ctx.R_ajuste(APP1, 'plan_ok', '2026-10-30');
+assert.equal(ctx.L_candado(aj(), [{ archivo_id: 'f1' }], [{ peso: 70.2 }]), null, 'fotos + peso + OK: abierto');
+assert.notEqual(ctx.L_candado(aj(), [{ archivo_id: 'f1' }], []), null, 'sin peso: cerrado');
+ctx.R_ajuste(APP1, 'desbloqueado', 'TRUE');
+assert.equal(ctx.L_candado(aj(), [], []), null, 'desbloqueado a mano: abierto');
+ctx.R_ajuste(APP1, 'desbloqueado', ''); ctx.R_ajuste(APP1, 'candado', '');
+assert.equal(ctx.L_candado(aj(), [], []), null, 'quitar candado: abierto');
+assert.equal(ctx.L_candado(undefined, null, null), null, 'datos raros: abierto');
 console.log('prueba-videos: OK');

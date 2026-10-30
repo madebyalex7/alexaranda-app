@@ -39,6 +39,8 @@ var P_TABLAS = {
     'semana_personal', 'semana_entreno', 'datos', 'progreso', 'tener_en_cuenta', 'voz',
     'mensaje', 'mensaje_estado', 'mensaje_peticion', 'mensaje_versiones', 'cambios', 'nota_alex', 'nutricion', 'revisado', 'ejemplo', 'actualizado', 'archivado'] },
   // Registro de lo que se aplica desde el panel (para que Claude lo pase a los documentos del cliente)
+  // Ajustes del panel (Alex 30/10): enlaces de los vídeos de las altas y lo que haga falta. id = clave
+  Config: { pref: 'cf', cols: ['id', 'valor', 'actualizado', 'archivado'] },
   Aplicados: { pref: 'a', cols: ['id', 'fecha', 'cliente', 'codigo_app', 'ronda_id', 'cambio_id', 'tipo', 'detalle', 'resultado', 'pasado_a_docs', 'actualizado', 'archivado'] }
 };
 
@@ -64,6 +66,7 @@ function P_despachar(cuerpo) {
       case 'entrenoCliente': return { ok: true, data: EC_cliente(d.cliente_id) };
       case 'caminoCliente': return { ok: true, data: EV_cliente(d.cliente_id) };
       case 'calendarioCliente': return { ok: true, data: CA_cliente(d.cliente_id) };
+      case 'appAcceso': return { ok: true, data: P_escribir(function () { return AC_cambiar(d.cliente_id, d.que); }) };
       case 'videosCargar': return { ok: true, data: CV_cargar() };
       case 'videosCliente': return { ok: true, data: CV_cliente(d.cliente_id) };
       case 'videosGuardar': return { ok: true, data: P_escribir(function () { return CV_guardar(d); }) };
@@ -197,7 +200,8 @@ function P_nuevo(tabla, campos) {
 // ───────── carga y resumen ─────────
 function P_cargar() {
   var clientes = P_leer('Clientes'), leads = P_leer('Leads'), cobros = P_leer('Cobros');
-  return { clientes: clientes, leads: leads, cobros: cobros, tareas: P_leer('Tareas'), redes: P_leer('Redes'), altas: P_leer('Altas'), resumen: P_resumen(clientes, leads, cobros), hoy: P_hoy(), generado: P_ahora() };
+  var config = {}; P_leer('Config').forEach(function (r) { if (!r.archivado) config[r.id] = r.valor; });
+  return { config: config, clientes: clientes, leads: leads, cobros: cobros, tareas: P_leer('Tareas'), redes: P_leer('Redes'), altas: P_leer('Altas'), resumen: P_resumen(clientes, leads, cobros), hoy: P_hoy(), generado: P_ahora() };
 }
 
 function P_resumen(clientes, leads, cobros) {
@@ -1028,7 +1032,8 @@ function CA_cliente(cid) {
     semanas.push({ w: w, lunes: lun, objetivo: D.objetivo, hechos: Object.keys(hechos).length });
   }
   var dias = {}; (D.orden || []).forEach(function (k) { var d = D.dias[k]; if (d && k !== 'st') dias[k] = { n: d.n, ds: d.ds }; });
-  return { nombre: D.nombre, semana: D.semana, desde: desde, hoy: D.hoy || P_hoy(), entrenos: entrenos, peso: peso, medidas: medidas, fotos: fotos, extras: extras, semanas: semanas, dias: dias };
+  var acceso = { candado: !!aj.candado, desbloqueado: !!aj.desbloqueado, plan_ok: aj.plan_ok || '', cerrado: D.candado || null };
+  return { acceso: acceso, nombre: D.nombre, semana: D.semana, desde: desde, hoy: D.hoy || P_hoy(), entrenos: entrenos, peso: peso, medidas: medidas, fotos: fotos, extras: extras, semanas: semanas, dias: dias };
 }
 
 // ═════════ Correcciones de vídeos desde el panel (Alex 30/10) ═════════
@@ -1110,4 +1115,16 @@ function CV_guardar(d) {
   P_nuevo('Aplicados', { fecha: P_ahora(), cliente: h.cl.nombre, codigo_app: codigo, tipo: 'correccion',
     detalle: JSON.stringify({ cap: String(d.cap || ''), mensaje: String(d.mensaje || '').slice(0, 4000), correcciones: corr, superadas: sup, videos: vids }).slice(0, 4900), resultado: 'guardado', pasado_a_docs: '' });
   return { correcciones: corr.length, superadas: sup.length, videos: vids.length, hasta: vids.length ? CV_martes(hoy) : '' };
+}
+
+// ═════════ Acceso a la app de un cliente nuevo (Alex 30/10) ═════════
+/* Ajustes de su hoja: candado (TRUE = entreno y alimentación cerrados hasta fotos + peso + plan_ok), plan_ok (fecha del OK de Alex)
+   y desbloqueado (TRUE = abierto ya, pase lo que pase). Devuelve su calendario con el estado nuevo. */
+function AC_cambiar(cid, que) {
+  var h = CV_hojaDe(cid), hoy = P_hoy();
+  var c = { candado: { candado: 'TRUE', desbloqueado: '' }, plan_ok: { plan_ok: hoy }, desbloquear: { desbloqueado: 'TRUE' }, quitar: { candado: '', desbloqueado: '' } }[que];
+  if (!c) throw new Error('Acción no válida');
+  Object.keys(c).forEach(function (k) { R_ajuste(h.ss, k, c[k]); });
+  try { D_cacheFuera(String(h.cl.codigo_app).trim()); } catch (e) {}
+  return CA_cliente(cid);
 }

@@ -581,6 +581,17 @@ details.calplega[open] .calver{display:none}
 .rebaja s{opacity:.5;margin-right:6px}.rebaja i{white-space:nowrap;font-style:normal;font-size:11px;letter-spacing:.06em;text-transform:uppercase;background:var(--soft);border-radius:999px;padding:2px 8px;margin-left:8px;color:var(--muted)}
 .set.hoyno{opacity:.55}.set.hoyno .hn{grid-column:2 / span 2;text-decoration:line-through;font-size:13px;color:var(--muted);align-self:center}.set.hoyno .hnx{color:var(--muted);text-align:center;align-self:center}
 .tqno{opacity:.75;padding-top:14px;padding-bottom:12px}.tqno .tqh{display:flex;justify-content:space-between;align-items:center;gap:10px}.tqno s{font-family:var(--serif,inherit);font-size:18px}.tqno .tqx{font-size:11px;letter-spacing:.08em;text-transform:uppercase;background:var(--soft);border-radius:999px;padding:3px 10px}.tqno .tqm{margin:6px 0 0;font-size:13.5px;color:var(--muted)}
+.candado{text-align:center;padding:18px 6px 30px;animation:candIn .4s ease both}
+.cand-ic{font-size:44px;margin:6px 0 4px;animation:candPulse 2.4s ease-in-out infinite}
+.cand-lista{list-style:none;padding:0;margin:18px 0;text-align:left;display:flex;flex-direction:column;gap:10px}
+.cand-lista li{display:flex;align-items:center;gap:12px;background:var(--soft);border-radius:16px;padding:12px 14px}
+.cand-lista li div{flex:1;display:flex;flex-direction:column}.cand-lista small{color:var(--muted);font-size:13px}
+.cand-lista .ck{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);display:inline-flex;align-items:center;justify-content:center;font-weight:700;flex:none;transition:all .3s ease}
+.cand-lista li.ok .ck{background:var(--accent-2);border-color:var(--accent-2);color:#fff}
+.cand-alex{border-radius:50%;margin-top:8px;box-shadow:0 4px 14px rgba(0,0,0,.12)}
+@keyframes candIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes candPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@media (prefers-reduced-motion:reduce){.candado,.cand-ic{animation:none}}
 </style>
 </head>
 <body>
@@ -1871,14 +1882,14 @@ function hub(){
   ${nuncaDosVeces()}
   <p class="sub hubsub">${esc(fraseHub())}</p>
   <div class="fcards">
-    ${carta("home", "Entrenamiento", ent, "entrenamiento", `<span class="fc-meta">${n} de ${OBJ()} esta semana${rec && vidsPend(rec) ? " · 🎥 " + vidsPend(rec) : ""}</span>`)}
+    ${estadoCandado() ? carta("home", "Entrenamiento", ["Se abre muy pronto", "Con tus fotos, tu peso y tu plan listo"], "entrenamiento", `<span class="fc-lock">🔒 Muy pronto</span>`, "pronto") : carta("home", "Entrenamiento", ent, "entrenamiento", `<span class="fc-meta">${n} de ${OBJ()} esta semana${rec && vidsPend(rec) ? " · 🎥 " + vidsPend(rec) : ""}</span>`)}
     ${carta("prog", "Mi progreso", prog, "control", tocaPeso() ? `<span class="fc-dot" aria-hidden="true"></span>` : "", tocaPeso() ? "aviso" : "")}
-    ${D.nutri ? carta("nutri", "Alimentación", ["Tu plan de alimentación", "Ábrelo o descárgalo para imprimirlo"], "alimentacion") : carta("nutri", "Alimentación", ["Próximamente", "Tu plan, tus comidas y tus antojos, aquí mismo"], "alimentacion", `<span class="fc-lock">Muy pronto</span>`, "pronto")}
+    ${estadoCandado() ? carta("nutri", "Alimentación", ["Se abre muy pronto", "Con tu plan a tu medida"], "alimentacion", `<span class="fc-lock">🔒 Muy pronto</span>`, "pronto") : D.nutri ? carta("nutri", "Alimentación", ["Tu plan de alimentación", "Ábrelo o descárgalo para imprimirlo"], "alimentacion") : carta("nutri", "Alimentación", ["Próximamente", "Tu plan, tus comidas y tus antojos, aquí mismo"], "alimentacion", `<span class="fc-lock">Muy pronto</span>`, "pronto")}
   </div>
   ${tarjetaAvisos()}
   ${D.notaAlex ? `<div class="alexq"><div class="label">${ic("nota")} Esta semana te digo</div><p>${esc(D.notaAlex)}</p><span class="firma"><img class="av" src="/alex.jpg" alt="" width="36" height="36" onerror="this.remove()">— Alex</span></div>` : ""}
   <p class="sync" id="sync">${textoSync()}</p>`;
-  app.querySelectorAll("[data-go]").forEach(b=>b.onclick = ()=>{ if(b.dataset.go === "nutri" && !D.nutri){ toast(`<b>Muy pronto 💛</b> Estoy preparando esta parte para ti.`); return; } ir(b.dataset.go); });
+  app.querySelectorAll("[data-go]").forEach(b=>b.onclick = ()=>{ if(estadoCandado() && vistaCerrada(b.dataset.go)){ ir(b.dataset.go); return; } if(b.dataset.go === "nutri" && !D.nutri){ toast(`<b>Muy pronto 💛</b> Estoy preparando esta parte para ti.`); return; } ir(b.dataset.go); });
   document.getElementById("ajHub").onclick = ()=>{ ir("home"); setTimeout(()=>{ const a = document.getElementById("ajbtn"); if(a) a.click(); }, 60); };
   enlazaAbierto(); enlazaAvisos();
   girarCartas();
@@ -2332,8 +2343,36 @@ function abrirAvisos(){
   };
 }
 
+/* ═════════ Candado de cliente nuevo (Alex 30/10): entreno y alimentación se abren con fotos + peso + el OK de Alex a su plan.
+   Solo se cierra si el servidor lo dice claramente; ante cualquier duda, abierto. «Mi progreso» siempre abierto para subir fotos y peso. ═════════ */
+function estadoCandado(){
+  try{
+    const c = D && D.candado; if(!c || typeof c !== "object") return null;
+    const mp = D.mp || {}, f = c.fotos === true || (mp.fotos || []).length > 0, p = c.peso === true || (mp.pesos || []).length > 0, ok = c.plan === true;
+    return f && p && ok ? null : {fotos: f, peso: p, plan: ok};
+  }catch(e){ return null; }
+}
+const vistaCerrada = v=>v === "home" || v === "week" || v === "nutri" || v === "extra" || !!(D && D.dias && D.dias[v]);
+function pantallaCandado(c){
+  const fila = (ok, t, sub, go)=>`<li class="${ok ? "ok" : ""}"><span class="ck" aria-hidden="true">${ok ? "✓" : ""}</span><div><b>${t}</b><small>${sub}</small></div>${!ok && go ? `<button type="button" class="mini" data-go="${go}">Subir</button>` : ""}</li>`;
+  app.innerHTML = `${cabecera("")}
+  <div class="candado">
+    <div class="cand-ic" aria-hidden="true">🔒</div>
+    <h1>Tu plan se abre muy pronto</h1>
+    <p class="sub">Tu entreno y tu alimentación se desbloquean en cuanto tengamos estas tres cosas. Vamos a por ellas 💪</p>
+    <ul class="cand-lista">
+      ${fila(c.fotos, "Tus fotos de inicio", c.fotos ? "Hechas" : "De frente, de lado y de espalda. Solo las veo yo", "prog")}
+      ${fila(c.peso, "Tu peso de hoy", c.peso ? "Apuntado" : "En ayunas, después del baño", "prog")}
+      ${fila(c.plan, "Tu plan a tu medida", c.plan ? "Listo" : "Te lo estoy preparando con tu formulario", "")}
+    </ul>
+    <p class="sub" style="font-size:13.5px">Mientras tanto, en «Progreso» puedes ir subiendo tus fotos y tu peso.</p>
+    <img class="cand-alex" src="/alex.jpg" alt="" width="56" height="56" onerror="this.remove()">
+  </div>`;
+  app.querySelectorAll("[data-go]").forEach(b=>b.onclick = ()=>ir(b.dataset.go));
+}
 function render(){
   if(!D) return;
+  { const c = estadoCandado(); if(c && vistaCerrada(VISTA)){ ["hub", "home", "week", "prog"].forEach(t=>{ const b = document.getElementById("t-" + t); if(b) b.classList.toggle("on", t === (VISTA === "week" ? "week" : "home")); }); pantallaCandado(c); return; } }
   pantallaEncendida(!!D.dias[VISTA] && VISTA !== "week" && VISTA !== "extra");
   const tab = VISTA === "hub" ? "hub" : VISTA === "week" ? "week" : VISTA === "prog" ? "prog" : "home";
   ["hub", "home", "week", "prog"].forEach(t=>{ const b = document.getElementById("t-" + t); if(b) b.classList.toggle("on", t === tab); });
