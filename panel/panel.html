@@ -518,6 +518,12 @@ nav.tabs .ti svg{width:100%;height:100%}
 .calley{font-size:12.5px;color:var(--sec);margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .nutpdf{width:100%;height:78vh;border:1px solid var(--line);border-radius:12px;background:#fff}
 @media (max-width:640px){.calc{min-height:56px;padding:3px}.cv{min-width:16px;height:16px;font-size:11px}.calgrid{grid-template-columns:repeat(7,minmax(0,1fr)) 54px;gap:3px}}
+.cvform{display:grid;grid-template-columns:1fr 1fr;gap:10px}.cvform .fld{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--sec)}.cvform .fld.ancho{grid-column:1/-1}
+.cvform input,.cvform textarea,.cvfila input,.cvfila select{font:inherit;font-size:14px;color:var(--cafe);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.cvfila{display:grid;grid-template-columns:minmax(120px,190px) 1fr auto;gap:6px;align-items:center;margin:6px 0}.cvfila.v{grid-template-columns:minmax(120px,170px) 1fr 1fr auto}
+.cvfila .cvpq{grid-column:1/-1;color:var(--sec);font-size:12px;margin:-2px 0 4px}
+.cvchk{display:block;font-size:14px;margin:4px 0}.cvchk small{color:var(--sec)}
+@media (max-width:700px){.cvform{grid-template-columns:1fr}.cvfila,.cvfila.v{grid-template-columns:1fr auto}.cvfila select{grid-column:1/-1}}
 </style>
 </head>
 <body>
@@ -1185,7 +1191,8 @@ function avisosRenov(cid){
 
 function pintarRonda(){
   $('#nRon').textContent = R.cargado ? (R.filas.filter(function(f){return !rhecha(f);}).length||'') : '';
-  var sel='<div class="rtipo" role="group" aria-label="Qué reporte">'+[['mensual','Mensual'+(R.pendMens?' <span class="c">'+R.pendMens+'</span>':'')],['lunes','Lunes'],['viernes','Viernes']].map(function(x){ return '<button class="chip" data-rtipo="'+x[0]+'" aria-pressed="'+(R.tipo===x[0])+'">'+x[1]+'</button>'; }).join('')+'</div>';
+  var sel='<div class="rtipo" role="group" aria-label="Qué reporte">'+[['mensual','Mensual'+(R.pendMens?' <span class="c">'+R.pendMens+'</span>':'')],['lunes','Lunes'],['viernes','Viernes'],['videos','🎥 Vídeos']].map(function(x){ return '<button class="chip" data-rtipo="'+x[0]+'" aria-pressed="'+(R.tipo===x[0])+'">'+x[1]+'</button>'; }).join('')+'</div>';
+  if(R.tipo==='videos'){ pintarVideos(sel); return; }
   if(!R.cargado){ $('#app').innerHTML = R.err ? '<div class="pantalla"><h2>No se ha podido cargar el reporte</h2><p>'+esc(R.err)+'</p><p><button class="btn prim" id="rOtra">Volver a cargar</button></p></div>' : '<div class="cargando"></div>'; if(!R.cargando&&!R.err) rondaCargar(); enlazarRonda(); return; }
   if(!R.filas.length){ $('#app').innerHTML=sel+'<div class="pantalla"><h2>'+(esMensual()?'No hay revisiones mensuales pendientes':'Todavía no hay reporte del '+(esViernes()?'viernes':'lunes'))+'</h2><p>'+(esMensual()?'Cuando a un cliente le toca su revisión del mes (cada 4 semanas, o cuando sube fotos y medidas), te preparo aquí su tarjeta: constancia del mes, peso, centímetros, fuerza, fotos, mini objetivos para elegir y el mensaje.':esViernes()?'El viernes por la mañana, después de la lectura de las 6:00, preparo una tarjeta corta por cliente: cómo va la semana, qué le queda, su finde y un mensaje breve.':'El lunes por la mañana, después de la lectura de las 6:00, preparo una tarjeta por cliente: su semana en gráficos, cómo va en repes y pesos, el mensaje que te propongo y los cambios de plan, con su porqué.')+'</p></div>'; enlazarRonda(); return; }
   var fs=R.filas, hechas=fs.filter(rhecha).length, tot={sube:0,igual:0,baja:0}, pend=0, enviados=0;
@@ -1328,6 +1335,85 @@ function usarVersion(f,i,btn){
   if(pend['Ronda|'+f.id]) enviar('Ronda|'+f.id);
   api('rondaNuevoMensaje',{id:f.id,texto:x.texto,peticion:x.titulo,actual:ta?ta.value:f.mensaje}).then(function(fila){ rponer(fila); delete RV[f.id]; rrepintar(f.id); flash(); })
     .catch(function(e){ btn.disabled=false; btn.textContent='Usar esta'; alerta(e); });
+}
+/* ── Reportes › Vídeos (Alex 30/10): enlace de Cap + transcripción → mensaje, correcciones a su app y vídeos de la semana ── */
+var CV={cargado:false,cargando:false,err:'',lista:[],abierto:null,res:{},det:{},hecho:{}};
+function cvCargar(){ CV.cargando=true; CV.err='';
+  api('videosCargar',{}).then(function(d){ CV.cargado=true; CV.cargando=false; CV.lista=d.clientes||[]; CV.martes=d.martes; CV.hoy=d.hoy; if(S.tab==='ronda'&&R.tipo==='videos') pintarRonda(); })
+    .catch(function(e){ CV.cargando=false; CV.err=e.message; if(S.tab==='ronda'&&R.tipo==='videos') pintarRonda(); }); }
+function cvEjNombre(r,id){ var e=((r&&r.ejercicios)||[]).filter(function(x){ return x.id===id; })[0]; return e?e.nombre:id; }
+function cvSelect(r,v,attr,i){ return '<select '+attr+'="'+i+'" aria-label="Ejercicio">'+((r&&r.ejercicios)||[]).map(function(e){ return '<option value="'+esc(e.id)+'"'+(e.id===v?' selected':'')+'>'+esc(e.nombre)+'</option>'; }).join('')+'</select>'; }
+function cvWa(c,txt){ var d=String(c.telefono||'').replace(/[^0-9]/g,'').replace(/^00/,''); if(/^[6789]\d{8}$/.test(d)) d='34'+d; return 'https://wa.me/'+(d||'')+'?text='+encodeURIComponent(txt||''); }
+function pintarVideos(sel){
+  var app=$('#app');
+  if(!CV.cargado){ app.innerHTML=sel+(CV.err?'<div class="pantalla"><h2>No se han podido cargar los vídeos</h2><p>'+esc(CV.err)+'</p></div>':'<div class="cargando"></div>'); if(!CV.cargando&&!CV.err) cvCargar(); enlazarVideos(); return; }
+  var con=CV.lista.filter(function(c){ return c.grabados; }).length;
+  var h=sel+'<div class="rcab"><h2>Correcciones de vídeos<small><b>'+con+'</b> con vídeos grabados · los vídeos que pidas valen hasta el martes '+esc(fCorta(CV.martes||''))+'</small></h2></div>'+
+    '<p class="estado-m" style="margin:-4px 0 12px">Pega el enlace de Cap y su transcripción: te preparo el mensaje y lo que va a su app. Nada se guarda ni se envía hasta que tú lo dices.</p><div class="rlista">';
+  h+=CV.lista.map(function(c){ var ab=CV.abierto===c.id, hecho=CV.hecho[c.id];
+    var chips=(c.grabados?'<span class="mini v">🎥 '+c.grabados+' grabado'+(c.grabados>1?'s':'')+'</span>':'')+(c.pedidos?'<span class="mini n">'+c.pedidos+' pedido'+(c.pedidos>1?'s':'')+'</span>':'')+(hecho?'<span class="mini v">✓ guardado</span>':'');
+    var vids=c.videos.filter(function(v){ return v.grabado; }).map(function(v){ return esc(v.ejercicio_id)+' ('+esc(fCorta(v.grabado))+')'; }).join(' · ');
+    return '<article class="rfila'+(ab?' abierta':'')+(hecho?' hecha':'')+'" data-cv="'+esc(c.id)+'"><div class="rhead"><button class="rc" data-cvab aria-expanded="'+ab+'"><span class="rnom">'+esc(c.nombre)+'</span><span class="rchips">'+chips+'</span><span class="rtit">'+(vids?'Grabado: '+vids:'Sin vídeos nuevos')+'</span></button></div>'+
+      (ab?'<div class="rcuerpo">'+cvCuerpo(c)+'</div>':'')+'</article>'; }).join('')+'</div>';
+  app.innerHTML=h; enlazarVideos();
+}
+function cvCuerpo(c){
+  var r=CV.res[c.id]||{}, h='<section class="rsec ancho2"><h3>Su vídeo de Cap</h3><div class="campos cvform">'+
+    '<label class="fld"><span>Enlace de Cap</span><input type="url" data-cvin="cap" value="'+esc(r.cap||'')+'" placeholder="https://cap.so/s/…"></label>'+
+    '<label class="fld"><span>Algo que añadir (opcional)</span><input type="text" data-cvin="nota" value="'+esc(r.nota||'')+'" placeholder="«la rodilla le molesta un pelín», «pídele el remo»…"></label>'+
+    '<label class="fld ancho"><span>Transcripción (en Cap, pestaña «Transcript» › copiar)</span><textarea data-cvin="tr" rows="6" placeholder="Pega aquí lo que dices en el vídeo">'+esc(r.tr||'')+'</textarea></label></div>'+
+    '<div class="racc"><button class="btn prim" data-cvprep'+(r.cargando?' disabled':'')+'>'+(r.cargando?'Preparando…':r.mensaje!=null?'↻ Prepararlo otra vez':'✨ Preparar la corrección')+'</button><button class="btn" data-cvmanual>Escribirlo yo</button></div>'+
+    (r.err?'<p class="estado-m err">No ha salido: '+esc(r.err)+'</p>':'')+'</section>';
+  if(r.mensaje==null) return h;
+  h+=(r.aviso?'<section class="rsec ancho2 rbans"><div class="rban mal"><span class="ic" aria-hidden="true">⚠️</span><div><b>Ojo</b><p>'+esc(r.aviso)+'</p></div></div></section>':'')+
+    '<section class="rsec"><h3>Mensaje <small>lo puedes retocar</small></h3><textarea class="msg" data-cvin="mensaje">'+esc(r.mensaje)+'</textarea>'+
+    '<div class="racc"><a class="btn wa" data-cvwa href="'+esc(cvWa(c,r.mensaje))+'" target="_blank" rel="noopener">Abrir en WhatsApp</a><button class="btn" data-cvcopiar>Copiar</button></div></section>'+
+    '<section class="rsec"><h3>A su app <small>Correcciones (se ven en su ejercicio)</small></h3>'+
+    (r.correcciones||[]).map(function(x,i){ return '<div class="cvfila">'+cvSelect(r,x.ejercicio_id,'data-cvcej',i)+'<input type="text" data-cvctx="'+i+'" value="'+esc(x.texto)+'" aria-label="Corrección"><button class="ib" data-cvcdel="'+i+'" aria-label="Quitar">✕</button></div>'; }).join('')+
+    '<button class="btn mas" data-cvcmas>+ Añadir corrección</button>'+
+    ((r.abiertas||[]).length?'<div class="lab" style="margin-top:12px">Ya lo hace bien (pasa a superada)</div>'+r.abiertas.map(function(x){ var on=(r.superadas||[]).indexOf(x.ejercicio_id)>=0; return '<label class="cvchk"><input type="checkbox" data-cvsup="'+esc(x.ejercicio_id)+'"'+(on?' checked':'')+'> '+esc(cvEjNombre(r,x.ejercicio_id))+' <small>'+esc(fCorta(x.fecha))+': '+esc(x.texto)+'</small></label>'; }).join(''):'')+
+    '<div class="lab" style="margin-top:14px">Vídeos de esta semana <small>(hasta el martes '+esc(fCorta(CV.martes||''))+'; salen en su app como «Grábate este»)</small></div>'+
+    (r.videos||[]).map(function(x,i){ return '<div class="cvfila v">'+cvSelect(r,x.ejercicio_id,'data-cvvej',i)+'<input type="text" data-cvvind="'+i+'" value="'+esc(x.indicacion||'')+'" placeholder="En qué fijarse" aria-label="Indicación"><input type="text" data-cvvcomo="'+i+'" value="'+esc(x.como_grabar||'')+'" placeholder="Cómo grabarlo" aria-label="Cómo grabarlo"><button class="ib" data-cvvdel="'+i+'" aria-label="Quitar">✕</button>'+(x.porque?'<small class="cvpq">'+esc(x.porque)+'</small>':'')+'</div>'; }).join('')+
+    '<button class="btn mas" data-cvvmas>+ Añadir vídeo</button>'+
+    '<div class="rpie" style="margin-top:14px"><small class="estado-m">'+(CV.hecho[c.id]?'✓ '+esc(CV.hecho[c.id]):'')+'</small><button class="btn prim" data-cvguardar>Guardar en su ficha y su app</button></div></section>';
+  return h;
+}
+function cvLeerForm(art,r){ $$('[data-cvin]',art).forEach(function(el){ r[el.getAttribute('data-cvin')==='tr'?'tr':el.getAttribute('data-cvin')]=el.value; });
+  (r.correcciones||[]).forEach(function(x,i){ var se=$('[data-cvcej="'+i+'"]',art), tx=$('[data-cvctx="'+i+'"]',art); if(se) x.ejercicio_id=se.value; if(tx) x.texto=tx.value; });
+  (r.videos||[]).forEach(function(x,i){ var se=$('[data-cvvej="'+i+'"]',art), a=$('[data-cvvind="'+i+'"]',art), b=$('[data-cvvcomo="'+i+'"]',art); if(se) x.ejercicio_id=se.value; if(a) x.indicacion=a.value; if(b) x.como_grabar=b.value; });
+  r.superadas=$$('[data-cvsup]',art).filter(function(x){ return x.checked; }).map(function(x){ return x.getAttribute('data-cvsup'); }); }
+function enlazarVideos(){
+  var app=$('#app');
+  app.oninput=function(e){ var art=e.target.closest('[data-cv]'); if(!art) return; var r=CV.res[art.getAttribute('data-cv')]=CV.res[art.getAttribute('data-cv')]||{};
+    if(e.target.getAttribute('data-cvin')==='mensaje'){ r.mensaje=e.target.value; var a=$('[data-cvwa]',art), c=CV.lista.filter(function(x){ return x.id===art.getAttribute('data-cv'); })[0]; if(a&&c) a.href=cvWa(c,r.mensaje); } };
+  app.onkeydown=null; app.onchange=null;
+  app.onclick=function(e){
+    var b=e.target.closest('button,a'); if(!b) return;
+    if(b.hasAttribute('data-rtipo')){ var t=b.getAttribute('data-rtipo'); if(t==='videos') return; R.tipo=t; R.cargado=false; R.abierta=null; R.filtro='todas'; R.fecha=''; rondaCargar(); pintarRonda(); return; }
+    var art=b.closest('[data-cv]'); if(!art) return;
+    var cid=art.getAttribute('data-cv'), c=CV.lista.filter(function(x){ return x.id===cid; })[0], r=CV.res[cid]=CV.res[cid]||{};
+    var repintar=function(){ var y=scrollY; pintarRonda(); scrollTo(0,y); };
+    if(b.hasAttribute('data-cvab')){ cvLeerForm(art,r); CV.abierto=CV.abierto===cid?null:cid; repintar(); return; }
+    cvLeerForm(art,r);
+    if(b.hasAttribute('data-cvprep')){ if(String(r.tr||'').trim().length<20){ var ta=$('[data-cvin="tr"]',art); if(ta) ta.focus(); r.err='pega la transcripción del vídeo de Cap'; repintar(); return; }
+      r.cargando=true; r.err=''; repintar();
+      fetch('/panel/ia',{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({k:KEY,que:'correccion',cliente_id:cid,cap:r.cap||'',transcripcion:r.tr||'',nota:r.nota||''})})
+        .then(function(x){ return x.json().catch(function(){ throw new Error('el servidor no ha respondido bien ('+x.status+')'); }); })
+        .then(function(j){ if(!j||!j.ok) throw new Error((j&&j.error)||'no ha funcionado'); Object.assign(r,j.data); })
+        .catch(function(er){ r.err=String(er.message||er); }).then(function(){ r.cargando=false; repintar(); }); return; }
+    if(b.hasAttribute('data-cvmanual')){ if(r.mensaje!=null) return; b.disabled=true;
+      api('videosCliente',{cliente_id:cid}).then(function(d){ r.ejercicios=d.ejercicios; r.abiertas=d.correcciones.filter(function(x){ return !/superad/i.test(x.estado); }); r.mensaje=(c.nombre||'')+'!\n\n'+(r.cap||''); r.correcciones=[]; r.videos=[]; r.superadas=[]; repintar(); }).catch(function(er){ b.disabled=false; alerta(er); }); return; }
+    var prim=function(){ return ((r.ejercicios||[])[0]||{}).id||''; };
+    if(b.hasAttribute('data-cvcmas')){ (r.correcciones=r.correcciones||[]).push({ejercicio_id:prim(),texto:''}); repintar(); return; }
+    if(b.hasAttribute('data-cvvmas')){ (r.videos=r.videos||[]).push({ejercicio_id:prim(),indicacion:'',como_grabar:'de lado, la 2.ª serie, que se vea todo el cuerpo'}); repintar(); return; }
+    if(b.hasAttribute('data-cvcdel')){ r.correcciones.splice(+b.getAttribute('data-cvcdel'),1); repintar(); return; }
+    if(b.hasAttribute('data-cvvdel')){ r.videos.splice(+b.getAttribute('data-cvvdel'),1); repintar(); return; }
+    if(b.hasAttribute('data-cvcopiar')){ (navigator.clipboard?navigator.clipboard.writeText(r.mensaje||''):Promise.reject()).then(function(){ b.textContent='Copiado ✓'; setTimeout(function(){ b.textContent='Copiar'; },1500); }).catch(function(){}); return; }
+    if(b.hasAttribute('data-cvguardar')){ b.disabled=true; b.textContent='Guardando…';
+      api('videosGuardar',{cliente_id:cid,cap:r.cap||'',mensaje:r.mensaje||'',correcciones:(r.correcciones||[]).filter(function(x){ return String(x.texto||'').trim(); }),superar:r.superadas||[],videos:r.videos||[]})
+        .then(function(o){ CV.hecho[cid]='Guardado: '+o.correcciones+' corrección'+(o.correcciones===1?'':'es')+(o.superadas?', '+o.superadas+' superada'+(o.superadas>1?'s':''):'')+' y '+o.videos+' vídeo'+(o.videos===1?'':'s')+(o.hasta?' hasta el '+fCorta(o.hasta):''); flash(); repintar(); })
+        .catch(function(er){ b.disabled=false; b.textContent='Guardar en su ficha y su app'; alerta(er); }); return; }
+  };
 }
 function siguientePend(id){ var o=R.filas.filter(function(x){ return !rhecha(x)&&x.id!==id; }); return o.length?o[0]:null; }
 function cuerpo(f,d){
@@ -1775,6 +1861,7 @@ function enlazarRonda(){
   app.onclick=function(e){
     var b=e.target.closest('button,a'); if(!b) return;
     if(b.hasAttribute('data-rfil')){ R.filtro=b.getAttribute('data-rfil'); pintarRonda(); return; }
+    if(b.hasAttribute('data-rtipo')&&b.getAttribute('data-rtipo')==='videos'){ if(R.tipo==='videos') return; R.tipo='videos'; pintarRonda(); return; }
     if(b.hasAttribute('data-rtipo')){ var t=b.getAttribute('data-rtipo'); if(t===R.tipo) return; R.tipo=t; R.cargado=false; R.abierta=null; R.filtro='todas'; R.fecha=''; rondaCargar(); pintarRonda(); return; }
     var art=b.closest('.rfila'); if(!art) return;
     var id=art.getAttribute('data-rid'), f=rbuscar(id); if(!f) return;

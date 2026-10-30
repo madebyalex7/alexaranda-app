@@ -64,6 +64,9 @@ function P_despachar(cuerpo) {
       case 'entrenoCliente': return { ok: true, data: EC_cliente(d.cliente_id) };
       case 'caminoCliente': return { ok: true, data: EV_cliente(d.cliente_id) };
       case 'calendarioCliente': return { ok: true, data: CA_cliente(d.cliente_id) };
+      case 'videosCargar': return { ok: true, data: CV_cargar() };
+      case 'videosCliente': return { ok: true, data: CV_cliente(d.cliente_id) };
+      case 'videosGuardar': return { ok: true, data: P_escribir(function () { return CV_guardar(d); }) };
       case 'fotos': return { ok: true, data: FT_lista(d.cliente_id) };
       case 'fotoArchivo': return { ok: true, data: FT_archivo(d.id) };
       case 'avisos': return { ok: true, data: AV_cargar(!!d.fresco) };
@@ -1024,4 +1027,85 @@ function CA_cliente(cid) {
   }
   var dias = {}; (D.orden || []).forEach(function (k) { var d = D.dias[k]; if (d && k !== 'st') dias[k] = { n: d.n, ds: d.ds }; });
   return { nombre: D.nombre, semana: D.semana, desde: desde, hoy: D.hoy || P_hoy(), entrenos: entrenos, peso: peso, medidas: medidas, fotos: fotos, extras: extras, semanas: semanas, dias: dias };
+}
+
+// ═════════ Correcciones de vídeos desde el panel (Alex 30/10) ═════════
+/*
+ * Reportes › Vídeos: quién ha grabado (maestra › Vídeos pedidos › grabado), Alex pega el enlace de Cap y la transcripción,
+ * la IA del worker prepara el mensaje (aplauso → enlace → resumen → vídeos de la semana) y, al guardar:
+ *   · hoja del cliente › Correcciones: una fila por ejercicio (fecha · ejercicio_id · texto · estado activa); las que ya hace bien, superada;
+ *   · maestra › Vídeos pedidos: los de la semana (desde hoy hasta el martes siguiente) con como_grabar;
+ *   · panel › Aplicados: una fila «correccion» con el enlace y el mensaje, para que el Proyecto lo pase a sus documentos.
+ * Solo eso: el resto de las hojas no se toca. Nada se envía al cliente: Alex lo abre en WhatsApp y lo manda él.
+ */
+var CV_COLS = ['fecha', 'ejercicio_id', 'texto', 'estado', 'mostrar_hasta', 'superada_el', 'resumen'];
+function CV_f(v) { if (v instanceof Date) return Utilities.formatDate(v, P_ZONA, 'yyyy-MM-dd'); var t = String(v == null ? '' : v).slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : ''; }
+function CV_martes(hoy) {   // martes siguiente (si hoy es martes, el de la semana que viene)
+  var p = hoy.split('-'), d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])), w = d.getUTCDay(), n = (2 - w + 7) % 7 || 7;
+  return P_sumarDias(hoy, n);
+}
+function CV_cargar() {
+  var hoy = P_hoy(), hace = P_sumarDias(hoy, -14);
+  var porCod = {};
+  D_leer(SpreadsheetApp.openById(MAESTRA_ID), 'Vídeos pedidos').forEach(function (v) {
+    var c = String(v.codigo || '').trim(); if (!c) return;
+    var x = { ejercicio_id: String(v.ejercicio_id || ''), indicacion: String(v.indicacion || ''), desde: CV_f(v.desde), hasta: CV_f(v.hasta), grabado: CV_f(v.grabado) };
+    if ((x.grabado && x.grabado >= hace) || (!x.hasta || x.hasta >= hoy)) (porCod[c] = porCod[c] || []).push(x);
+  });
+  var clientes = P_leer('Clientes').filter(function (c) { return !c.archivado && c.estado === 'Activo' && c.codigo_app; }).map(function (c) {
+    var vs = porCod[String(c.codigo_app).trim()] || [];
+    return { id: c.id, nombre: c.nombre, telefono: c.telefono || '', codigo_app: c.codigo_app, videos: vs,
+      grabados: vs.filter(function (v) { return v.grabado; }).length, pedidos: vs.filter(function (v) { return !v.grabado && (!v.hasta || v.hasta >= hoy); }).length };
+  });
+  clientes.sort(function (a, b) { return (b.grabados - a.grabados) || String(a.nombre).localeCompare(String(b.nombre)); });
+  return { hoy: hoy, martes: CV_martes(hoy), clientes: clientes };
+}
+function CV_hojaDe(cid) {
+  var cl = P_leer('Clientes').filter(function (c) { return c.id === cid; })[0];
+  if (!cl || !cl.codigo_app) throw new Error('Ese cliente no tiene la app');
+  var cli = D_cliente(String(cl.codigo_app).trim()); if (!cli) throw new Error('No encuentro su hoja de la app');
+  return { cl: cl, cli: cli, ss: SpreadsheetApp.openById(cli.hoja) };
+}
+function CV_cliente(cid) {
+  var h = CV_hojaDe(cid), vistos = {}, ejercicios = [];
+  D_leer(h.ss, 'Plan').forEach(function (p) { var id = String(p.ejercicio_id || '').trim(); if (id && !vistos[id]) { vistos[id] = 1; ejercicios.push({ id: id, nombre: String(p.nombre || id), dia: String(p.dia || ''), principal: L_bool(p.principal) }); } });
+  var corr = D_leerOpc(h.ss, 'Correcciones').map(function (f) { return { fecha: CV_f(f.fecha), ejercicio_id: String(f.ejercicio_id || ''), texto: String(f.texto || ''), estado: String(f.estado || ''), superada_el: CV_f(f.superada_el) }; })
+    .filter(function (f) { return f.ejercicio_id && f.texto; });
+  var reg = {}; try { D_leer(h.ss, 'Registro').forEach(function (r) { var id = String(r.ejercicio_id || ''); if (id && r.peso !== '' && r.peso != null) reg[id] = { semana: L_int(r.semana), peso: r.peso, repes: r.repes }; }); } catch (e) {}
+  var ronda = P_leer('Ronda').filter(function (r) { return r.cliente_id === cid && r.voz; }).pop();
+  return { cliente: h.cl.nombre, telefono: h.cl.telefono || '', ejercicios: ejercicios, correcciones: corr.slice(-30), ultimoPeso: reg, voz: ronda ? ronda.voz : '' };
+}
+function CV_guardar(d) {
+  var h = CV_hojaDe(d.cliente_id), hoy = P_hoy(), codigo = String(h.cl.codigo_app).trim();
+  var ids = {}; D_leer(h.ss, 'Plan').forEach(function (p) { if (p.ejercicio_id) ids[String(p.ejercicio_id).trim()] = 1; });
+  var limpio = function (lista) { return (lista || []).filter(function (x) { return x && ids[String(x.ejercicio_id || '').trim()]; }); };
+  var corr = limpio(d.correcciones).filter(function (x) { return String(x.texto || '').trim(); }), vids = limpio(d.videos), sup = (d.superar || []).filter(function (id) { return ids[id]; });
+  // Correcciones en su hoja
+  var sh = h.ss.getSheetByName('Correcciones');
+  if (!sh) { sh = h.ss.insertSheet('Correcciones'); sh.getRange(1, 1, 1, CV_COLS.length).setValues([CV_COLS]); sh.setFrozenRows(1); }
+  var t = D_tabla(h.ss, 'Correcciones'); D_asegurarCols(t, []);
+  var ix = function (c) { return t.cab.indexOf(c); };
+  if (ix('superada_el') < 0 && sup.length) { t.sh.getRange(1, t.cab.length + 1).setValue('superada_el'); t.cab.push('superada_el'); }
+  sup.forEach(function (id) {
+    t.filas.forEach(function (f, i) {
+      if (String(f[ix('ejercicio_id')]) !== id || /superad/i.test(String(f[ix('estado')]))) return;
+      t.sh.getRange(i + 2, ix('estado') + 1).setValue('superada');
+      t.sh.getRange(i + 2, ix('superada_el') + 1).setValue(hoy);
+    });
+  });
+  corr.forEach(function (x) {
+    var fila = t.cab.map(function (c) { return c === 'fecha' ? hoy : c === 'ejercicio_id' ? String(x.ejercicio_id).trim() : c === 'texto' ? String(x.texto).trim().slice(0, 600) : c === 'estado' ? 'activa' : c === 'resumen' ? String(x.resumen || '').slice(0, 300) : ''; });
+    t.sh.appendRow(fila);
+  });
+  // Vídeos de la semana en la maestra
+  if (vids.length) {
+    var tv = D_tabla(SpreadsheetApp.openById(MAESTRA_ID), 'Vídeos pedidos'), hasta = CV_martes(hoy);
+    vids.forEach(function (v) {
+      tv.sh.appendRow(tv.cab.map(function (c) { return c === 'codigo' ? codigo : c === 'ejercicio_id' ? String(v.ejercicio_id).trim() : c === 'indicacion' ? String(v.indicacion || '').slice(0, 300) : c === 'desde' ? hoy : c === 'hasta' ? hasta : c === 'como_grabar' ? String(v.como_grabar || '').slice(0, 300) : ''; }));
+    });
+  }
+  try { D_cacheFuera(codigo); } catch (e) {}
+  P_nuevo('Aplicados', { fecha: P_ahora(), cliente: h.cl.nombre, codigo_app: codigo, tipo: 'correccion',
+    detalle: JSON.stringify({ cap: String(d.cap || ''), mensaje: String(d.mensaje || '').slice(0, 4000), correcciones: corr, superadas: sup, videos: vids }).slice(0, 4900), resultado: 'guardado', pasado_a_docs: '' });
+  return { correcciones: corr.length, superadas: sup.length, videos: vids.length, hasta: vids.length ? CV_martes(hoy) : '' };
 }

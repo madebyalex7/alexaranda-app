@@ -152,6 +152,36 @@ async function rondaVersiones(b, env) {
   return { ok: true, data: { versiones } };
 }
 
+// ───────── Correcciones de vídeo (Alex 30/10): transcripción de Cap → mensaje, correcciones para la app y vídeos de la semana ─────────
+const CORRECCION = `Preparas la corrección de vídeos de Alex Aranda para un cliente, a partir de lo que Alex dice en su vídeo de Cap (la transcripción). Reglas:
+- Lo que se corrige es SOLO lo que Alex dice en la transcripción. No valores la técnica por tu cuenta ni añadas correcciones suyas. Lo dudoso, «(por confirmar)».
+- Mensaje de WhatsApp, un solo bloque, en este orden: 1) un reconocimiento concreto de lo que hace bien; 2) el enlace de Cap (escribe exactamente {{CAP}} donde va); 3) un resumen de 2-4 puntos numerados (por ejercicio: lo bien hecho, qué cambiar con una señal fácil y qué debería notar); 4) los vídeos de esta semana: qué grabar y cómo (ángulo, qué serie, que se vea el cuerpo entero).
+- Una sola corrección por ejercicio. Sin tecnicismos (omóplatos, isquios, core, retroversión, rango articular…): las palabras de Alex.
+- Si mejoró algo que se le había corregido, dilo.
+- Vídeos de la semana: 2 o 3, por este orden: correcciones abiertas (primero las de su zona sensible), ejercicios que cambian esta semana o nunca grabados, lo que le cuesta. No pidas lo que ya domina. Solo ejercicios de su lista (usa su ejercicio_id).
+- Si en la transcripción se intuye dolor o molestia nueva, dilo en «aviso» para Alex (no lo decidas tú).
+Responde SOLO con este JSON:
+{"mensaje": "...", "correcciones": [{"ejercicio_id": "...", "texto": "una frase corta en la voz de Alex, la misma del mensaje"}], "superadas": ["ejercicio_id de correcciones abiertas que Alex dice que ya hace bien"], "videos": [{"ejercicio_id": "...", "indicacion": "en qué fijarse, corto", "como_grabar": "de lado, la 2.ª serie, que se vea todo el cuerpo", "porque": "media frase para Alex"}], "aviso": ""}`;
+async function correccionIA(b, env) {
+  if (!env || !env.ANTHROPIC_API_KEY) return { ok: false, error: "Para preparar la corrección hace falta la IA conectada (ANTHROPIC_API_KEY en Cloudflare)" };
+  const tr = String(b.transcripcion || "").trim().slice(0, 30000), cap = String(b.cap || "").trim().slice(0, 300);
+  if (tr.length < 20) return { ok: false, error: "Pega la transcripción del vídeo de Cap" };
+  const g = await google({ panel: true, k: PANEL_KEY, accion: "videosCliente", datos: { cliente_id: b.cliente_id } });
+  if (!g || !g.ok) return g || { ok: false, error: "Google no responde ahora" };
+  const c = g.data;
+  const ejs = c.ejercicios.map(e => `- ${e.id}: ${e.nombre}${e.principal ? " (principal)" : ""}${c.ultimoPeso[e.id] ? " · último: " + c.ultimoPeso[e.id].peso + " kg × " + c.ultimoPeso[e.id].repes : ""}`).join("\n");
+  const abiertas = c.correcciones.filter(x => !/superad/i.test(x.estado)).map(x => `- ${x.fecha} · ${x.ejercicio_id}: ${x.texto}`).join("\n") || "(ninguna)";
+  const ctx = `Cliente: ${c.cliente}${c.voz ? "\n## Cómo le habla Alex\n" + c.voz : ""}\n## Sus ejercicios (ejercicio_id: nombre)\n${ejs}\n## Correcciones abiertas\n${abiertas}${b.nota ? "\n## Lo que añade Alex\n" + String(b.nota).slice(0, 1500) : ""}\n## Transcripción de Cap\n${tr}`;
+  const raw = await claudeTexto(env, VOZ_ALEX + "\n\n" + CORRECCION, ctx, 2200);
+  let j; try { j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); } catch (e) { return { ok: false, error: "La respuesta no se entendió; prueba otra vez" }; }
+  const ids = new Set(c.ejercicios.map(e => e.id));
+  const out = { mensaje: String(j.mensaje || "").split("{{CAP}}").join(cap || "(enlace de Cap)"), aviso: String(j.aviso || ""),
+    correcciones: (j.correcciones || []).filter(x => x && ids.has(x.ejercicio_id) && x.texto),
+    superadas: (j.superadas || []).filter(x => ids.has(x)),
+    videos: (j.videos || []).filter(x => x && ids.has(x.ejercicio_id)).slice(0, 4), ejercicios: c.ejercicios, abiertas: c.correcciones.filter(x => !/superad/i.test(x.estado)) };
+  return { ok: true, data: out };
+}
+
 // ───────── Llamadas: preparar la llamada y mensaje de seguimiento (API de Claude) ─────────
 const PREPARAR_LLAMADA = `Eres el ayudante de Alex Aranda, entrenador personal online (entreno y nutrición; sobre todo mujeres de 30 a 50 años que quieren perder grasa, sentirse bien y tienen poco tiempo). Preparas la chuleta de su llamada de valoración con un lead. Usa SOLO lo que hay en los datos y en el chat; si algo no se sabe, dilo («no lo sabemos: preguntarlo»). Nada inventado.
 Formato: texto plano, corto, que se lea en 1 minuto, con estos apartados en mayúsculas y guiones:
@@ -246,7 +276,7 @@ export default {
     if (u.pathname === "/panel/ia" && req.method === "POST") {
       let b = {}; try { b = JSON.parse(await req.text()); } catch (e) { return js({ ok: false, error: "JSON no válido" }, 400); }
       if (b.k !== PANEL_KEY) return js({ ok: false, error: "No autorizado" }, 403);
-      try { return js(await (b.que === "lead" ? leadIA(b, env) : b.que === "versiones" ? rondaVersiones(b, env) : rondaIA(b, env))); } catch (e) { return js({ ok: false, error: String(e.message || e).slice(0, 300) }, 502); }
+      try { return js(await (b.que === "lead" ? leadIA(b, env) : b.que === "versiones" ? rondaVersiones(b, env) : b.que === "correccion" ? correccionIA(b, env) : rondaIA(b, env))); } catch (e) { return js({ ok: false, error: String(e.message || e).slice(0, 300) }, 502); }
     }
     if (u.pathname === "/icon.png") {
       const b = Uint8Array.from(atob(ICON), c => c.charCodeAt(0));
