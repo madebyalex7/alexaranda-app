@@ -1040,8 +1040,19 @@ function CA_cliente(cid) {
     semanas.push({ w: w, lunes: lun, objetivo: D.objetivo, hechos: Object.keys(hechos).length });
   }
   var dias = {}; (D.orden || []).forEach(function (k) { var d = D.dias[k]; if (d && k !== 'st' && k !== 'casa') dias[k] = { n: d.n, ds: d.ds }; });
+  // Troncales (principal en su Plan): la mejor serie de cada semana y si toca subir (todas las series de la última semana, con su peso más alto, en el tope del rango)
+  var troncales = [], vistoT = {}, reg = D_leer(ss, 'Registro', zona);
+  D_leer(ss, 'Plan').forEach(function (p) {
+    var id = String(p.ejercicio_id || '').trim(); if (!id || vistoT[id] || !L_bool(p.principal)) return; vistoT[id] = 1;
+    var nums = String(p.repes || '').match(/\d+/g), tope = nums ? Math.max.apply(null, nums.map(Number)) : 0, porW = {};
+    reg.forEach(function (r) { var kg = L_num(r.peso), re = L_int(r.repes), w = L_int(r.semana); if (String(r.ejercicio_id) !== id || !w || kg === '' || !re) return; (porW[w] = porW[w] || []).push({ kg: +kg, re: re }); });
+    var serie = Object.keys(porW).map(Number).sort(function (a, b) { return a - b; }).map(function (w) { var m = porW[w].reduce(function (a, b) { return b.kg > a.kg || (b.kg === a.kg && b.re > a.re) ? b : a; }); return { w: w, kg: m.kg, re: m.re }; });
+    if (!serie.length) return;
+    var u = serie[serie.length - 1], deU = porW[u.w].filter(function (x) { return x.kg === u.kg; });
+    troncales.push({ id: id, nm: String(p.nombre || id), rango: String(p.repes || ''), serie: serie, subir: !!tope && deU.every(function (x) { return x.re >= tope; }) });
+  });
   var acceso = { candado: !!aj.candado, desbloqueado: !!aj.desbloqueado, plan_ok: aj.plan_ok || '', cerrado: D.candado || null };
-  return { acceso: acceso, nombre: D.nombre, semana: D.semana, desde: desde, hoy: D.hoy || P_hoy(), entrenos: entrenos, peso: peso, medidas: medidas, fotos: fotos, extras: extras, semanas: semanas, dias: dias };
+  return { troncales: troncales, acceso: acceso, nombre: D.nombre, semana: D.semana, desde: desde, hoy: D.hoy || P_hoy(), entrenos: entrenos, peso: peso, medidas: medidas, fotos: fotos, extras: extras, semanas: semanas, dias: dias };
 }
 
 // ═════════ Correcciones de vídeos desde el panel (Alex 30/10) ═════════

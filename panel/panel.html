@@ -774,15 +774,20 @@ function avPintar(){ if(S.tab==='hoy'&&S.data){ pintarHoy(); return; } if(S.tab!
 /* ───────── carga ───────── */
 function cargar(){
   if(!KEY){ $('#app').innerHTML='<div class="pantalla"><h2>Falta la clave</h2><p>Abre el panel con el enlace completo (lleva <code>?k=</code> al final).</p></div>'; $('#actualizado').textContent=''; return; }
+  // Carga rápida (Alex 30/10): al abrir, enseña lo último guardado en este navegador y lo cambia por lo fresco en cuanto llega
+  var deCache=false; if(!S.data){ try{ var cc=JSON.parse(leerLocal('panel_cache')||'null'); if(cc&&cc.clientes){ S.data=cc; deCache=true; $('#actualizado').textContent='Actualizando…'; pintar(); } }catch(e){} }
   api('cargar').then(function(d){
     d.clientes=d.clientes||[]; d.leads=d.leads||[]; d.cobros=d.cobros||[];
-    S.data=d;
+    if(deCache&&(Object.keys(pend).length||enVuelo)){ setTimeout(cargar,1500); return; }   // has tocado algo mientras cargaba: se vuelve a pedir después de guardarlo
+    var escribiendo=deCache&&document.activeElement&&/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+    S.data=d; guardarLocal('panel_cache',JSON.stringify(d));
     var t=new Date(); $('#actualizado').textContent='Actualizado a las '+pad(t.getHours())+':'+pad(t.getMinutes());
-    pintar();
+    if(!escribiendo) pintar();
     if(!LC.cargando&&S.tab!=='llamadas') llamadasCargar();
     if(!AV.cargando) avisosCargar(AV.cargado);
     if(!R.cargado&&!R.cargando) rondaCargar().then(function(){ if(S.tab!=='ronda') $('#nRon').textContent=R.filas.filter(function(f){return !rhecha(f);}).length||''; });
   }).catch(function(e){
+    if(deCache){ $('#actualizado').textContent='Sin conexión: datos de la última vez'; return; }
     $('#app').innerHTML='<div class="pantalla"><h2>No se han podido cargar los datos</h2><p>'+esc(e.message)+'</p><p><button class="btn prim" id="otraVez">Volver a cargar</button></p></div>';
     $('#otraVez').onclick=cargar; $('#actualizado').textContent='Sin conexión con la hoja';
   });
@@ -1611,7 +1616,7 @@ function cuerpo(f,d){
   var pie='<section class="rsec ancho2"><h3>Tu nota <small>para su seguimiento</small>'+' <button class="linkbtn" data-forms style="margin-left:auto;padding:0">📋 Formularios</button> <button class="linkbtn" data-formsr style="padding:0;margin-left:12px">⭐ Para redes</button>'+(f.cliente_id?' <button class="linkbtn" data-fotosr style="padding:0;margin-left:12px">📷 Fotos</button> <button class="linkbtn" data-entrr style="padding:0;margin-left:12px">🏋️ Su entreno</button> <button class="linkbtn" data-nutrr style="padding:0;margin-left:12px">🥗 Nutrición</button> <button class="linkbtn" data-calr style="padding:0;margin-left:12px">📅 Calendario</button>':'')+(f.cliente_id?' <button class="linkbtn" data-ficha style="padding:0;margin-left:12px">Ver su ficha →</button>':'')+'</h3><textarea class="nota-alex" data-rc="nota_alex" placeholder="Lo que quieras que tenga en cuenta: lo paso a su ficha.">'+esc(f.nota_alex||'')+'</textarea>'+
       '<div class="rpie" style="margin-top:12px"><small class="estado-m">'+(rhecha(f)?'✓ Hecho'+(f.revisado?' el '+esc(fCorta(String(f.revisado).slice(0,10))):''):'')+'</small>'+
       (rhecha(f)?(sig?'<button class="btn prim" data-siguiente>Siguiente: '+esc(sig.cliente)+' →</button>':'<span class="estado-m ok">Todos hechos ✓</span>'):'<button class="btn prim" data-revisar="1">Hecho ✓ · siguiente</button>')+'</div></section>';
-  return banners+vistazo(f,d)+mensual+(men?nutriSeccion(f,d)+aaSeccion(f):'')+(vi?semana+mensaje+comoVa+cambios:semana+comoVa+mensaje+cambios)+pie;
+  return banners+vistazo(f,d)+(men?revSeccion(f):'')+(!vi&&subirHtml(f)?'<section class="rsec ancho2 rbans">'+subirHtml(f)+'</section>':'')+mensual+(men?nutriSeccion(f,d)+aaSeccion(f):'')+(vi?semana+mensaje+comoVa+cambios:semana+comoVa+mensaje+cambios)+pie;
 }
 
 /* ── Su entreno (ficha): plan visual + datos que importan (25/10) ── */
@@ -1858,6 +1863,21 @@ function pgSeccion(c){
       rdDeCliente(c.id)+
     '</div></div>';
 }
+/* Revisión mensual (Alex 30/10): fotos, gráfica de peso, medidas y troncales uno a uno, desde su app. Y a quién le toca subir peso */
+var TRS={};
+function subirTxt(d){ return ((d&&d.troncales)||[]).filter(function(t){ return t.subir; }).map(function(t){ var u=t.serie[t.serie.length-1]; return t.nm+' ('+String(u.kg).replace('.',',')+' kg × '+u.re+')'; }); }
+function subirHtml(f){ var d=CAC[f.cliente_id], l=subirTxt(d); return l.length?'<div class="rban ojo"><span class="ic" aria-hidden="true">⬆️</span><div><b>Toca subir peso</b><p>'+esc(l.join(' · '))+': ha llegado al tope del rango en todas las series. Tú decides.</p></div></div>':''; }
+function revSeccion(f){
+  semExtra(f); var d=CAC[f.cliente_id]; if(!d) return '<section class="rsec ancho2"><h3>Desde su app</h3><div class="cargando" style="min-height:70px"></div></section>'; if(d.sinApp) return '';
+  var ps=(d.peso||[]).slice().sort(function(a,b){ return a.fecha.localeCompare(b.fecha); }).slice(-12), pv=ps.map(function(x){ return rnum(x.peso); }), pe=ps.map(function(x){ return fCorta(x.fecha); });
+  var fo=(d.fotos||[]).slice().sort().pop(), me=(d.medidas||[]).slice().sort().pop(), ts=d.troncales||[], sel=ts.filter(function(t){ return t.id===TRS[f.cliente_id]; })[0]||ts[0];
+  var pdif=pv.length>1&&pv[0]!=null&&pv[pv.length-1]!=null?Math.round((pv[pv.length-1]-pv[0])*10)/10:null;
+  var h='<section class="rsec ancho2"><h3>Desde su app</h3><div class="vtiles">'+tile('Fotos',fo?'✓':'✕',fo?'últimas: '+esc(fCorta(fo)):'sin fotos todavía',null,fo?'ok':'mal')+tile('Medidas',me?'✓':'—',me?'últimas: '+esc(fCorta(me)):'sin medidas',null)+
+    tile('Peso',ps.length?esc(String(ps[ps.length-1].peso).replace('.',','))+' <small>kg</small>':'—',pdif!=null?(pdif>0?'+':'')+String(pdif).replace('.',',')+' kg en '+ps.length+' pesajes':'',linea(pv,pe,function(v){ return String(v).replace('.',',')+' kg'; }))+'</div>';
+  if(sel){ var kv=sel.serie.slice(-12); h+='<div class="lab" style="margin-top:12px">Ejercicios troncales</div><div class="rtipo" role="group" aria-label="Elegir ejercicio">'+ts.map(function(t){ return '<button class="chip" data-trsel="'+esc(t.id)+'" aria-pressed="'+(t.id===sel.id)+'">'+esc(t.nm)+(t.subir?' ⬆️':'')+'</button>'; }).join('')+'</div>'+
+    '<div class="vtiles" style="margin-top:8px">'+tile(esc(sel.nm),esc(String(kv[kv.length-1].kg).replace('.',','))+' <small>kg × '+kv[kv.length-1].re+'</small>','desde '+esc(String(kv[0].kg).replace('.',','))+' kg × '+kv[0].re+(sel.rango?' · rango '+esc(sel.rango):''),linea(kv.map(function(x){ return x.kg; }),kv.map(function(x){ return 'Semana '+x.w; }),function(v){ return String(v).replace('.',',')+' kg'; }),sel.subir?'ok':'')+'</div>'; }
+  return h+'</section>';
+}
 /* Semanal (Alex 30/10): si se pesó el último viernes y si mandó vídeos, para tenerlo en cuenta en el mensaje */
 function ultViernes(f0){ var f=f0||hoy(); for(var i=0;i<7;i++){ var x=sumar(f,-i); if(new Date(x+'T12:00:00').getDay()===5) return x; } return ''; }
 function semExtra(f){
@@ -1871,7 +1891,7 @@ function semExtra(f){
   var vids=cv?cv.videos.filter(function(v){ return v.grabado&&dias(v.grabado,h)<=7; }).length:0, ped=cv?cv.pedidos:0;
   return {peso:pe, viernes:vi, videos:vids, pedidos:ped};
 }
-function semExtraTxt(f){ var x=semExtra(f); if(!x) return ''; return 'Peso del viernes '+fCorta(x.viernes)+': '+(x.peso?'sí, '+x.peso.peso+' kg':'no lo apuntó')+'. Vídeos de la semana: '+(x.videos?x.videos+' grabados':x.pedidos?'pedidos y sin grabar':'no tenía pedidos')+'.'; }
+function semExtraTxt(f){ var x=semExtra(f); if(!x) return ''; var su=subirTxt(CAC[f.cliente_id]); return (su.length?'Ha llegado al tope del rango, puede subir peso en: '+su.join(', ')+'. ':'')+'Peso del viernes '+fCorta(x.viernes)+': '+(x.peso?'sí, '+x.peso.peso+' kg':'no lo apuntó')+'. Vídeos de la semana: '+(x.videos?x.videos+' grabados':x.pedidos?'pedidos y sin grabar':'no tenía pedidos')+'.'; }
 /* Desde una revisión, ver su nutrición o su calendario sin salir (Alex 30/10) */
 function ovGrande(id,titulo,cuerpo){ var o=$('#'+id); if(!o){ o=document.createElement('div'); o.id=id; o.className='respov'; o.setAttribute('role','dialog'); document.body.appendChild(o); }
   o.hidden=false; o.innerHTML='<div class="respbox"><div class="resphead"><h2>'+titulo+'</h2><button class="ib" data-ovx aria-label="Cerrar">✕</button></div><div class="ovc">'+cuerpo+'</div></div>';
@@ -2035,6 +2055,7 @@ function enlazarRonda(){
     if(b.hasAttribute('data-aamsg')){ var dd1=FOC[f.cliente_id||f.cliente], c1=dd1&&foComparar(dd1.formularios||[]), x1=c1&&c1.textos[+b.getAttribute('data-aamsg')]; if(!x1) return;
       var ta2=$('textarea[data-rc="mensaje"]',art); rguardar(f,{mensaje:meterEnMensaje(ta2?ta2.value:f.mensaje,foTextoMsg(x1,f.cliente,true))},true); rrepintar(id); return; }
     if(b.hasAttribute('data-fotosr')){ abrirFotos(f.cliente_id,f.cliente); return; }
+    if(b.hasAttribute('data-trsel')){ TRS[f.cliente_id]=b.getAttribute('data-trsel'); rrepintar(id); return; }
     if(b.hasAttribute('data-entrr')){ abrirEntreno(f.cliente_id,f.cliente); return; }
     if(b.hasAttribute('data-nutrr')){ abrirNutri(f.cliente_id,f.cliente); return; }
     if(b.hasAttribute('data-calr')){ abrirCal(f.cliente_id,f.cliente); return; }
