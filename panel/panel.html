@@ -1509,17 +1509,21 @@ function cFormulario(w,meses){
   if(wb===4&&b===1) return {f:'Primer mes'};
   return {f:'Mensual'+(w===8?' (mes 2: cómo se ve en un año)':'')};
 }
-/* Si la semana de la app no sale de su inicio (bloque nuevo o migración: Sole, Isaac…), el panel no adivina el nombre del formulario */
-function cReinicio(c,w){ if(!esFecha(c.inicio)) return true; var l=sumar(c.inicio,-((new Date(c.inicio+'T12:00:00').getDay()+6)%7)), b=l<=hoy()?Math.floor(dias(l,hoy())/7)+1:0; return Math.abs(b-w)>=2; }
+/* Bloques encadenados (Alex 30/10): la fecha de inicio es cuando paga; los formularios van por bloques de 12 semanas, contados desde el primero.
+   Bloque = el de su hoja o el que salga de la semana; dentro de él, semanas 4, 8 y 12 */
+function cSe(c){ return (AV.semanas||{})[String(c.codigo_app||'').trim()]||null; }
+function cBloque(c,w){ var se=cSe(c), wb=((w-1)%12)+1; return {b:Math.max(se&&se.b||1,Math.ceil(w/12)),wb:wb}; }
+function cMes(c,w){ var x=cBloque(c,w); return (x.b-1)*3+Math.round(x.wb/4); }   // mes del programa de un control (semana 4 = 1)
+function cFormBloque(c,w,resta){ var x=cBloque(c,w); if(x.wb===12) return 'Fin de '+(x.b*3)+' meses'; if(resta!=null&&resta>=4&&resta<=6) return 'Previo a renovación'; if(x.wb===4&&x.b===1) return 'Primer mes'; return 'Mensual'+(x.b===1&&x.wb===8?' (mes 2: cómo se ve en un año)':''); }
 function controlesSemana(){
   var h=hoy(), dow=(new Date(h+'T12:00:00').getDay()+6)%7, lun=sumar(h,-dow), vie=sumar(lun,4), out=[];
   ((S.data&&S.data.clientes)||[]).filter(function(c){ return vivo(c)&&c.estado==='Activo'&&esFecha(c.inicio); }).forEach(function(c){
     var meses=cMeses(c), wv=cSemana(c,vie), wl=cSemana(c,lun), resta=esFecha(c.fin)?Math.ceil(dias(lun,c.fin)/7):null;   // la renovación cuenta desde su fecha de fin, no desde la semana
-    if(wv&&wv%4===0){ var re=cReinicio(c,wv), fo=resta!=null&&resta>=4&&resta<=6?{f:'Previo a renovación'}:re?{f:'de control'}:cFormulario(wv,meses), ult=resta!=null&&resta<=2;
-      out.push({c:c,cuando:vie,dia:'Viernes',t:'Fotos, peso, medidas y formulario '+(fo.f==='de control'?'de control':'«'+fo.f+'»'),sub:'en lugar del semanal'+(ult?' · último bloque: si no renueva, «Fin de programa»':''),tipo:'control'}); }
-    if(wl>1&&(wl-1)%4===0){ var mes=(wl-1)/4, ex=[], rein=cReinicio(c,wl); if(mes>=1&&mes<=4&&!rein) ex.push('⭐ mira si es momento del Grand Slam');
+    if(wv&&wv%4===0){ var fo={f:cFormBloque(c,wv,resta)}, ult=resta!=null&&resta<=2;
+      out.push({c:c,cuando:vie,dia:'Viernes',t:'Fotos, peso, medidas y formulario «'+fo.f+'»',sub:'en lugar del semanal'+(ult?' · último bloque: si no renueva, «Fin de programa»':''),tipo:'control'}); }
+    if(wl>1&&(wl-1)%4===0){ var mes=cMes(c,wl-1), ex=[]; if(mes>=1&&mes<=4) ex.push('⭐ mira si es momento del Grand Slam');
       if(resta!=null&&resta<=4) ex.push('⏳ habla de renovar');
-      out.push({c:c,cuando:lun,dia:'Lunes',t:rein?'Revisión mensual':'Revisión '+(mes%3===0?'de fin de bloque (mes '+mes+')':'mensual (mes '+mes+')'),sub:['sustituye a la semanal'].concat(ex).join(' · '),tipo:'revision'}); }
+      out.push({c:c,cuando:lun,dia:'Lunes',t:'Revisión '+(mes%3===0?'de fin de bloque (mes '+mes+')':'mensual (mes '+mes+')'),sub:['sustituye a la semanal'].concat(ex).join(' · '),tipo:'revision'}); }
     else if(resta!=null&&resta>0&&resta<=3) out.push({c:c,cuando:lun,dia:'Esta semana',t:'Renovación: le quedan '+resta+' semana'+(resta===1?'':'s'),sub:'recordatorio semanal desde su última revisión',tipo:'renovar'});
   });
   return out.sort(function(a,b){ return a.cuando.localeCompare(b.cuando)||String(a.c.nombre).localeCompare(String(b.c.nombre)); });
@@ -1528,12 +1532,13 @@ function controlesSemana(){
 var NV={abierto:null};
 /* También los que aún no han empezado o tienen el alta abierta: es cuando hay que aprobar su plan (Alex 30/10) */
 function altaDe(cid){ return (S.data.altas||[]).filter(function(a){ return vivo(a)&&a.cliente_id===cid&&a.estado!=='hecha'; }).pop()||null; }
-function nuevos(){ var h=hoy(); return ((S.data&&S.data.clientes)||[]).filter(function(c){ return vivo(c)&&c.estado==='Activo'&&esFecha(c.inicio)&&(altaDe(c.id)||dias(c.inicio,h)<14); })
-  .sort(function(a,b){ return a.inicio.localeCompare(b.inicio); }); }
-function nvDia(c){ return dias(c.inicio,hoy())+1; }
+function cArranque(c){ var se=cSe(c); return se&&esFecha(se.ini)?se.ini:c.inicio; }   // comienzo de su primer bloque; sin hoja, la fecha de inicio
+function nuevos(){ var h=hoy(); return ((S.data&&S.data.clientes)||[]).filter(function(c){ var se=cSe(c), ar=cArranque(c); return vivo(c)&&c.estado==='Activo'&&esFecha(ar)&&!(se&&se.b>1)&&(altaDe(c.id)||dias(ar,h)<14); })
+  .sort(function(a,b){ return cArranque(a).localeCompare(cArranque(b)); }); }
+function nvDia(c){ return dias(cArranque(c),hoy())+1; }
 /* Lista de control de las 2 primeras semanas, con lo que dice su app */
 function nvChecks(c,d){
-  var h=hoy(), ini=c.inicio, out=[], dia=nvDia(c);
+  var h=hoy(), ini=cArranque(c), out=[], dia=nvDia(c);
   var add=function(ok,t,sub,urg){ out.push({ok:ok,t:t,sub:sub||'',urg:!ok&&!!urg}); };
   if(!c.codigo_app){ add(false,'Tiene la app','sin código de la app: ponlo en «Programa y pagos»',dia>=2); return out; }
   if(!d) return out;
@@ -1576,7 +1581,7 @@ function pintarNuevos(sel){
   var h=sel+'<div class="rcab"><h2>Clientes nuevos<small>las 2 primeras semanas, con más control · '+lista.length+(lista.length===1?' cliente':' clientes')+'</small></h2></div>';
   if(!lista.length){ app.innerHTML=h+'<div class="pantalla"><h2>Ahora no hay clientes nuevos</h2><p>Cuando des de alta a alguien y pongas su primer día de servicio («Inicio» en su ficha), sale aquí durante 14 días con todo lo que tienes que vigilar.</p></div>'; enlazarRonda(); return; }
   h+='<div class="rlista">'+lista.map(function(c){ var d=CAC[c.id], ch=nvChecks(c,d), urg=ch.filter(function(x){ return x.urg; }).length, ok=ch.filter(function(x){ return x.ok; }).length, ab=NV.abierto===c.id, dia=nvDia(c), tel=String(c.telefono||'').replace(/\D/g,'');
-    var chips='<span class="mini n">'+(dia<1?'empieza el '+esc(fCorta(c.inicio)):'día '+dia+' de 14')+'</span>'+(ch.length?'<span class="mini '+(urg?'r':ok===ch.length?'v':'a')+'">'+ok+'/'+ch.length+'</span>':'')+(urg?'<span class="mini r">⚠ '+urg+'</span>':'');
+    var chips='<span class="mini n">'+(dia<1?'empieza el '+esc(fCorta(cArranque(c))):'día '+dia+' de 14')+'</span>'+(ch.length?'<span class="mini '+(urg?'r':ok===ch.length?'v':'a')+'">'+ok+'/'+ch.length+'</span>':'')+(urg?'<span class="mini r">⚠ '+urg+'</span>':'');
     return '<article class="rfila nvfila'+(ab?' abierta':'')+'" data-nv="'+esc(c.id)+'"><div class="rhead"><button class="rc" data-nvab aria-expanded="'+ab+'"><span class="punto '+(urg?'rojo':'verde')+'"></span><span class="rnom">'+esc(c.nombre)+'</span><span class="rchips">'+chips+'</span>'+
       '<span class="rtit"><span class="nvbar" aria-hidden="true"><i style="width:'+Math.round(dia*100/14)+'%"></i></span>'+esc((ch.filter(function(x){ return x.urg; })[0]||{}).t||(d||!c.codigo_app?'Todo en marcha':'Mirando su app…'))+'</span></button></div>'+
       (ab?'<div class="rcuerpo"><section class="rsec ancho2">'+accesoHtml(c.id)+'<div class="racc" style="margin-top:8px"><button class="btn" data-nvver="entreno">🏋️ Ver su entreno</button><button class="btn" data-nvver="nutricion">🥗 Ver su nutrición</button></div></section><section class="rsec"><h3>Lista de control</h3><ul class="nvlista">'+ch.map(function(x){ return '<li class="'+(x.ok?'ok':x.urg?'mal':'')+'"><span class="nvc" aria-hidden="true">'+(x.ok?'✓':x.urg?'!':'·')+'</span><b>'+esc(x.t)+'</b><small>'+esc(x.sub)+'</small></li>'; }).join('')+'</ul></section>'+
@@ -1912,7 +1917,7 @@ function revSeccion(f){
   var ps=(d.peso||[]).slice().sort(function(a,b){ return a.fecha.localeCompare(b.fecha); }).slice(-12), pv=ps.map(function(x){ return rnum(x.peso); }), pe=ps.map(function(x){ return fCorta(x.fecha); });
   var fo=(d.fotos||[]).slice().sort().pop(), me=(d.medidas||[]).slice().sort().pop(), ts=d.troncales||[], sel=ts.filter(function(t){ return t.id===TRS[f.cliente_id]; })[0]||ts[0];
   var pdif=pv.length>1&&pv[0]!=null&&pv[pv.length-1]!=null?Math.round((pv[pv.length-1]-pv[0])*10)/10:null;
-  var cw=buscar('Clientes',f.cliente_id)||{}, wk=cSemana(cw,hoy()), mesN=wk>1&&!cReinicio(cw,wk)?Math.round((wk-1)/4):0;
+  var cw=buscar('Clientes',f.cliente_id)||{}, wk=cSemana(cw,hoy()), mesN=wk>1?cMes(cw,Math.max(1,wk-1)):0;
   var h='<section class="rsec ancho2 revgraf"><h3>Desde su app'+(mesN?' <small>'+(mesN%3===0?'fin de bloque: '+(mesN)+' meses':'mes '+mesN)+'</small>':'')+'</h3><div class="vtiles">'+tile('Fotos',fo?'✓':'✕',fo?'últimas: '+esc(fCorta(fo)):'sin fotos todavía',null,fo?'ok':'mal')+tile('Medidas',me?'✓':'—',me?'últimas: '+esc(fCorta(me)):'sin medidas',null)+
     tile('Peso',ps.length?esc(String(ps[ps.length-1].peso).replace('.',','))+' <small>kg</small>':'—',pdif!=null?(pdif>0?'+':'')+String(pdif).replace('.',',')+' kg en '+ps.length+' pesajes':'',linea(pv,pe,function(v){ return String(v).replace('.',',')+' kg'; }))+'</div>';
   var mU=(d.medUlt||[])[(d.medUlt||[]).length-1], mP=d.medPrim; if(mU&&mP&&mU.fecha!==mP.fecha){ h+='<div class="lab" style="margin-top:12px">Medidas: desde el principio</div><table class="prog"><tbody>'+['cintura','cadera','pecho','muslo','brazo'].filter(function(z){ return mU[z]!=null&&mP[z]!=null; }).map(function(z){ var df=Math.round((mU[z]-mP[z])*10)/10; return '<tr><td>'+z+'</td><td class="k">'+mP[z]+' cm</td><td class="k"><b>'+mU[z]+' cm</b></td><td class="d '+(df<0?'sube':df>0?'baja':'igual')+'">'+(df>0?'+':'')+String(df).replace('.',',')+'</td></tr>'; }).join('')+'</tbody></table>'; }
@@ -3566,9 +3571,9 @@ function hoyTienes(dolor,llamadas,cobros){
   var prs=tareasVivas().filter(esPromesa).filter(function(t){ return ['Vencidas','Hoy','Mañana'].indexOf(prGrupo(t.fecha))>=0; }).sort(function(a,b){ return String(a.fecha).localeCompare(String(b.fecha)); });
   // Clientes nuevos: solo lo que ha pasado o lo que urge
   nuevos().forEach(function(c){ var d=CAC[c.id]; if(c.codigo_app&&!d&&!c._calPed){ c._calPed=1; api('calendarioCliente',{cliente_id:c.id}).then(function(x){ x._fresco=1; CAC[c.id]=x; if(S.tab==='hoy') pintarHoy(true); }).catch(function(){}); } if(!d) return;
-    var en=(d.entrenos||[]).filter(function(e){ return e.hecho&&e.fecha>=c.inicio; }).map(function(e){ return e.fecha; }).sort();
+    var en=(d.entrenos||[]).filter(function(e){ return e.hecho&&e.fecha>=cArranque(c); }).map(function(e){ return e.fecha; }).sort();
     if(en.length===1&&dias(en[0],h)<=2) fil.push(fila('🎉',c.nombre+' ha hecho su primer entreno',relativo(en[0])+' · buen momento para escribirle','data-irnuevo="'+esc(c.id)+'"'));
-    var u=nvChecks(c,d).filter(function(x){ return x.urg; })[0]; if(u) fil.push(fila('🌱',c.nombre+' · '+u.t,nvDia(c)<1?'empieza el '+fCorta(c.inicio):'día '+nvDia(c)+' de 14','data-irnuevo="'+esc(c.id)+'"','mal')); });
+    var u=nvChecks(c,d).filter(function(x){ return x.urg; })[0]; if(u) fil.push(fila('🌱',c.nombre+' · '+u.t,nvDia(c)<1?'empieza el '+fCorta(cArranque(c)):'día '+nvDia(c)+' de 14','data-irnuevo="'+esc(c.id)+'"','mal')); });
   nuevos().forEach(function(c){ var d=CAC[c.id], al=altaDe(c.id); if(d&&d.acceso&&d.acceso.candado&&!d.acceso.plan_ok&&al&&al.listo) fil.push(fila('✅','Aprobar el plan de '+c.nombre,'Revísalo y dale a «OK al plan»','data-irnuevo="'+esc(c.id)+'"')); });
   dolor.forEach(function(a){ fil.push(fila('🔴',a.cliente+' · '+a.titulo,a.detalle,a.cliente_id?'data-abrir="Clientes|'+esc(a.cliente_id)+'"':'','mal')); });
   llamadas.forEach(function(l){ fil.push(fila('📞','Llamada · '+(l.nombre||''),typeof lambas==='function'?lambas(l):'','data-irll="'+esc(l.id)+'"')); });
@@ -3581,7 +3586,7 @@ function restoHoy(){
   var nv=nuevos(), ctl=controlesSemana(), prR=tareasVivas().filter(esPromesa).filter(function(t){ return ['Esta semana','Más adelante'].indexOf(prGrupo(t.fecha))>=0; }).sort(function(a,b){ return String(a.fecha).localeCompare(String(b.fecha)); }), h='';
   h+='<details class="bloque lsec"><summary>🤝 Otras promesas <span class="n">'+prR.length+'</span></summary>'+(prR.length?'<ul class="corta avl">'+prR.map(filaPromesa).join('')+'</ul>':'')+bloquePromesaForm()+'</details>';
   if(ctl.length) h+='<details class="bloque lsec"><summary>📅 Controles de esta semana <span class="n">'+ctl.length+'</span></summary><ul class="corta">'+ctl.map(function(x){ return '<li><span class="ctic" aria-hidden="true">'+(x.tipo==='control'?'📸':x.tipo==='revision'?'📋':'⏳')+'</span><button class="quien" data-abrir="Clientes|'+esc(x.c.id)+'"><b>'+esc(x.dia)+' · '+esc(x.c.nombre)+'</b><span>'+esc(x.t)+(x.sub?' · '+esc(x.sub):'')+'</span></button></li>'; }).join('')+'</ul></details>';
-  if(nv.length) h+='<details class="bloque lsec"><summary>🌱 Clientes nuevos <span class="n">'+nv.length+'</span></summary><ul class="corta">'+nv.map(function(c){ return '<li><button class="quien" data-irnuevo="'+esc(c.id)+'"><b>'+esc(c.nombre)+'</b><span>'+(nvDia(c)<1?'empieza el '+esc(fCorta(c.inicio)):'día '+nvDia(c)+' de 14')+'</span></button></li>'; }).join('')+'</ul></details>';
+  if(nv.length) h+='<details class="bloque lsec"><summary>🌱 Clientes nuevos <span class="n">'+nv.length+'</span></summary><ul class="corta">'+nv.map(function(c){ return '<li><button class="quien" data-irnuevo="'+esc(c.id)+'"><b>'+esc(c.nombre)+'</b><span>'+(nvDia(c)<1?'empieza el '+esc(fCorta(cArranque(c))):'día '+nvDia(c)+' de 14')+'</span></button></li>'; }).join('')+'</ul></details>';
   return h;
 }
 function bloquePromesaForm(){ return '<div class="tnueva prn"><input id="prTxt" type="text" placeholder="Qué le has dicho… «le mando la dieta»" aria-label="Qué has prometido"><input id="prCli" type="text" list="dl-prcli" placeholder="A quién" aria-label="A quién"><input id="prF" type="date" value="'+esc(sumar(hoy(),1))+'" aria-label="Para cuándo"><button class="btn" id="prAdd">Añadir</button><datalist id="dl-prcli">'+(S.data.clientes||[]).filter(vivo).map(function(c){ return '<option>'+esc(c.nombre)+'</option>'; }).join('')+'</datalist></div>'; }

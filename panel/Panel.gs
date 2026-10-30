@@ -714,7 +714,8 @@ function AV_cargar(fresco) {
     try {
       // Su semana real (la de la app, con pausas): el panel cuenta con ella sus controles
       var ajS = L_ajustes(D_leer(SpreadsheetApp.openById(String(fila.hoja_datos_id).trim()), 'Ajustes')), hoyS = D_diaSemanal();
-      semanas[codigo] = { s: Math.max(ajS.semana, L_semanaPrograma(ajS, hoyS) || 0), pausa: !!(ajS.pausa_desde && ajS.pausa_hasta && hoyS >= ajS.pausa_desde && hoyS <= ajS.pausa_hasta) };
+      var nB = String(ajS.bloque || '').match(/\d+/);   // «Bloque 2 de casa», «Plan Casares 2»
+      semanas[codigo] = { b: nB ? +nB[0] : 1, ini: ajS.fecha_inicio_semana1 || '', s: Math.max(ajS.semana, L_semanaPrograma(ajS, hoyS) || 0), pausa: !!(ajS.pausa_desde && ajS.pausa_hasta && hoyS >= ajS.pausa_desde && hoyS <= ajS.pausa_hasta) };
       AV_cliente(SpreadsheetApp.openById(String(fila.hoja_datos_id).trim())).forEach(function (a) {
         a.id = codigo + '|' + a.clave; if (vistos[a.id]) return;
         a.codigo = codigo; a.cliente = cl.nombre || fila.nombre || codigo; a.cliente_id = cl.id || ''; a.telefono = cl.telefono || '';
