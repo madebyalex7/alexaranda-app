@@ -676,13 +676,13 @@ var EUR2 = new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',minimu
 function euros(v){ var s=String(v==null?'':v).trim(); if(!s) return ''; if(isNaN(parseFloat(s.replace(',','.')))) return s; return EUR2.format(num(s)); }
 function vivo(r){ return !r.archivado; }
 
-/* WhatsApp en el ordenador (Alex 30/10): usa WhatsApp Web (su Business) e intenta reutilizar siempre la misma pestaña. La app de escritorio es su número personal: no usarla. En el móvil, wa.me abre la app */
+/* WhatsApp en el ordenador (Alex 30/10): enlace normal a web.whatsapp.com/send (su Business), que Chrome abre en la app de WhatsApp Web instalada. La app de escritorio es su número personal: no usarla. En el móvil, wa.me abre la app */
 window.addEventListener('click',function(e){ var a=e.target.closest&&e.target.closest('a[href*="wa.me/"]'); if(!a) return;
   var u; try{ u=new URL(a.href); }catch(er){ return; } if(!/(^|\.)wa\.me$/.test(u.hostname)) return;
   var tel=u.pathname.replace(/\D/g,''), tx=u.searchParams.get('text')||'';
   if(!tel){ e.preventDefault(); e.stopImmediatePropagation(); alerta(new Error('Esta ficha no tiene teléfono. Ponlo en su ficha antes de escribirle, para no equivocarte de chat.')); return; }   // sin número, WhatsApp deja elegir el chat a mano
-  if(window.matchMedia('(max-width:640px)').matches) return; e.preventDefault();
-  var w=window.open('https://web.whatsapp.com/send?'+(tel?'phone='+tel+'&':'')+'text='+encodeURIComponent(tx),'whatsapp_alex'); if(w) w.focus(); },true);
+  if(window.matchMedia('(max-width:640px)').matches) return;
+  a.href='https://web.whatsapp.com/send?phone='+tel+'&text='+encodeURIComponent(tx); a.target='_blank'; },true);
 
 /* ───────── red ───────── */
 function api(accion, datos, keepalive){

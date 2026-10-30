@@ -86,4 +86,4 @@ Se construye todo en la **beta** (worker `alexaranda-entrena-beta` + Apps Script
 
 ## Pendiente de Alex
 - [ ] Grabar los 3 vídeos de las altas: pilares del servicio, cómo funciona la app y cómo funciona el seguimiento. Subirlos (YouTube oculto o Cap) y pegar los enlaces en Llamadas › 🎬 Vídeos de las altas. Hasta entonces, los mensajes salen sin ellos.
-- [ ] WhatsApp sin pestañas nuevas (pendiente desde el 30/10): instalar WhatsApp Web como app con el Business y probar con dos clientes dónde se abre. Si sigue abriendo pestañas, pasar el botón a «Copiar». La app de escritorio es su número personal: no usarla.
+- [ ] WhatsApp en la app (30/10): Alex tiene WhatsApp Web instalado como app de Chrome con «Abrir enlaces compatibles». En el ordenador, enlace normal a web.whatsapp.com/send. Si se abre en una pestaña, probar window.open(url, «whatsapp»). La app de escritorio es su número personal: no usarla.
