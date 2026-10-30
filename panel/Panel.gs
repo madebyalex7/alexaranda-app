@@ -70,7 +70,7 @@ function P_despachar(cuerpo) {
       case 'entrenoCliente': return { ok: true, data: EC_cliente(d.cliente_id) };
       case 'caminoCliente': return { ok: true, data: EV_cliente(d.cliente_id) };
       case 'calendarioCliente': return { ok: true, data: CA_cliente(d.cliente_id) };
-      case 'appAcceso': return { ok: true, data: P_escribir(function () { return AC_cambiar(d.cliente_id, d.que); }) };
+      case 'appAcceso': P_escribir(function () { AC_cambiar(d.cliente_id, d.que); }); return { ok: true, data: CA_cliente(d.cliente_id) };
       case 'videosCargar': return { ok: true, data: CV_cargar() };
       case 'videosCliente': return { ok: true, data: CV_cliente(d.cliente_id) };
       case 'videosGuardar': return { ok: true, data: P_escribir(function () { return CV_guardar(d); }) };
@@ -701,11 +701,14 @@ function AV_cargar(fresco) {
   if (!fresco) { var h = c.get(AV_CACHE); if (h) return JSON.parse(h); }
   var vistos = {}; P_leer('AvisosVistos').forEach(function (v) { if (!v.archivado) vistos[v.id] = true; });
   var porCodigo = {}; P_leer('Clientes').forEach(function (cl) { if (cl.codigo_app && !cl.archivado) porCodigo[String(cl.codigo_app).trim()] = cl; });
-  var out = [], errores = [];
+  var out = [], errores = [], semanas = {};
   D_leer(SpreadsheetApp.openById(MAESTRA_ID), 'Registro clientes').forEach(function (fila) {
     if (!L_bool(fila.activa) || !fila.hoja_datos_id || fila.hoja_datos_id === 'PENDIENTE') return;
     var codigo = String(fila.codigo).trim(), cl = porCodigo[codigo] || {};
     try {
+      // Su semana real (la de la app, con pausas): el panel cuenta con ella sus controles
+      var ajS = L_ajustes(D_leer(SpreadsheetApp.openById(String(fila.hoja_datos_id).trim()), 'Ajustes')), hoyS = D_diaSemanal();
+      semanas[codigo] = { s: Math.max(ajS.semana, L_semanaPrograma(ajS, hoyS) || 0), pausa: !!(ajS.pausa_desde && ajS.pausa_hasta && hoyS >= ajS.pausa_desde && hoyS <= ajS.pausa_hasta) };
       AV_cliente(SpreadsheetApp.openById(String(fila.hoja_datos_id).trim())).forEach(function (a) {
         a.id = codigo + '|' + a.clave; if (vistos[a.id]) return;
         a.codigo = codigo; a.cliente = cl.nombre || fila.nombre || codigo; a.cliente_id = cl.id || ''; a.telefono = cl.telefono || '';
@@ -714,7 +717,7 @@ function AV_cargar(fresco) {
     } catch (e) { errores.push(codigo + ': ' + (e && e.message || e)); }
   });
   out.sort(function (a, b) { return (a.nivel === 'rojo' ? 0 : 1) - (b.nivel === 'rojo' ? 0 : 1) || String(a.cliente).localeCompare(String(b.cliente)); });
-  var res = { avisos: out, errores: errores, generado: P_ahora() };
+  var res = { avisos: out, errores: errores, semanas: semanas, generado: P_ahora() };
   try { c.put(AV_CACHE, JSON.stringify(res), 300); } catch (e) {}
   return res;
 }
@@ -820,7 +823,7 @@ function AV_cliente(ss) {
       out.push({ clave: 'peso|' + vie, tipo: 'peso', nivel: 'ambar', titulo: 'No ha apuntado el peso del viernes', detalle: 'Viernes ' + AV_fecha(vie) + '.' });
   }
   // Fotos de control (cada 4 viernes) sin subir, desde el sábado
-  var viC = L_viernesControl(S, hoy);
+  var viC = pz && hoy >= aj.pausa_desde && hoy <= aj.pausa_hasta ? '' : L_viernesControl(S, hoy, lunes);
   if (viC && hoy > viC && L_diasEntre(viC, hoy) <= 8 && !D_leerOpc(ss, 'Fotos', zona).some(function (r) { return String(r.fecha).slice(0, 10) >= L_sumarDias(viC, -3); }))
     out.push({ clave: 'fotos|' + viC, tipo: 'peso', nivel: 'ambar', titulo: 'No ha subido las fotos de control', detalle: 'Tocaban el viernes ' + AV_fecha(viC) + '. La app se las recuerda cada 48 h.' });
   return out;
@@ -1030,7 +1033,10 @@ function CA_cliente(cid) {
     return { fecha: f10(f.fecha) || (L_bool(f.hecho) ? f10(f.fin) || f10(f.actualizado) : ''), w: L_int(f.semana), k: String(f.dia || ''), hecho: L_bool(f.hecho), flojo: L_bool(f.flojo) };
   }).filter(function (x) { return x.w && x.k && (x.hecho || x.flojo); });
   var peso = D_leerOpc(ss, 'Peso', zona).map(function (f) { return { fecha: f10(f.fecha), peso: f.peso }; }).filter(function (x) { return x.fecha; });
-  var medidas = D_leerOpc(ss, 'Medidas', zona).map(function (f) { return f10(f.fecha); }).filter(String);
+  var medFilas = D_leerOpc(ss, 'Medidas', zona).filter(function (f) { return f10(f.fecha); }).sort(function (a, b) { return f10(a.fecha) < f10(b.fecha) ? -1 : 1; });
+  var medidas = medFilas.map(function (f) { return f10(f.fecha); });
+  var medVal = function (f) { var o = { fecha: f10(f.fecha) }; MEDIDAS.forEach(function (m) { var v = L_num(f[m]); if (v !== '') o[m] = +v; }); return o; };
+  var medUlt = medFilas.slice(-2).map(medVal), medPrim = medFilas.length ? medVal(medFilas[0]) : null;
   var fotos = D_leerOpc(ss, 'Fotos', zona).map(function (f) { return f10(f.fecha); }).filter(String);
   var extras = D_leerOpc(ss, 'Extra', zona).map(function (f) { return { fecha: f10(f.fecha), tipo: String(f.tipo || ''), min: L_int(f.minutos) || 0 }; }).filter(function (x) { return x.fecha; });
   var aj = L_ajustes(D_leer(ss, 'Ajustes')), semanas = [], desde = D.desdeApp || 1;
@@ -1052,7 +1058,7 @@ function CA_cliente(cid) {
     troncales.push({ id: id, nm: String(p.nombre || id), rango: String(p.repes || ''), serie: serie, subir: !!tope && deU.every(function (x) { return x.re >= tope; }) });
   });
   var acceso = { candado: !!aj.candado, desbloqueado: !!aj.desbloqueado, plan_ok: aj.plan_ok || '', cerrado: D.candado || null };
-  return { troncales: troncales, acceso: acceso, nombre: D.nombre, semana: D.semana, desde: desde, hoy: D.hoy || P_hoy(), entrenos: entrenos, peso: peso, medidas: medidas, fotos: fotos, extras: extras, semanas: semanas, dias: dias };
+  return { medUlt: medUlt, medPrim: medPrim, troncales: troncales, acceso: acceso, nombre: D.nombre, semana: D.semana, desde: desde, hoy: D.hoy || P_hoy(), entrenos: entrenos, peso: peso, medidas: medidas, fotos: fotos, extras: extras, semanas: semanas, dias: dias };
 }
 
 // ═════════ Correcciones de vídeos desde el panel (Alex 30/10) ═════════
@@ -1110,8 +1116,8 @@ function CV_guardar(d) {
   var sh = h.ss.getSheetByName('Correcciones');
   if (!sh) { sh = h.ss.insertSheet('Correcciones'); sh.getRange(1, 1, 1, CV_COLS.length).setValues([CV_COLS]); sh.setFrozenRows(1); }
   var t = D_tabla(h.ss, 'Correcciones'); D_asegurarCols(t, []);
+  CV_COLS.forEach(function (c) { if (t.cab.indexOf(c) < 0) { t.sh.getRange(1, t.cab.length + 1).setValue(c); t.cab.push(c); t.filas.forEach(function (f) { f.push(''); }); } });   // hojas antiguas: solo se añade
   var ix = function (c) { return t.cab.indexOf(c); };
-  if (ix('superada_el') < 0 && sup.length) { t.sh.getRange(1, t.cab.length + 1).setValue('superada_el'); t.cab.push('superada_el'); }
   sup.forEach(function (id) {
     t.filas.forEach(function (f, i) {
       if (String(f[ix('ejercicio_id')]) !== id || /superad/i.test(String(f[ix('estado')]))) return;
@@ -1145,5 +1151,4 @@ function AC_cambiar(cid, que) {
   if (!c) throw new Error('Acción no válida');
   Object.keys(c).forEach(function (k) { R_ajuste(h.ss, k, c[k]); });
   try { D_cacheFuera(String(h.cl.codigo_app).trim()); } catch (e) {}
-  return CA_cliente(cid);
 }

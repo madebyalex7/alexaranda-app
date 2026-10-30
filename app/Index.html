@@ -1374,7 +1374,7 @@ function cerrarViejos(){
   if(!D) return;
   D.orden.forEach(k=>{
     if(D.est.hechos[k]) return;
-    const s = sesGet(k); if(!s.start || s.end || Date.now() - s.start < HORAS_CIERRE * 36e5) return;
+    const s = sesGet(k); if(!s.start || s.end || s.cerrada || s.noAuto || Date.now() - Math.max(s.last || 0, s.start) < HORAS_CIERRE * 36e5) return;   // nunca contra lo que ha elegido
     const fin = Math.max(s.last || s.start, s.start);
     s.end = fin; s.fin = fin; lsSet(kSes(k), s);
     encolar({fn:"dia", k, campo:"hecho", valor: true, fecha: fechaDe(s.start), semana: D.semana});   // la semana en que lo empezó
@@ -1417,6 +1417,7 @@ function enlazaAbierto(){
   document.getElementById("abSigo").onclick = ()=>ir(k);
   document.getElementById("abNo").onclick = ()=>{
     const s = sesGet(k); s.cerrada = 1; lsSet(kSes(k), s);
+    encolar({fn:"tiempos", k, ini: null, fcal: null, fin: null});   // que Google tampoco lo cierre solo
     box.remove();
   };
 }
@@ -1744,10 +1745,10 @@ function dia(k){
     if(v && dh > 0 && dh < th && !FORZAR[k]){ avisoFalta(k, true); return; }
     FORZAR[k] = false;
     if(v){ sesStop(k); const s1 = sesGet(k); s1.fin = Date.now(); if(!s1.warm && !s1.start) s1.warm = s1.fin; lsSet(kSes(k), s1); }
-    else { const s0 = sesGet(k); delete s0.end; delete s0.fin; lsSet(kSes(k), s0); }
+    else { const s0 = sesGet(k); delete s0.end; delete s0.fin; s0.noAuto = 1; lsSet(kSes(k), s0); encolar({fn:"tiempos", k, ini: null, fcal: null, fin: null}); }   // lo ha desmarcado: no se vuelve a cerrar solo
     const ya = document.getElementById("yahecho"); if(ya) ya.remove();
     encolar({fn:"dia", k, campo:"hecho", valor: v, fecha: hoyLocal()});
-    enviaTiempos(k, !v);
+    if(v) enviaTiempos(k);
     if(v && k === "st" && !D.est.sust.st){ const p = ENT().find(x=>!D.est.hechos[x]); if(p){ D.est.sust.st = p; guardarCierre("st"); } }
     render();
     if(v) setTimeout(()=>{ const el = document.querySelector(".fin"); if(el){ el.scrollIntoView({behavior: SUAVE(), block:"center"}); celebrar(el); } }, 50);
@@ -1911,7 +1912,8 @@ function hub(){
 /* Fotos de control (Alex 30/10): cada 4 semanas, el viernes. Aviso desde el miércoles y, si no las sube, sigue arriba hasta 8 días después.
    La misma regla que L_viernesControl de Code.gs (los avisos al móvil van cada 48 h). */
 function viernesControl(){
-  const w = D.semana, h = hoyLocal(), dow = new Date(h + "T12:00:00").getDay(), lun = sumaDias(h, -((dow + 6) % 7));
+  if(D.pausa || !D.lunes) return "";
+  const w = D.semana, lun = D.lunes;   // el lunes de SU semana de programa (la semana cambia el domingo por la noche)
   if(w >= 4 && w % 4 === 0) return sumaDias(lun, 4);
   if(w > 4 && (w - 1) % 4 === 0) return sumaDias(lun, -3);
   return "";
@@ -2380,6 +2382,7 @@ function abrirAvisos(){
 function estadoCandado(){
   try{
     const c = D && D.candado; if(!c || typeof c !== "object") return null;
+    if(Date.now() - (+lsGet("cand_visto_" + CODIGO) || Date.now()) > 72 * 36e5) return null;   // 3 días sin poder confirmarlo con el servidor: abierto
     const mp = D.mp || {}, f = c.fotos === true || (mp.fotos || []).length > 0, p = c.peso === true || (mp.pesos || []).length > 0, ok = c.plan === true;
     return f && p && ok ? null : {fotos: f, peso: p, plan: ok};
   }catch(e){ return null; }
@@ -2402,6 +2405,8 @@ function pantallaCandado(c){
   </div>`;
   app.querySelectorAll("[data-go]").forEach(b=>b.onclick = ()=>ir(b.dataset.go));
 }
+/* Con candado, al volver a la app se pregunta otra vez: si Alex la ha abierto, se abre sin cerrar y reabrir */
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState === "visible" && D && estadoCandado()) cargarDatos(true); });
 function render(){
   if(!D) return;
   { const c = estadoCandado(); if(c && vistaCerrada(VISTA)){ ["hub", "home", "week", "prog"].forEach(t=>{ const b = document.getElementById("t-" + t); if(b) b.classList.toggle("on", t === (VISTA === "week" ? "week" : "home")); }); pantallaCandado(c); return; } }
@@ -2428,6 +2433,7 @@ function cargarDatos(forzar){
   api("cargar").then(d=>{
     const habia = !!D;
     D = d; if(D && D.lunes) D.lunes = aLunes(D.lunes);
+    lsSet("cand_visto_" + CODIGO, Date.now());
     COLA.forEach(aplicarLocal);
     lsSet(K_DATOS, D);
     aplicaPal(D.ajustes.paleta || "marca");

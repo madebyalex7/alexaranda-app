@@ -727,7 +727,7 @@ var AV={cargado:false,cargando:false,err:'',lista:[],errores:[]};
 var AV_TIPO={no_entra:'No entra',semana:'Semana a medias',molestia:'Molestia',abierto:'Entreno a medias',nota:'Nota',peso:'Peso'};
 function avisosCargar(fresco){
   AV.cargando=true; AV.err='';
-  return api('avisos',{fresco:!!fresco}).then(function(d){ AV.cargado=true; AV.cargando=false; AV.lista=d.avisos||[]; AV.errores=d.errores||[]; avPintar(); })
+  return api('avisos',{fresco:!!fresco}).then(function(d){ AV.cargado=true; AV.cargando=false; AV.lista=d.avisos||[]; AV.errores=d.errores||[]; AV.semanas=d.semanas||null; avPintar(); })
     .catch(function(e){ AV.cargando=false; AV.err=e.message; avPintar(); });
 }
 /* Recordatorio de cobro por WhatsApp, escrito en la voz de Alex (sin ¿ ¡). Alex lo revisa antes de enviarlo */
@@ -1400,7 +1400,7 @@ function cvSelect(r,v,attr,i){ return '<select '+attr+'="'+i+'" aria-label="Ejer
 function cvWa(c,txt){ var d=String(c.telefono||'').replace(/[^0-9]/g,'').replace(/^00/,''); if(/^[6789]\d{8}$/.test(d)) d='34'+d; return 'https://wa.me/'+(d||'')+'?text='+encodeURIComponent(txt||''); }
 function pintarVideos(sel){
   var app=$('#app');
-  if(!CV.cargado){ app.innerHTML=sel+(CV.err?'<div class="pantalla"><h2>No se han podido cargar los vídeos</h2><p>'+esc(CV.err)+'</p></div>':'<div class="cargando"></div>'); if(!CV.cargando&&!CV.err) cvCargar(); enlazarVideos(); return; }
+  if(!CV.cargado){ app.innerHTML=sel+(CV.err?'<div class="pantalla"><h2>No se han podido cargar los vídeos</h2><p>'+esc(CV.err)+'</p><p><button class="btn prim" data-cvotra>Volver a cargar</button></p></div>':'<div class="cargando"></div>'); if(!CV.cargando&&!CV.err) cvCargar(); enlazarVideos(); return; }
   var con=CV.lista.filter(function(c){ return c.grabados; }).length;
   var h=sel+'<div class="rcab"><h2>Correcciones de vídeos<small><b>'+con+'</b> con vídeos grabados · los vídeos que pidas valen hasta el martes '+esc(fCorta(CV.martes||''))+'</small></h2></div>'+
     '<p class="estado-m" style="margin:-4px 0 12px">Pega el enlace de Cap y su transcripción: te preparo el mensaje y lo que va a su app. Nada se guarda ni se envía hasta que tú lo dices.</p><div class="rlista">';
@@ -1429,7 +1429,7 @@ function cvCuerpo(c){
     '<div class="lab" style="margin-top:14px">Vídeos de esta semana <small>(hasta el martes '+esc(fCorta(CV.martes||''))+'; salen en su app como «Grábate este»)</small></div>'+
     (r.videos||[]).map(function(x,i){ return '<div class="cvfila v">'+cvSelect(r,x.ejercicio_id,'data-cvvej',i)+'<input type="text" data-cvvind="'+i+'" value="'+esc(x.indicacion||'')+'" placeholder="En qué fijarse" aria-label="Indicación"><input type="text" data-cvvcomo="'+i+'" value="'+esc(x.como_grabar||'')+'" placeholder="Cómo grabarlo" aria-label="Cómo grabarlo"><button class="ib" data-cvvdel="'+i+'" aria-label="Quitar">✕</button>'+(x.porque?'<small class="cvpq">'+esc(x.porque)+'</small>':'')+'</div>'; }).join('')+
     '<button class="btn mas" data-cvvmas>+ Añadir vídeo</button>'+
-    '<div class="rpie" style="margin-top:14px"><small class="estado-m">'+(CV.hecho[c.id]?'✓ '+esc(CV.hecho[c.id]):'')+'</small><button class="btn prim" data-cvguardar>Guardar en su ficha y su app</button></div></section>';
+    '<div class="rpie" style="margin-top:14px"><small class="estado-m">'+(CV.hecho[c.id]?'✓ '+esc(CV.hecho[c.id]):'')+'</small>'+(CV.hecho[c.id]?'':'<button class="btn prim" data-cvguardar>Guardar en su ficha y su app</button>')+'</div></section>';
   return h;
 }
 function cvLeerForm(art,r){ $$('[data-cvin]',art).forEach(function(el){ r[el.getAttribute('data-cvin')==='tr'?'tr':el.getAttribute('data-cvin')]=el.value; });
@@ -1444,14 +1444,16 @@ function enlazarVideos(){
   app.onclick=function(e){
     var b=e.target.closest('button,a'); if(!b) return;
     if(b.hasAttribute('data-rtipo')){ var t=b.getAttribute('data-rtipo'); if(t===R.tipo) return; R.tipo=t; if(t==='videos'||t==='nuevos'){ pintarRonda(); return; } R.cargado=false; R.abierta=null; R.filtro='todas'; R.fecha=''; rondaCargar(); pintarRonda(); return; }
+    if(b.hasAttribute('data-cvotra')){ CV.err=''; cvCargar(); pintarRonda(); return; }
     var art=b.closest('[data-cv]'); if(!art) return;
     var cid=art.getAttribute('data-cv'), c=CV.lista.filter(function(x){ return x.id===cid; })[0], r=CV.res[cid]=CV.res[cid]||{};
     var repintar=function(){ var y=scrollY; pintarRonda(); scrollTo(0,y); };
     if(b.hasAttribute('data-cvab')){ cvLeerForm(art,r); CV.abierto=CV.abierto===cid?null:cid; repintar(); return; }
     cvLeerForm(art,r);
     if(b.hasAttribute('data-cvprep')){ if(String(r.tr||'').trim().length<20){ var ta=$('[data-cvin="tr"]',art); if(ta) ta.focus(); r.err='pega la transcripción del vídeo de Cap'; repintar(); return; }
-      r.cargando=true; r.err=''; repintar();
-      fetch('/panel/ia',{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({k:KEY,que:'correccion',cliente_id:cid,cap:r.cap||'',transcripcion:r.tr||'',nota:r.nota||''})})
+      r.cargando=true; r.err=''; delete CV.hecho[cid]; repintar();
+      var ctlC=window.AbortController?new AbortController():null; setTimeout(function(){ if(ctlC) ctlC.abort(); },90000);
+      fetch('/panel/ia',{method:'POST',signal:ctlC?ctlC.signal:undefined,headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({k:KEY,que:'correccion',cliente_id:cid,cap:r.cap||'',transcripcion:r.tr||'',nota:r.nota||''})})
         .then(function(x){ return x.json().catch(function(){ throw new Error('el servidor no ha respondido bien ('+x.status+')'); }); })
         .then(function(j){ if(!j||!j.ok) throw new Error((j&&j.error)||'no ha funcionado'); Object.assign(r,j.data); })
         .catch(function(er){ r.err=String(er.message||er); }).then(function(){ r.cargando=false; repintar(); }); return; }
@@ -1473,7 +1475,7 @@ function enlazarVideos(){
    y el lunes siguiente la revisión mensual (sustituye a la semanal). Se cuenta desde su primer día de servicio (Clientes › inicio);
    las pausas no se descuentan aquí: si alguien estuvo en pausa, manda la semana de su app. ── */
 function cMeses(c){ var m=/(\d+)\s*mes/i.exec(String(c.programa||'')); return m?+m[1]:0; }
-function cSemana(c,f){ if(!esFecha(c.inicio)) return 0; var l=sumar(c.inicio,-((new Date(c.inicio+'T12:00:00').getDay()+6)%7)); return l<=f?Math.floor(dias(l,f)/7)+1:0; }   // semanas de lunes a domingo, como en la app
+function cSemana(c,f){ var se=(AV.semanas||{})[String(c.codigo_app||'').trim()]; if(se) return se.pausa?0:se.s;   /* con app, manda su semana real */ if(!esFecha(c.inicio)) return 0; var l=sumar(c.inicio,-((new Date(c.inicio+'T12:00:00').getDay()+6)%7)); return l<=f?Math.floor(dias(l,f)/7)+1:0; }   // semanas de lunes a domingo, como en la app
 function cFormulario(w,meses){
   var b=Math.ceil(w/12), wb=((w-1)%12)+1, ultimo=meses&&b*3>=meses;
   if(wb===12) return {f:'Fin de '+(b*3)+' meses',fin:ultimo};
@@ -1485,7 +1487,7 @@ function controlesSemana(){
   var h=hoy(), dow=(new Date(h+'T12:00:00').getDay()+6)%7, lun=sumar(h,-dow), vie=sumar(lun,4), out=[];
   ((S.data&&S.data.clientes)||[]).filter(function(c){ return vivo(c)&&c.estado==='Activo'&&esFecha(c.inicio); }).forEach(function(c){
     var meses=cMeses(c), total=meses*4,   /* 3 meses = un bloque de 12 semanas */ wv=cSemana(c,vie), wl=cSemana(c,lun);
-    if(wv&&wv%4===0){ var fo=cFormulario(wv,meses); out.push({c:c,cuando:vie,dia:'Viernes',t:'Fotos, peso, medidas y formulario «'+fo.f+'»',sub:'en lugar del semanal'+(fo.fin?' · último bloque contratado':''),tipo:'control'}); }
+    if(wv&&wv%4===0){ var fo=cFormulario(wv,meses); out.push({c:c,cuando:vie,dia:'Viernes',t:'Fotos, peso, medidas y formulario «'+fo.f+'»',sub:'en lugar del semanal'+(fo.fin?' · último bloque: si no renueva, «Fin de programa»':''),tipo:'control'}); }
     if(wl>1&&(wl-1)%4===0){ var mes=(wl-1)/4, ex=[]; if(mes>=1&&mes<=4) ex.push('⭐ mira si es momento del Grand Slam');
       if(total&&wl-1>=total-4) ex.push('⏳ habla de renovar');
       out.push({c:c,cuando:lun,dia:'Lunes',t:'Revisión '+(mes%3===0?'de fin de bloque (mes '+mes+')':'mensual (mes '+mes+')'),sub:['sustituye a la semanal'].concat(ex).join(' · '),tipo:'revision'}); }
@@ -1526,12 +1528,13 @@ function accesoHtml(cid){
   var d=CAC[cid]; if(!d||d.sinApp||!d.acceso) return '';
   var a=d.acceso, z=a.cerrado, est=!a.candado?'Abierta (sin candado)':a.desbloqueado?'Abierta (desbloqueada a mano)':z?'🔒 Cerrada: falta '+[!z.fotos&&'fotos',!z.peso&&'peso',!z.plan&&'tu OK al plan'].filter(Boolean).join(', '):'Abierta: ya tiene fotos, peso y tu OK';
   return '<div class="acceso'+(z?' cerr':'')+'"><b>Su app: </b><span>'+esc(est)+'</span><span class="racc">'+
-    (!a.candado?'<button class="btn" data-acc="candado" data-acccid="'+esc(cid)+'">🔒 Poner candado</button>':'')+
+    (!a.candado&&!(d.entrenos||[]).length?'<button class="btn" data-acc="candado" data-acccid="'+esc(cid)+'">🔒 Poner candado</button>':'')+
     (a.candado&&!a.plan_ok?'<button class="btn prim" data-acc="plan_ok" data-acccid="'+esc(cid)+'">✅ OK al plan</button>':'')+
     (a.candado&&z?'<button class="btn" data-acc="desbloquear" data-acccid="'+esc(cid)+'">🔓 Desbloquear ya</button>':'')+
     (a.candado?'<button class="linkbtn" data-acc="quitar" data-acccid="'+esc(cid)+'">quitar candado</button>':'')+'</span></div>';
 }
 document.addEventListener('click',function(e){ var b=e.target.closest&&e.target.closest('[data-acc]'); if(!b) return; e.stopPropagation(); var cid=b.getAttribute('data-acccid'), q=b.getAttribute('data-acc');
+  if(q==='candado'&&!confirm('Su entreno y su alimentación quedarán cerrados hasta que tenga fotos, peso y tu OK al plan. Seguro?')) return;
   if(q==='quitar'&&!confirm('Quitar el candado: verá su entreno y su alimentación aunque falte algo. Seguro?')) return;
   b.disabled=true; api('appAcceso',{cliente_id:cid,que:q}).then(function(d){ d._fresco=1; CAC[cid]=d; flash(); var y=scrollY; pintar(); scrollTo(0,y); }).catch(function(er){ b.disabled=false; alerta(er); }); },true);
 function nvRecordatorios(c){ var dia=nvDia(c), r=['Pídele foto y un mensajito después de cada entreno'];
@@ -1875,6 +1878,7 @@ function revSeccion(f){
   var pdif=pv.length>1&&pv[0]!=null&&pv[pv.length-1]!=null?Math.round((pv[pv.length-1]-pv[0])*10)/10:null;
   var h='<section class="rsec ancho2"><h3>Desde su app</h3><div class="vtiles">'+tile('Fotos',fo?'✓':'✕',fo?'últimas: '+esc(fCorta(fo)):'sin fotos todavía',null,fo?'ok':'mal')+tile('Medidas',me?'✓':'—',me?'últimas: '+esc(fCorta(me)):'sin medidas',null)+
     tile('Peso',ps.length?esc(String(ps[ps.length-1].peso).replace('.',','))+' <small>kg</small>':'—',pdif!=null?(pdif>0?'+':'')+String(pdif).replace('.',',')+' kg en '+ps.length+' pesajes':'',linea(pv,pe,function(v){ return String(v).replace('.',',')+' kg'; }))+'</div>';
+  var mU=(d.medUlt||[])[(d.medUlt||[]).length-1], mP=d.medPrim; if(mU&&mP&&mU.fecha!==mP.fecha){ h+='<div class="lab" style="margin-top:12px">Medidas: desde el principio</div><table class="prog"><tbody>'+['cintura','cadera','pecho','muslo','brazo'].filter(function(z){ return mU[z]!=null&&mP[z]!=null; }).map(function(z){ var df=Math.round((mU[z]-mP[z])*10)/10; return '<tr><td>'+z+'</td><td class="k">'+mP[z]+' cm</td><td class="k"><b>'+mU[z]+' cm</b></td><td class="d '+(df<0?'sube':df>0?'baja':'igual')+'">'+(df>0?'+':'')+String(df).replace('.',',')+'</td></tr>'; }).join('')+'</tbody></table>'; }
   if(sel){ var kv=sel.serie.slice(-12); h+='<div class="lab" style="margin-top:12px">Ejercicios troncales</div><div class="rtipo" role="group" aria-label="Elegir ejercicio">'+ts.map(function(t){ return '<button class="chip" data-trsel="'+esc(t.id)+'" aria-pressed="'+(t.id===sel.id)+'">'+esc(t.nm)+(t.subir?' ⬆️':'')+'</button>'; }).join('')+'</div>'+
     '<div class="vtiles" style="margin-top:8px">'+tile(esc(sel.nm),esc(String(kv[kv.length-1].kg).replace('.',','))+' <small>kg × '+kv[kv.length-1].re+'</small>','desde '+esc(String(kv[0].kg).replace('.',','))+' kg × '+kv[0].re+(sel.rango?' · rango '+esc(sel.rango):''),linea(kv.map(function(x){ return x.kg; }),kv.map(function(x){ return 'Semana '+x.w; }),function(v){ return String(v).replace('.',',')+' kg'; }),sel.subir?'ok':'')+'</div>'; }
   return h+'</section>';

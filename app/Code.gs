@@ -407,15 +407,15 @@ function L_diasHechos(diasSemana, entreno, objetivo) {
 
 /** Fotos de control (Alex 30/10): cada 4 semanas del programa, el viernes (semana 4, 8, 12…) toca fotos + peso + medidas.
  *  Viernes vigente: el de esta semana si es de control; el de la semana pasada si lo era (para seguir recordándolo). '' si no toca. */
-function L_viernesControl(semana, hoy) {
-  var dow = L_dowIso(hoy), lunes = L_sumarDias(hoy, -((dow + 6) % 7));
+function L_viernesControl(semana, hoy, lunesPrograma) {
+  var dow = L_dowIso(hoy), lunes = lunesPrograma || L_sumarDias(hoy, -((dow + 6) % 7));   // mejor el lunes de su semana de programa: cambia el domingo por la noche
   if (semana >= 4 && semana % 4 === 0) return L_sumarDias(lunes, 4);
   if (semana > 4 && (semana - 1) % 4 === 0) return L_sumarDias(lunes, -3);
   return '';
 }
 /** Qué aviso de fotos toca hoy: miércoles antes, el viernes y cada 48 h después (hasta 8 días) mientras no las suba. null = ninguno */
-function L_avisoFotos(semana, hoy, fotos, nombre) {
-  var vi = L_viernesControl(semana, hoy); if (!vi) return null;
+function L_avisoFotos(semana, hoy, fotos, nombre, lunesPrograma) {
+  var vi = L_viernesControl(semana, hoy, lunesPrograma); if (!vi) return null;
   if ((fotos || []).some(function (f) { return String(f).slice(0, 10) >= L_sumarDias(vi, -3); })) return null;
   var n = L_diasEntre(vi, hoy), quien = nombre ? nombre + ', ' : '';
   if (n === -2) return { marca: vi + '|x', titulo: 'El viernes toca fotos 📸', texto: quien + 'este viernes toca fotos, peso y medidas. Con la misma luz y la misma ropa que la otra vez, y listo.' };
@@ -708,7 +708,7 @@ function L_construir(t) {
     ajustes: { paleta: aj.paleta || t.paletaMaestra || 'marca', crono: aj.crono, objetivo_pasos: pasosObj }, sexo: aj.sexo,
     nivel: aj.nivel, pesosDisp: aj.pesos_disponibles,
     orden: orden, dias: dias, hist: hist, est: est, reg: reg, entreno: entreno, objetivo: objetivo,
-    racha: L_racha(t.historial, S, objetivo, desdeApp), desdeApp: desdeApp, candado: candado, progreso: progBloque, notaAlex: notaAlex, vped: vped,
+    racha: L_racha(t.historial, S, objetivo, desdeApp), desdeApp: desdeApp, candado: candado, pausa: !!(aj.pausa_desde && aj.pausa_hasta && t.hoy >= aj.pausa_desde && t.hoy <= aj.pausa_hasta), progreso: progBloque, notaAlex: notaAlex, vped: vped,
     extras: extras, pasos: pasos, hoy: t.hoy,
     nutri: aj.nutricion_pdf ? { fecha: aj.nutricion_fecha || '' } : null,
     notasSemana: notasSemana, recordatorio: recordatorio, textoCal: aj.texto_calentamiento, movilidad: aj.movilidad,
@@ -1419,10 +1419,10 @@ function X_pendientes() {
       // 3) Fotos de control (cada 4 viernes): van antes que el peso ese día porque ya lo incluyen. Con cualquier aviso activado, de 9:00 a 21:00
       if (!msg && !enPausa && (/^\d\d:\d\d$/.test(hp) || L_bool(f[i('aviso_entreno')])) && hh >= (/^\d\d:\d\d$/.test(hp) && hp > '09:00' ? hp : '09:00') && hh < '21:00') {
         var fotosF = (d.fotos || []).map(function (x) { return x.fecha instanceof Date ? Utilities.formatDate(x.fecha, zona, 'yyyy-MM-dd') : String(x.fecha || '').slice(0, 10); });
-        var af = L_avisoFotos(L_int(d.aj.semana), hoyL, fotosF, d.aj.nombre);
+        var af = L_avisoFotos(L_int(d.aj.semana), hoyL, fotosF, d.aj.nombre, L_lunesPrograma(d.aj, L_int(d.aj.semana)));
         if (af && i('envio_fotos') >= 0 && String(f[i('envio_fotos')]) !== af.marca) msg = { titulo: af.titulo, texto: af.texto, url: '/?v=prog', campo: 'envio_fotos', valor: af.marca };
       }
-      if (!msg && !enPausa && /^\d\d:\d\d$/.test(hp) && dow === '5' && L_viernesControl(L_int(d.aj.semana), hoyL) !== hoyL && semPeso && hh >= hp && hh < '12:00' && d.aj.semana >= d.aj.peso_desde_semana && ep !== 'd' + hoyL && ep !== hoyL) {
+      if (!msg && !enPausa && /^\d\d:\d\d$/.test(hp) && dow === '5' && L_viernesControl(L_int(d.aj.semana), hoyL, L_lunesPrograma(d.aj, L_int(d.aj.semana))) !== hoyL && semPeso && hh >= hp && hh < '12:00' && d.aj.semana >= d.aj.peso_desde_semana && ep !== 'd' + hoyL && ep !== hoyL) {
         var yaHoy = d.peso.some(function (p) { return String(D_valor(p.fecha, d.tz)) === hoyL && L_num(p.peso) !== ''; });
         if (!yaHoy) msg = { titulo: 'Hoy toca pesarse ⚖️', texto: 'Buenos días' + (d.aj.nombre ? ', ' + d.aj.nombre : '') + '. En ayunas, después del baño y antes de comer o beber. Lo apuntas en la app y listo ' + cz, url: '/?v=prog', campo: 'envio_peso', valor: 'd' + hoyL };
       }
@@ -1461,11 +1461,12 @@ function guardarAjustes(codigo, d) { return despachar_('guardarAjustes', codigo,
 /** Entrenos empezados hace 4 h o más y sin marcar (Alex 30/10): se dan por hechos, con el día en que empezó.
  *  Solo los de los últimos 7 días. Devuelve cuántos ha cerrado. */
 var HORAS_CIERRE = 4;
-function L_abiertosACerrar(filas, ahoraMs) {
+function L_abiertosACerrar(filas, ahoraMs, ultimaSerie) {
   return filas.filter(function (r) {
     var ini = r.inicio instanceof Date ? r.inicio.getTime() : Number(r.inicio);
     if (!ini || !isFinite(ini) || L_bool(r.hecho) || (r.fin !== '' && r.fin != null)) return false;
-    var edad = ahoraMs - ini; return edad >= HORAS_CIERRE * 36e5 && edad <= 7 * 864e5;
+    var ult = ultimaSerie && ultimaSerie[L_int(r.semana) + '|' + r.dia]; if (!ult) return false;   // solo calentó o no apuntó nada: no es un entreno hecho
+    var edad = ahoraMs - Math.max(ini, ult); return edad >= HORAS_CIERRE * 36e5 && ahoraMs - ini <= 3 * 864e5;
   });
 }
 function D_cerrarAbiertos(ss) {
@@ -1473,7 +1474,12 @@ function D_cerrarAbiertos(ss) {
   if (ix('inicio') < 0 || ix('semana') < 0 || ix('dia') < 0) return 0;
   var aj = L_ajustes(D_leer(ss, 'Ajustes')), zona = D_zonaOk(aj.zona_movil) || D_zonaOk(aj.zona) || TZ;
   var filas = t.filas.map(function (f) { var o = {}; t.cab.forEach(function (c, i) { if (c) o[c] = f[i]; }); return o; });
-  var abiertos = L_abiertosACerrar(filas, Date.now());
+  var ult = {};
+  var tr = D_tabla(ss, 'Registro');
+  tr.filas.forEach(function (f) { var g = function (c) { var i = tr.cab.indexOf(c); return i < 0 ? '' : f[i]; };
+    if (g('peso') === '' && g('repes') === '' && !L_bool(g('hecho'))) return;
+    var k = L_int(g('semana')) + '|' + g('dia'), a = g('actualizado'), ms = a instanceof Date ? a.getTime() : 1; if (!ult[k] || ms > ult[k]) ult[k] = ms; });
+  var abiertos = L_abiertosACerrar(filas, Date.now(), ult);
   abiertos.forEach(function (r) {
     var ini = r.inicio instanceof Date ? r.inicio : new Date(Number(r.inicio));
     D_upsert(t, { semana: D_valor(r.semana, t.tz), dia: String(r.dia) }, { hecho: true, fecha: Utilities.formatDate(ini, zona, 'yyyy-MM-dd'), actualizado: new Date() });

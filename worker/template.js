@@ -172,7 +172,7 @@ async function correccionIA(b, env) {
   const ejs = c.ejercicios.map(e => `- ${e.id}: ${e.nombre}${e.principal ? " (principal)" : ""}${c.ultimoPeso[e.id] ? " · último: " + c.ultimoPeso[e.id].peso + " kg × " + c.ultimoPeso[e.id].repes : ""}`).join("\n");
   const abiertas = c.correcciones.filter(x => !/superad/i.test(x.estado)).map(x => `- ${x.fecha} · ${x.ejercicio_id}: ${x.texto}`).join("\n") || "(ninguna)";
   const ctx = `Cliente: ${c.cliente}${c.voz ? "\n## Cómo le habla Alex\n" + c.voz : ""}\n## Sus ejercicios (ejercicio_id: nombre)\n${ejs}\n## Correcciones abiertas\n${abiertas}${b.nota ? "\n## Lo que añade Alex\n" + String(b.nota).slice(0, 1500) : ""}\n## Transcripción de Cap\n${tr}`;
-  const raw = await claudeTexto(env, VOZ_ALEX + "\n\n" + CORRECCION, ctx, 2200);
+  const raw = await claudeTexto(env, VOZ_ALEX + "\n\n" + CORRECCION, ctx, 3500);
   let j; try { j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); } catch (e) { return { ok: false, error: "La respuesta no se entendió; prueba otra vez" }; }
   const ids = new Set(c.ejercicios.map(e => e.id));
   const out = { mensaje: String(j.mensaje || "").split("{{CAP}}").join(cap || "(enlace de Cap)"), aviso: String(j.aviso || ""),
