@@ -281,6 +281,13 @@ details.como.movil{margin:0 0 12px}
 .warm li.wl{justify-content:flex-start;align-items:flex-start}
 .warm li.wl .wtxt{flex:1}
 .warm li.tachado .wtxt > span{text-decoration:line-through;color:var(--muted)}
+details.calplega > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:6px}
+details.calplega > summary::-webkit-details-marker{display:none}
+details.calplega .calok{display:none;margin-left:auto;font-size:12px;color:var(--accent-2);font-weight:600;letter-spacing:0}
+details.calplega .calver{font-size:12px;color:var(--muted);text-decoration:underline;letter-spacing:0}
+details.calplega.hecho .calok,details.calplega:not([open]) .calok{display:inline}
+details.calplega:not([open]){padding-top:12px;padding-bottom:12px}
+details.calplega[open] .calver{display:none}
 .corr{background:var(--surface);border:1.5px solid var(--accent-2);border-radius:12px;padding:10px 12px;margin:0 0 10px;font-size:13.5px}
 .corr b{color:var(--accent-2);font-weight:500;letter-spacing:.02em}
 .corr .cf{color:var(--muted);font-size:12px}
@@ -1325,6 +1332,21 @@ function recuerdaTerminar(k, s){
   s.avisado = 1; lsSet(kSes(k), s);
   toast(`<b>¿Sigues por aquí?</b> Cuando acabes, dale a «Marcar día hecho» abajo del todo, que si no me quedo sin saber cómo te fue 😉`, 7000);
 }
+/* Entrenos empezados hace 4 h o más: se dan por hechos solos, con el día en que empezó (Alex 30/10; en Google, lo mismo cada hora) */
+const HORAS_CIERRE = 4;
+function fechaDe(ms){ const d = new Date(ms); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function cerrarViejos(){
+  if(!D) return;
+  D.orden.forEach(k=>{
+    if(D.est.hechos[k]) return;
+    const s = sesGet(k); if(!s.start || s.end || Date.now() - s.start < HORAS_CIERRE * 36e5) return;
+    const fin = Math.max(s.last || s.start, s.start);
+    s.end = fin; s.fin = fin; lsSet(kSes(k), s);
+    encolar({fn:"dia", k, campo:"hecho", valor: true, fecha: fechaDe(s.start), semana: D.semana});   // la semana en que lo empezó
+    encolar({fn:"tiempos", k, ini: s.warm || s.start, fcal: s.fcal || s.start, fin, semana: D.semana});
+    if(k === "st" && !D.est.sust.st){ const p = ENT().find(x=>!D.est.hechos[x]); if(p){ D.est.sust.st = p; guardarCierre("st"); } }
+  });
+}
 /* Entrenos que se quedaron abiertos (empezados, sin marcar como hechos) */
 function entrenosAbiertos(){
   if(!D) return [];
@@ -1337,6 +1359,7 @@ function entrenosAbiertos(){
 }
 function hace(ms){ const m = Math.round(ms / 6e4); return m < 60 ? `hace ${m} min` : m < 60 * 20 ? `hace ${Math.round(m / 60)} h` : "ayer o antes"; }
 function avisoAbierto(){
+  cerrarViejos();
   const k = entrenosAbiertos()[0]; if(!k) return "";
   const s = sesGet(k), [dh, th] = progreso(k);
   return `<div class="abierto" id="avAbierto" data-k="${k}"><div class="label">${ic("tiempo")} Te quedó el entreno abierto</div>
@@ -1427,19 +1450,28 @@ function wuGet(k){ return lsGet(kWu(k)) || {}; }
 /* Calentamiento por rondas: lo «previo» (p. ej. 3 min de remo) va primero; el resto, como circuito que se repite N rondas */
 function rondasCal(items){ return Math.max(1, ...items.filter(x=>!x.pre).map(x=>+x.rd || 1)); }
 function totalCal(items){ const R = rondasCal(items), pre = items.filter(x=>x.pre).length; return R > 1 ? pre + 1 : items.length; }
+/* Calentamiento hecho (todas las casillas): se pliega solo y se puede volver a abrir (Alex 30/10) */
+function calHecho(items, k, wu){ return !!k && (wu || []).length >= totalCal(items); }
+function abreCal(titulo, items, k, wu){ if(!k) return `<div class="block warmblock"><div class="label">${ic("calentamiento")} ${esc(titulo)}</div>`;
+  const h = calHecho(items, k, wu);
+  return `<details class="block warmblock calplega ${h ? "hecho" : ""}" ${h ? "" : "open"}><summary class="label">${ic("calentamiento")} ${esc(titulo)}<span class="calok">✓ Hecho</span><span class="calver">${h ? "ver" : ""}</span></summary>`; }
+function cierraCal(k){ return k ? "</details>" : "</div>"; }
+function liWarm(x, n, k, tipo, wu){ return `<li class="${k ? "wl" : ""} ${wu.includes(n) ? "tachado" : ""}">${k ? `<input type="checkbox" class="wck" data-wu="${tipo}" data-n="${n}" ${wu.includes(n) ? "checked" : ""} aria-label="Hecho: ${esc(x.nm)}">` : ""}<div class="wtxt"><span>${esc(x.nm)}${x.rp ? " · " + esc(x.rp) : ""}</span>${x.pq ? `<small class="pq">${esc(x.pq)}</small>` : ""}${x.c ? `<details class="como mini2"><summary>Cómo se hace</summary><p>${esc(x.c)}</p></details>` : ""}</div>${botonVideo(x.yt, x.yv, x.nm)}</li>`; }
 function bloqueLista(titulo, items, intro, k, tipo){
   const wu = k ? (wuGet(k)[tipo] || []) : [];
   const R = tipo === "cal" ? rondasCal(items) : 1;
   if(R > 1){
     const li = (x, n, ck)=>`<li class="${ck && k ? "wl" : ""} ${ck && wu.includes(n) ? "tachado" : ""}">${ck && k ? `<input type="checkbox" class="wck" data-wu="${tipo}" data-n="${n}" ${wu.includes(n) ? "checked" : ""} aria-label="Hecho: ${esc(x.nm)}">` : ""}<div class="wtxt"><span>${esc(x.nm)}${x.rp ? " · " + esc(x.rp) : ""}</span>${x.pq ? `<small class="pq">${esc(x.pq)}</small>` : ""}${x.c ? `<details class="como mini2"><summary>Cómo se hace</summary><p>${esc(x.c)}</p></details>` : ""}</div>${botonVideo(x.yt, x.yv, x.nm)}</li>`;
     const pre = items.map((x, n)=>[x, n]).filter(([x])=>x.pre), circ = items.map((x, n)=>[x, n]).filter(([x])=>!x.pre);
-    return `<div class="block warmblock"><div class="label">${ic("calentamiento")} ${esc(titulo)}</div>${intro ? `<p class="intro">${esc(intro)}</p>` : ""}
+    return `${abreCal(titulo, items, k, wu)}${intro ? `<p class="intro">${esc(intro)}</p>` : ""}
       ${pre.length ? `<div class="wpaso"><span class="wnum">1</span>Primero</div><ul class="warm">${pre.map(([x, n])=>li(x, n, true)).join("")}</ul>` : ""}
       ${pre.length ? `<div class="wpaso"><span class="wnum">2</span>Después</div>` : ""}
       <div class="wcirc ${wu.includes(101) ? "tachado" : ""}">
         <div class="wch">${k ? `<input type="checkbox" class="wck" data-wu="${tipo}" data-n="101" ${wu.includes(101) ? "checked" : ""} aria-label="Hechas las ${R} vueltas">` : ""}<div><b>${R} vueltas de:</b><small>Seguidos, sin parar entre ellos. Al acabar, otra vez desde el primero.</small></div></div>
-        <ul class="warm">${circ.map(([x])=>li(x, 0, false)).join("")}</ul></div></div>`;
+        <ul class="warm">${circ.map(([x])=>li(x, 0, false)).join("")}</ul></div>${cierraCal(k)}`;
   }
+  if(tipo === "cal" && k) return `${abreCal(titulo, items, k, wu)}${intro ? `<p class="intro">${esc(intro)}</p>` : ""}
+    <ul class="warm">${items.map((x, n)=>liWarm(x, n, k, tipo, wu)).join("")}</ul>${cierraCal(k)}`;
   return `<div class="block ${tipo === "cal" ? "warmblock" : ""}"><div class="label">${ic(tipo === "cal" ? "calentamiento" : "vuelta_calma")} ${esc(titulo)}</div>${intro ? `<p class="intro">${esc(intro)}</p>` : ""}
     <ul class="warm">${items.map((x, n)=>`<li class="${k ? "wl" : ""} ${wu.includes(n) ? "tachado" : ""}">${k ? `<input type="checkbox" class="wck" data-wu="${tipo}" data-n="${n}" ${wu.includes(n) ? "checked" : ""} aria-label="Hecho: ${esc(x.nm)}">` : ""}<div class="wtxt"><span>${esc(x.nm)}${x.rp ? " · " + esc(x.rp) : ""}</span>${x.pq ? `<small class="pq">${esc(x.pq)}</small>` : ""}${x.c ? `<details class="como mini2"><summary>Cómo se hace</summary><p>${esc(x.c)}</p></details>` : ""}</div>${botonVideo(x.yt, x.yv, x.nm)}</li>`).join("")}</ul></div>`;
 }
@@ -1613,6 +1645,9 @@ function dia(k){
     const w = wuGet(k), t = c.dataset.wu, n = +c.dataset.n, l = new Set(w[t] || []);
     c.checked ? l.add(n) : l.delete(n); w[t] = [...l]; lsSet(kWu(k), w);
     { const li = c.closest("li") || c.closest(".wcirc"); if(li) li.classList.toggle("tachado", c.checked); }
+    if(t === "cal"){ const det = c.closest("details.calplega"), h = l.size >= totalCal(d.cal);
+      if(det){ det.classList.toggle("hecho", h); const v = det.querySelector(".calver"); if(v) v.textContent = h ? "ver" : "";
+        if(h && c.checked) setTimeout(()=>{ det.open = false; }, 650); } }
     if(t === "cal" && c.checked && !D.est.hechos[k]){ const s0 = sesGet(k); let cambia = false;
       if(!s0.warm){ s0.warm = Date.now(); cambia = true; }
       if(!s0.fcal && l.size >= totalCal(d.cal)){ s0.fcal = Date.now(); cambia = true; }

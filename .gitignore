@@ -2,5 +2,6 @@
 secretos/*
 !secretos/claves.example.json
 dist/
+dist-beta/
 node_modules/
 .DS_Store

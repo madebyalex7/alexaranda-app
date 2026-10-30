@@ -13,6 +13,8 @@
 
 // ───────────────────────── Configuración ─────────────────────────
 var MAESTRA_ID = '1UKuXBYxFLsjNVN6ecR2ALC6AI1J--08YpvC8XacFJ78';
+/** true solo en la beta (build.py --beta, contra copias de las hojas): sin avisos al móvil y con las fotos en su propia carpeta */
+var ES_BETA = false;
 var TZ = 'Europe/Madrid';
 var CACHE_CLIENTE_S = 60;     // si Alex pone activa = FALSE, como mucho tarda 1 minuto en cortar
 var CACHE_DATOS_S = 300;
@@ -252,53 +254,43 @@ function L_recordatorio(filas, w) {
 }
 
 
-/** «Lo próximo»: 1-2 cosas que vienen, de la Progresión, del Plan (ejercicios que entran más adelante) y de la pestaña opcional «Agenda» */
+/** «Lo próximo»: 1-2 cosas de ESTA semana (Alex 30/10: antes salían cosas de semanas lejanas y ocupaban mucho), de la Progresión,
+ *  del Plan (ejercicios que entran esta semana) y de la pestaña opcional «Agenda». Con fecha: «Viernes: …»; por semana: «Esta semana: …» */
 var DIAS_SEM = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 function L_cuandoSemana(w, S) { var n = w - S; return n <= 0 ? 'Esta semana' : n === 1 ? 'La semana que viene' : 'En ' + n + ' semanas'; }
+function L_dowIso(f) { var p = String(f).split('-').map(Number); return new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay(); }
 function L_cuandoFecha(f, hoy) {
   var n = L_diasEntre(hoy, f); if (n <= 0) return 'Hoy'; if (n === 1) return 'Mañana';
-  if (n < 7) { var p = String(f).split('-').map(Number); return 'El ' + DIAS_SEM[new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay()]; }
-  if (n < 14) return 'La semana que viene';
-  return 'En ' + Math.round(n / 7) + ' semanas';
+  var d = DIAS_SEM[L_dowIso(f)]; return d.charAt(0).toUpperCase() + d.slice(1);
 }
+/** Días que quedan de la semana (hasta el domingo incluido) */
+function L_quedanSemana(hoy) { var w = L_dowIso(hoy); return w === 0 ? 0 : 7 - w; }
 function L_proximo(prog, plan, agenda, S, lunes, hoy, aj) {
   aj = aj || {};
-  var objetivo = String(aj.objetivo || '').trim(), sb = String(aj.siguiente_bloque || '').trim(), sbt = String(aj.siguiente_bloque_texto || '').trim();
-  var items = [], visto = {};
+  var objetivo = String(aj.objetivo || '').trim(), sb = String(aj.siguiente_bloque || '').trim();
+  var items = [], visto = {}, quedan = L_quedanSemana(hoy);
   var add = function (dist, txt, prio) { if (!visto[txt]) { visto[txt] = 1; items.push({ d: dist, t: txt, p: prio || 0 }); } };
   var EMO = { fotos: '📸', peso: '⚖️', medidas: '📏', revision: '📋', 'revisión': '📋' };
   (agenda || []).forEach(function (a) {
     var txt = String(a.texto || '').trim(); if (!txt) return;
     var tipo = String(a.tipo || '').trim().toLowerCase(), emo = EMO[tipo] && txt.indexOf(EMO[tipo]) < 0 ? ' ' + EMO[tipo] : '';
-    var MOT = { fotos: '. Ya verás el cambio', medidas: ': lo que la báscula no cuenta', revision: ': repasamos juntos todo lo que has avanzado', 'revisión': ': repasamos juntos todo lo que has avanzado' };
-    if (MOT[tipo] && !/[.!]$/.test(txt) && txt.length < 40) txt += MOT[tipo];
-    if (a.fecha) { var f = String(a.fecha).slice(0, 10); var n = L_diasEntre(hoy, f); if (n < 0 || n > 35) return; add(n, L_cuandoFecha(f, hoy) + ': ' + txt + emo, 1); }
-    else if (a.semana) { var w = L_int(a.semana); if (w < S || w > S + 5) return; add((w - S) * 7 + 0.5, L_cuandoSemana(w, S) + ': ' + txt + emo, 1); }
+    if (a.fecha) { var f = String(a.fecha).slice(0, 10); var n = L_diasEntre(hoy, f); if (n < 0 || n > quedan) return; add(n, L_cuandoFecha(f, hoy) + ': ' + txt + emo, 1); }
+    else if (a.semana) { if (L_int(a.semana) !== S) return; add(7.5, 'Esta semana: ' + txt + emo, 1); }
   });
-  var futuro = function (w) { return w > S && w <= S + 6; };
   prog.forEach(function (p) {
-    if (!futuro(p.d)) return;
-    var C = L_cuandoSemana(p.d, S), dist = (p.d - S) * 7;
-    if (p.test) add(dist, C + ': serie test. Te van a caber más de las que crees 💪');
-    if (/revis|ajust/i.test(p.nota)) add(dist + 0.1, C + ' toca revisar pesos: si llegas al tope del rango, subimos 💪');
-    if (/descarga|suave/i.test(p.nota)) add(dist + 0.2, C + ', semana suave para recargar pilas 🌿');
-    if (/ciclo nuevo/i.test(p.nota)) add(dist + 0.25, C + ' empieza ciclo nuevo: subimos un poquito el peso' + (objetivo ? ', todo para ' + objetivo : '') + ' 💪');
+    if (p.d !== S) return;
+    if (p.test) add(8, 'Esta semana: serie test. Te van a caber más de las que crees 💪');
+    if (/revis|ajust/i.test(p.nota)) add(8.1, 'Esta semana: toca revisar pesos. Si llegas al tope del rango, subimos 💪');
+    if (/descarga|suave/i.test(p.nota)) add(8.2, 'Esta semana: semana suave para recargar pilas 🌿');
+    if (/ciclo nuevo/i.test(p.nota)) add(8.25, 'Esta semana: ciclo nuevo, subimos un poquito el peso 💪');
   });
-  // Ejercicios que entran más adelante (columna semana_desde del Plan) = cambio de sub-bloque
-  var cambio = null;
-  (plan || []).forEach(function (r) { var w = L_franja(r).d; if (futuro(w) && (cambio === null || w < cambio)) cambio = w; });
-  if (cambio !== null) add((cambio - S) * 7 + 0.3, L_cuandoSemana(cambio, S) + ' cambiamos ejercicios: nuevo reto para seguir progresando' + (objetivo ? ', todo para ' + objetivo : '') + ' 💪');
-  // Fin del bloque: la última semana de la Progresión
+  // Ejercicios que entran esta semana (columna semana_desde del Plan) = cambio de sub-bloque
+  if ((plan || []).some(function (r) { var w = L_franja(r).d; return w > 1 && w === S; })) add(8.3, 'Esta semana: ejercicios nuevos para seguir progresando 💪');
+  // Última semana del bloque
   var fin = 0; prog.forEach(function (p) { if (p.h < 900 && p.h > fin) fin = p.h; });
   if (aj.fin_bloque) fin = aj.fin_bloque;   // con pestaña Bloques, el fin es el de su bloque (no la última semana de toda la Progresión)
-  if (fin >= 6 && fin >= S && fin <= S + 4) {
-    var txtFin;
-    if (sb) txtFin = (fin === S ? 'La semana que viene' : 'En ' + (fin + 1 - S) + ' semanas') + ' empieza tu próximo bloque: «' + sb + '». Prepárate, que viene ' + (sbt || 'un paso más') + (objetivo ? '. Todo para ' + objetivo : '') + ' 🔥';
-    else txtFin = (fin === S ? 'Esta semana' : L_cuandoSemana(fin, S)) + ' acabas el bloque: miramos todo lo que has mejorado y arrancamos el siguiente' + (objetivo ? ', todo para ' + objetivo : '') + ' 🔥';
-    if (fin === S && sb) add(6, 'Última semana del bloque: dalo todo, que la semana que viene empieza «' + sb + '» 🔥');
-    else add((fin - S) * 7 + 6.5, txtFin);
-  }
-  items.sort(function (a, b) { return a.d - b.d || b.p - a.p; });
+  if (fin >= 6 && fin === S) add(9, sb ? 'Última semana del bloque: la que viene empieza «' + sb + '» 🔥' : 'Última semana del bloque: después miramos todo lo que has mejorado' + (objetivo ? ', todo para ' + objetivo : '') + ' 🔥');
+  items.sort(function (a, b) { return a.d - b.d || b.p - a.p; });   // primero lo que tiene día; después lo de «esta semana»
   return items.slice(0, 2).map(function (x) { return x.t; });
 }
 /** Mejora desde la primera vez en un principal (la mayor subida en kg) */
@@ -1171,11 +1163,12 @@ function S_subirFoto(cli, d) {
   return D_conBloqueo(function () {
     var ss = SpreadsheetApp.openById(cli.hoja);
     var aj = {}; D_leer(ss, 'Ajustes').forEach(function (f) { if (f.clave) aj[String(f.clave)] = f.valor; });
-    var carpeta = null, id = String(aj.carpeta_fotos || '').trim();
+    var clave = ES_BETA ? 'carpeta_fotos_beta' : 'carpeta_fotos';   // la beta nunca sube a la carpeta real del cliente
+    var carpeta = null, id = String(aj[clave] || '').trim();
     if (id) { try { carpeta = DriveApp.getFolderById(id); } catch (e) { carpeta = null; } }
     if (!carpeta) {
-      carpeta = DriveApp.createFolder('Fotos de progreso (app) · ' + (aj.nombre || cli.codigo));
-      D_upsert(D_tabla(ss, 'Ajustes'), { clave: 'carpeta_fotos' }, { valor: carpeta.getId() });
+      carpeta = DriveApp.createFolder((ES_BETA ? 'BETA · ' : '') + 'Fotos de progreso (app) · ' + (aj.nombre || cli.codigo));
+      D_upsert(D_tabla(ss, 'Ajustes'), { clave: clave }, { valor: carpeta.getId() });
     }
     var blob = Utilities.newBlob(Utilities.base64Decode(img), 'image/jpeg', fecha + ' ' + tipo + '.jpg');
     var archivo = carpeta.createFile(blob);
@@ -1340,6 +1333,7 @@ function X_crudo(ss, nombre) {   // filas con los valores tal cual (fechas como 
 }
 /** Qué avisos tocan ahora. Devuelve { enviar: [endpoint, …] } y deja el texto guardado para X_aviso */
 function X_pendientes() {
+  if (ES_BETA) return { enviar: [] };   // la beta no avisa a ningún móvil
   return D_conBloqueo(function () {
     var t = X_tabla(), i = function (c) { return t.cab.indexOf(c); };
     if (!t.filas.length) return { enviar: [] };
@@ -1412,6 +1406,28 @@ function guardarAjustes(codigo, d) { return despachar_('guardarAjustes', codigo,
  * la siguiente. No borra nada del Registro. Si un lunes se saltó, se pone al día. Rehace el resumen de semanas cerradas
  * cuando llegan apuntes tarde.
  */
+/** Entrenos empezados hace 4 h o más y sin marcar (Alex 30/10): se dan por hechos, con el día en que empezó.
+ *  Solo los de los últimos 7 días. Devuelve cuántos ha cerrado. */
+var HORAS_CIERRE = 4;
+function L_abiertosACerrar(filas, ahoraMs) {
+  return filas.filter(function (r) {
+    var ini = r.inicio instanceof Date ? r.inicio.getTime() : Number(r.inicio);
+    if (!ini || !isFinite(ini) || L_bool(r.hecho) || (r.fin !== '' && r.fin != null)) return false;
+    var edad = ahoraMs - ini; return edad >= HORAS_CIERRE * 36e5 && edad <= 7 * 864e5;
+  });
+}
+function D_cerrarAbiertos(ss) {
+  var t = D_tabla(ss, 'Días'), ix = function (c) { return t.cab.indexOf(c); };
+  if (ix('inicio') < 0 || ix('semana') < 0 || ix('dia') < 0) return 0;
+  var aj = L_ajustes(D_leer(ss, 'Ajustes')), zona = D_zonaOk(aj.zona_movil) || D_zonaOk(aj.zona) || TZ;
+  var filas = t.filas.map(function (f) { var o = {}; t.cab.forEach(function (c, i) { if (c) o[c] = f[i]; }); return o; });
+  var abiertos = L_abiertosACerrar(filas, Date.now());
+  abiertos.forEach(function (r) {
+    var ini = r.inicio instanceof Date ? r.inicio : new Date(Number(r.inicio));
+    D_upsert(t, { semana: D_valor(r.semana, t.tz), dia: String(r.dia) }, { hecho: true, fecha: Utilities.formatDate(ini, zona, 'yyyy-MM-dd'), actualizado: new Date() });
+  });
+  return abiertos.length;
+}
 function resetSemanal() {
   var m = SpreadsheetApp.openById(MAESTRA_ID);
   D_leer(m, 'Registro clientes').forEach(function (fila) {
@@ -1419,6 +1435,7 @@ function resetSemanal() {
     try {
       D_conBloqueo(function () {
         var ss = SpreadsheetApp.openById(String(fila.hoja_datos_id).trim());
+        D_cerrarAbiertos(ss);   // antes de poner al día: si cierra la semana, ya cuenta
         D_ponerAlDia(ss, []);
         D_cacheFuera(String(fila.codigo).trim());
       });
