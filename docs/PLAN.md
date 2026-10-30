@@ -20,53 +20,58 @@ Se construye todo en la **beta** (worker `alexaranda-entrena-beta` + Apps Script
 - Formularios que hay: Inicial (al pagar), Puesta al día (una vez, clientes antiguos), Semanal, Primer mes, Mensual, Previo a renovación, 3/6/9/12 meses, Fin de programa.
 
 ## Fase 1 · Arreglos rápidos
-- [ ] Un entreno empezado se cierra solo a las 4 h y cuenta como hecho.
-- [ ] «Modificar mensaje» en el feedback: 3 versiones (más cercano, más directo, más corto) en la voz de Alex; arreglar el fallo actual.
-- [ ] Caminar (sale del formulario semanal/mensual) no cuenta como entreno fallado; contador aparte.
-- [ ] Semanas antes de la migración: contar desde el primer registro de cada cliente en esta app.
-- [ ] El calentamiento se pliega al acabarlo.
-- [ ] Próximos eventos: solo los de esa semana, en una línea con el día («Viernes: …»).
+- [x] Un entreno empezado se cierra solo a las 4 h y cuenta como hecho.
+- [x] «Modificar mensaje» en el feedback: 3 versiones (más cercano, más directo, más corto) en la voz de Alex; arreglar el fallo actual.
+- [x] Caminar (sale del formulario semanal/mensual) no cuenta como entreno fallado; contador aparte.
+- [x] Semanas antes de la migración: contar desde el primer registro de cada cliente en esta app.
+- [x] El calentamiento se pliega al acabarlo.
+- [x] Próximos eventos: solo los de esa semana, en una línea con el día («Viernes: …»).
 - [ ] Feedback: mensaje principal corto + frases sueltas que Alex añade; sin repetir ni aplaudir de más; nunca preguntar cuándo van a entrenar.
 
 ## Fase 2 · Estructura del panel
-- [ ] Menú lateral con iconos.
-- [ ] Ficha del cliente a pantalla completa (no ventana emergente); pagos recogidos en un botón.
-- [ ] Ver los formularios de cada cliente en su ficha.
-- [ ] Carga más rápida (caché) y animaciones suaves en panel y app.
+- [x] Menú lateral con iconos.
+- [x] Ficha del cliente a pantalla completa (no ventana emergente); pagos recogidos en un botón.
+- [x] Ver los formularios de cada cliente en su ficha.
+- [x] Carga más rápida (caché) y animaciones suaves en panel y app.
 
 ## Fase 3 · Revisiones y correcciones
-- [ ] Reportes en tipos: lunes, mensual, vídeos (y viernes como está).
-- [ ] Calendario de controles según lo de arriba (mes 1, 2, 3 = fin de bloque…).
-- [ ] Semanal: si se pesó la semana pasada y si mandó vídeos, y tenerlo en cuenta en el mensaje.
-- [ ] Mensual: fotos subidas, gráfica de peso, medidas, troncales uno a uno.
-- [ ] En toda revisión: ver entreno y nutrición en un panel lateral sin salir.
+- [x] Reportes en tipos: lunes, mensual, vídeos (y viernes como está).
+- [x] Calendario de controles según lo de arriba (mes 1, 2, 3 = fin de bloque…).
+- [x] Semanal: si se pesó la semana pasada y si mandó vídeos, y tenerlo en cuenta en el mensaje.
+- [x] Mensual: fotos subidas, gráfica de peso, medidas, troncales uno a uno.
+- [x] En toda revisión: ver entreno y nutrición en un panel lateral sin salir.
 - [ ] Contexto del cliente (motiva, frustra, eventos, pasado): lo escribe el Proyecto; el panel lo enseña.
-- [ ] Evolución de pesos y repes: sugerir a quién toca subir peso.
+- [x] Evolución de pesos y repes: sugerir a quién toca subir peso.
 - [ ] Propuestas de cambio de ejercicio (lesión, dificultad, cambio de bloque o subbloque): 2-3 opciones con el porqué, solo con los ejercicios de las skills; las prepara el Proyecto. En cambio de bloque, casa → gimnasio.
 - [ ] Mensajes destacados → ficha + carpeta «Para historias» (con marca de permiso; se quitan de la carpeta, no de la ficha).
-- [ ] Correcciones de vídeo: enlace de Cap + transcripción → mensaje con enlace y resumen, sugerencia de vídeos a pedir hasta el martes, y a la ficha.
-- [ ] Aviso Grand Slam desde el mes 1; aviso de renovación (ver arriba); fin de programa a la vista.
-- [ ] Semáforo automático y alerta temprana (7-10 días sin registrar).
+- [x] Correcciones de vídeo: enlace de Cap + transcripción → mensaje con enlace y resumen, sugerencia de vídeos a pedir hasta el martes, y a la ficha.
+- [x] Aviso Grand Slam desde el mes 1; aviso de renovación (ver arriba); fin de programa a la vista.
+- [x] Semáforo automático y alerta temprana (7-10 días sin registrar).
 
 ## Fase 4 · Altas y candados
-- [ ] Nueva alta: WhatsApp, nombre, Instagram, casa/gimnasio, días (si el formulario dice menos, mandan los del formulario).
-- [ ] Mensaje de bienvenida con vídeo de pilares + formulario inicial (vídeos: pendientes de Alex).
+- [x] Nueva alta: WhatsApp, nombre, Instagram, casa/gimnasio, días (si el formulario dice menos, mandan los del formulario).
+- [x] Mensaje de bienvenida con vídeo de pilares + formulario inicial (vídeos: pendientes de Alex).
 - [ ] Al llegar el formulario: propuesta de plan automática (la hace el Proyecto) + mensaje con usuario de la app y vídeos de app y seguimiento.
-- [ ] App con candados en entreno y nutrición hasta que tenga fotos + peso y Alex dé el OK al plan.
+- [x] App con candados en entreno y nutrición hasta que tenga fotos + peso y Alex dé el OK al plan.
 - [ ] Seguimiento de las 2 primeras semanas: foto y feedback de cada entreno, fotos de comidas y cenas la primera semana.
-- [ ] Enviar = abrir WhatsApp con el texto escrito (`wa.me`); nunca scripts conectados a WhatsApp.
+- [x] Enviar = abrir WhatsApp con el texto escrito (`wa.me`); nunca scripts conectados a WhatsApp.
 
 ## Fase 5 · App
-- [ ] Barra de abajo con iconos; más visual.
+- [x] Barra de abajo con iconos; más visual.
 - [ ] Clientes de gimnasio: una tarjeta de entreno corto en casa (unos 15 min, sin material, a su nivel).
-- [ ] Fotos cada 4 viernes: recordatorio el miércoles, aviso y banner ese viernes, y cada 48 h hasta que las suba.
+- [x] Fotos cada 4 viernes: recordatorio el miércoles, aviso y banner ese viernes, y cada 48 h hasta que las suba.
 
 ## Fase 6 · Dinero
-- [ ] Panel general: cash collected, facturación y gastos.
-- [ ] Gastos con categorías (Anuncios, Software y las que añada Alex) y recurrentes.
-- [ ] Apartado de finanzas: mensual, trimestral, semestral, por categoría.
+- [x] Panel general: cash collected, facturación y gastos.
+- [x] Gastos con categorías (Anuncios, Software y las que añada Alex) y recurrentes.
+- [x] Apartado de finanzas: mensual, trimestral, semestral, por categoría.
 
 ## Fase 7 · Contenido
-- [ ] Calendario de historias (tipo + guion) y reels (vídeo, texto, hora, carpeta de Drive).
+- [x] Calendario de historias (tipo + guion) y reels (vídeo, texto, hora, carpeta de Drive).
 - [ ] Más adelante: publicar reels y ver anuncios con la API de Instagram (Alex lo conecta después).
 - [ ] Libros en Drive para consultas puntuales (pendiente de que Alex los suba).
+
+## Estado (30/10, sin publicar y sin probar aún contra Google ni la IA real)
+- [x] = hecho en el código y probado con mocks. Lo que sigue en [ ] depende de algo de fuera: el Proyecto («Clientes» de claude.ai, ver PARA-EL-PROYECTO.md), los vídeos, los libros o Instagram.
+- Mensajes destacados: ya existía el banco «Para redes» (Redes), con permiso y «usada»; falta comprobar con Alex si le basta.
+- Para subir la beta: activar la API de Apps Script (https://script.google.com/home/usersettings) y ./publicar-beta.sh.

@@ -564,6 +564,7 @@ nav.tabs .ti{transition:transform .18s ease}
 .avance i{transition:width .6s cubic-bezier(.2,.8,.2,1)}
 .promesas .prdia.tarde + ul li{background:rgba(181,70,47,.07);border-radius:10px}
 @media (prefers-reduced-motion:reduce){.btn,.chip,.rfila,.fila,.vtile,.calc,.rcuerpo,.bloque,.cv{transition:none!important;animation:none!important}}
+.semsug{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--sec);margin:10px 0 0}
 </style>
 </head>
 <body>
@@ -1853,7 +1854,7 @@ function pgSeccion(c){
       '<div class="grupo">'+cobroUrgente(c.id)+nutriFicha(c)+'</div>'+altaFicha(c.id)+(c.codigo_app?'<div class="grupo" id="pgAcc">'+accesoHtml(c.id)+'</div>':'')+
       '<div class="grupo"><h3>Cómo está</h3><div class="semaf" role="group" aria-label="Semáforo">'+
         SEMAF.map(function(x){ return '<button data-semaf="'+x[0]+'" aria-pressed="'+((c.semaforo||'')===x[0])+'"><span class="punto '+x[0]+'"></span>'+x[1]+'</button>'; }).join('')+'</div>'+
-        '<div class="campos" style="margin-top:10px">'+campo(T,c,'semaforo_nota','Nota rápida','area',null,true)+'</div></div>'+
+        '<div class="campos" style="margin-top:10px">'+campo(T,c,'semaforo_nota','Nota rápida','area',null,true)+'</div><div id="pgSem">'+semSugHtml(c)+'</div></div>'+
       '<div class="grupo"><h3>'+(c.estado==='Activo'?'Próxima conversación':'Retomar el contacto')+'</h3><div class="campos">'+
         (c.estado==='Activo'?campo(T,c,'proxima_conversacion','Fecha','date')+campo(T,c,'conversacion_motivo','Para qué (renovación, revisión…)','text',null,true)
           :campo(T,c,'retomar_fecha','Fecha para retomar','date')+campo(T,c,'retomar_motivo','Motivo y plan','area',null,true))+'</div></div>'+
@@ -1955,10 +1956,23 @@ function nutriPagina(c){
       '<iframe class="nutpdf" src="/nutricion?c='+encodeURIComponent(cod)+'" title="Plan de alimentación de '+esc(c.nombre||'')+'" loading="lazy"></iframe></div>'
       :'<p class="aviso-vacio">Sin código de la app: pon su código en «Programa y pagos» para ver aquí su plan.</p>');
 }
+/* Semáforo sugerido (Alex 30/10): con sus 2 últimas semanas cerradas y los días sin apuntar nada. Solo sugiere: lo pone Alex con un toque */
+function semSugerido(d){
+  if(!d||d.sinApp) return null; var H=String(d.hoy||hoy()).slice(0,10);
+  var f=[].concat((d.entrenos||[]).map(function(e){ return e.fecha; }),(d.peso||[]).map(function(x){ return x.fecha; }),d.fotos||[],(d.extras||[]).map(function(x){ return x.fecha; })).filter(function(x){ return x&&x<=H; }).sort();
+  var ult=f[f.length-1]||'', sin=ult?dias(ult,H):null, ws=(d.semanas||[]).filter(function(w){ return sumar(w.lunes,6)<H; }).slice(-2);
+  if(!ws.length&&!ult) return null;
+  var ob=ws.reduce(function(a,w){ return a+(+w.objetivo||0); },0), he=ws.reduce(function(a,w){ return a+Math.min(+w.hechos||0,+w.objetivo||0); },0), pc=ob?he/ob:null, txt=(ob?he+' de '+ob+' entrenos en sus últimas '+ws.length+' semanas':'')+(sin!=null?(ob?' · ':'')+(sin===0?'apuntó hoy':'lleva '+sin+(sin===1?' día':' días')+' sin apuntar nada'):'');
+  if((sin!=null&&sin>=10)||(pc!=null&&pc<0.34)) return {v:'rojo',t:txt};
+  if((sin!=null&&sin>=7)||(pc!=null&&pc<0.67)) return {v:'amarillo',t:txt};
+  return {v:'verde',t:txt};
+}
+function semSugHtml(c){ var x=semSugerido(CAC[c.id]); if(!x) return ''; var ig=(c.semaforo||'')===x.v;
+  return '<p class="semsug"><span class="punto '+x.v+'"></span><span>'+(ig?'Coincide con sus datos: ':'Por sus datos, sugiero «'+esc(semTxt(x.v))+'»: ')+esc(x.t)+'.</span>'+(ig?'':'<button class="linkbtn" data-semaf="'+x.v+'">Ponerlo</button>')+'</p>'; }
 function pgTrasPintar(){
   if(!PG) return; var c=buscar('Clientes',PG.cid); if(!c) return;
   var vis=$('#pgVis'), ent=$('#pgEnt'), cam=$('#pgCam'), cal=$('#pgCal'), acc=$('#pgAcc');
-  if(acc&&(!CAC[c.id]||!CAC[c.id]._fresco)&&!c._accPed){ c._accPed=1; api('calendarioCliente',{cliente_id:c.id}).then(function(d){ d._fresco=1; CAC[c.id]=d; var el=$('#pgAcc'); if(el) el.innerHTML=accesoHtml(c.id); }).catch(function(){}); }
+  if(acc&&(!CAC[c.id]||!CAC[c.id]._fresco)&&!c._accPed){ c._accPed=1; api('calendarioCliente',{cliente_id:c.id}).then(function(d){ d._fresco=1; CAC[c.id]=d; var el=$('#pgAcc'); if(el) el.innerHTML=accesoHtml(c.id); var es=$('#pgSem'); if(es) es.innerHTML=semSugHtml(c); }).catch(function(){}); }
   if(cal){ var pk=function(){ var el=$('#pgCal'); if(el) el.innerHTML=calHtml(CAC[c.id]); };
     if(CAC[c.id]) pk(); if(!CAC[c.id]||!CAC[c.id]._fresco) api('calendarioCliente',{cliente_id:c.id}).then(function(d){ d._fresco=1; CAC[c.id]=d; pk(); }).catch(function(e){ var el=$('#pgCal'); if(el&&!CAC[c.id]) el.innerHTML='<p class="aviso-vacio">No he podido leer su app: '+esc(e.message)+'</p>'; }); }
   if(vis){ var pv=function(d){ var el=$('#pgVis'); if(el) el.innerHTML=d.sinApp?'<p class="aviso-vacio">Todavía no tiene la app.</p>':ecHtml(d,true); };
