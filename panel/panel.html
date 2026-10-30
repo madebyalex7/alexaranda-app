@@ -1190,7 +1190,7 @@ function avisosRenov(cid){
   if(ult&&esFecha(ult.fecha)){ var d2=Math.round((new Date(ult.fecha)-new Date(h))/864e5); if(d2<=30) out.push({n:'a',t:'Último cobro '+(d2<0?'atrasado ('+fCorta(ult.fecha)+')':'el '+fCorta(ult.fecha))}); }
   /* Cobro de estos días: con Stripe, comprobar que ha entrado; a mano, recordárselo */
   pend.filter(function(p){ return esFecha(p.fecha)&&p.fecha>=sumar(h,-10)&&p.fecha<=sumar(h,3); }).forEach(function(p){ var st=esStripe(p), tarde=p.fecha<h;
-    out.push({n:tarde?'r':'a',cobro:true,t:(st?'Cobro por Stripe '+(tarde?'del ':'el ')+fCorta(p.fecha)+(p.importe?' ('+euros(p.importe)+')':'')+': comprueba que ha entrado y márcalo cobrado':(tarde?'Cobro sin marcar del ':'Toca cobrar el ')+fCorta(p.fecha)+(p.importe?' ('+euros(p.importe)+')':'')+(p.metodo?' por '+p.metodo:'')+': recuérdaselo'),btn:btnCobro(p)}); });
+    out.push({n:tarde?'r':'a',cobro:true,t:(st?'Cobro por Stripe '+(tarde?'del ':'el ')+fCorta(p.fecha)+(p.importe?' ('+euros(p.importe)+')':'')+': comprueba que ha entrado y márcalo cobrado':(tarde?'Cobro sin marcar del ':'Toca cobrar el ')+fCorta(p.fecha)+(p.importe?' ('+euros(p.importe)+')':'')+(p.metodo?' por '+p.metodo:'')+': recuérdaselo')+(p.notas?' · '+p.notas:''),btn:btnCobro(p)}); });
   return out;
 }
 
@@ -1284,6 +1284,8 @@ function vistazo(f,d){
     T.push(tile('Fotos y medidas',fp.estado==='hecha'&&!esFecha(fp.proxima)?'✓':(dd==null?'—':pasado?'Pasado':dd===0?'Hoy':'en '+dd+' <small>'+(dd===1?'día':'días')+'</small>'),
       (esFecha(fp.proxima)?(pasado?'Tocaban el ':'Toca el ')+esc(fCorta(fp.proxima)):'')+(esFecha(fp.ultima)?' · últimas: '+esc(fCorta(fp.ultima)):'')+(fp.carpeta?' · <a href="'+esc(fp.carpeta)+'" target="_blank" rel="noopener">ver fotos</a>':''),null,pasado?'mal':'')); }
   if(d.paseos!=null&&d.paseos!=='') T.push(tile('Paseos',esc(String(d.paseos)),'aparte de los entrenos',null));
+  var sx=semExtra(f); if(sx){ T.push(tile('Peso del viernes',sx.peso?'✓':'✕',sx.peso?esc(fCorta(sx.peso.fecha))+' · '+esc(String(sx.peso.peso).replace('.',','))+' kg':'no lo apuntó en la app',null,sx.peso?'ok':'mal'));
+    T.push(tile('Vídeos',sx.videos?'🎥 '+sx.videos:'—',sx.videos?'grabados en los últimos 7 días':sx.pedidos?sx.pedidos+' pedido'+(sx.pedidos>1?'s':'')+' sin grabar':'sin vídeos pedidos',null,sx.videos?'ok':sx.pedidos?'mal':'')); }
   if(d.formulario) T.push(tile('Formulario',d.formulario.fecha?'✓':'Sin hacer',d.formulario.fecha?esc(fCorta(d.formulario.fecha)):'',null,d.formulario.fecha?'ok':'mal'));
   var td=tiraDias(d);
   if(!T.length&&!td) return '';
@@ -1328,7 +1330,7 @@ function pedirVersiones(f,art){
   if(pend['Ronda|'+f.id]) enviar('Ronda|'+f.id);
   RV[f.id]={cargando:true}; rrepintar(f.id);
   var ctl=window.AbortController?new AbortController():null, tmo=setTimeout(function(){ if(ctl) ctl.abort(); },60000);
-  fetch('/panel/ia',{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},signal:ctl?ctl.signal:undefined,body:JSON.stringify({k:KEY,id:f.id,que:'versiones',actual:actual})})
+  fetch('/panel/ia',{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},signal:ctl?ctl.signal:undefined,body:JSON.stringify({k:KEY,id:f.id,que:'versiones',actual:actual,extra:semExtraTxt(f)})})
     .then(function(r){ return r.json().catch(function(){ throw new Error('el servidor no ha respondido bien ('+r.status+')'); }); })
     .then(function(j){ if(!j||!j.ok) throw new Error((j&&j.error)||'no ha funcionado'); RV[f.id]={versiones:j.data.versiones}; })
     .catch(function(e){ RV[f.id]={err:e.name==='AbortError'?'tarda demasiado':String(e.message||e)}; })
@@ -1802,6 +1804,20 @@ function pgSeccion(c){
       rdDeCliente(c.id)+
     '</div></div>';
 }
+/* Semanal (Alex 30/10): si se pesó el último viernes y si mandó vídeos, para tenerlo en cuenta en el mensaje */
+function ultViernes(f0){ var f=f0||hoy(); for(var i=0;i<7;i++){ var x=sumar(f,-i); if(new Date(x+'T12:00:00').getDay()===5) return x; } return ''; }
+function semExtra(f){
+  if(!f||!f.cliente_id) return null; var c=buscar('Clientes',f.cliente_id); if(!c||!c.codigo_app) return null;
+  var d=CAC[f.cliente_id];
+  if(!d){ if(!c._calPed){ c._calPed=1; api('calendarioCliente',{cliente_id:c.id}).then(function(x){ x._fresco=1; CAC[c.id]=x; if(S.tab==='ronda'&&R.abierta===f.id) rrepintar(f.id); }).catch(function(){}); } return null; }
+  if(d.sinApp) return null;
+  if(!CV.cargado&&!CV.cargando) cvCargar();
+  var vi=ultViernes(esFecha(f.fecha)?f.fecha:hoy()), pe=(d.peso||[]).filter(function(x){ return Math.abs(dias(x.fecha,vi))<=1; })[0]||null;
+  var cv=(CV.lista||[]).filter(function(x){ return x.id===c.id; })[0], h=hoy();
+  var vids=cv?cv.videos.filter(function(v){ return v.grabado&&dias(v.grabado,h)<=7; }).length:0, ped=cv?cv.pedidos:0;
+  return {peso:pe, viernes:vi, videos:vids, pedidos:ped};
+}
+function semExtraTxt(f){ var x=semExtra(f); if(!x) return ''; return 'Peso del viernes '+fCorta(x.viernes)+': '+(x.peso?'sí, '+x.peso.peso+' kg':'no lo apuntó')+'. Vídeos de la semana: '+(x.videos?x.videos+' grabados':x.pedidos?'pedidos y sin grabar':'no tenía pedidos')+'.'; }
 /* Desde una revisión, ver su nutrición o su calendario sin salir (Alex 30/10) */
 function ovGrande(id,titulo,cuerpo){ var o=$('#'+id); if(!o){ o=document.createElement('div'); o.id=id; o.className='respov'; o.setAttribute('role','dialog'); document.body.appendChild(o); }
   o.hidden=false; o.innerHTML='<div class="respbox"><div class="resphead"><h2>'+titulo+'</h2><button class="ib" data-ovx aria-label="Cerrar">✕</button></div><div class="ovc">'+cuerpo+'</div></div>';
@@ -3240,7 +3256,7 @@ function lreparto(precio,n,primero){
 }
 function lnuevoForm(l){
   var ps=lplanesAct(), p=ps[1]||ps[0]||{nombre:'',meses:'3',precio:'',cuotas:'1'};
-  var F={plan:p.id||'',nombre:l.nombre||'',telefono:telLead(l),programa:p.nombre||'',meses:p.meses||'',precio:p.precio||'',cuotas:1,metodo:'Transferencia',inicio:lunesSig(),primero:hoy(),pagado:true,notas:''};
+  var F={plan:p.id||'',nombre:l.nombre||'',telefono:telLead(l),instagram:l.instagram||'',lugar:'Casa',dias:'3',programa:p.nombre||'',meses:p.meses||'',precio:p.precio||'',cuotas:1,metodo:'Transferencia',inicio:lunesSig(),primero:hoy(),pagado:true,notas:'',nota_pago:''};
   F.cobros=lreparto(num(F.precio),1,F.primero); F.cobros[0].cobrado=true; return F;
 }
 function lrecalc(F){ F.cobros=lreparto(num(F.precio),F.cuotas,F.primero); if(F.pagado&&F.cobros[0]) F.cobros[0].cobrado=true; }
@@ -3250,6 +3266,9 @@ function lformAlta(l){
   return '<div class="lalta"><h4>Crear su ficha de cliente</h4><div class="campos">'+
     '<div class="campo"><label>Nombre</label><input data-lf="nombre" value="'+esc(F.nombre)+'"></div>'+
     '<div class="campo"><label>Teléfono</label><input data-lf="telefono" type="tel" value="'+esc(F.telefono)+'" placeholder="con prefijo: 34…"></div>'+
+    '<div class="campo"><label>Instagram</label><input data-lf="instagram" value="'+esc(F.instagram||'')+'" placeholder="@usuario"></div>'+
+    '<div class="campo"><label>Dónde entrena</label><select data-lf="lugar">'+['Casa','Gimnasio'].map(function(x){ return '<option'+(x===F.lugar?' selected':'')+'>'+x+'</option>'; }).join('')+'</select></div>'+
+    '<div class="campo"><label>Días por semana</label><select data-lf="dias">'+['2','3','4','5'].map(function(x){ return '<option'+(x===String(F.dias)?' selected':'')+'>'+x+'</option>'; }).join('')+'</select><small class="estado-m">si en el formulario dice menos, mandan los del formulario</small></div>'+
     '<div class="campo ancho"><label>Plan</label><div class="lplanes-sel">'+ps.map(function(x){ return '<button class="chip" data-lplan="'+esc(x.id)+'" aria-pressed="'+(x.id===F.plan)+'">'+esc(x.nombre)+' · '+esc(EUR.format(num(x.precio)))+'</button>'; }).join('')+'</div></div>'+
     '<div class="campo"><label>Precio total (€)</label><input data-lf="precio" inputmode="decimal" value="'+esc(F.precio)+'"></div>'+
     '<div class="campo"><label>Pago</label><select data-lf="cuotas">'+cs.map(function(n){ return '<option value="'+n+'"'+(n===+F.cuotas?' selected':'')+'>'+(n===1?'Pago único':n+' cuotas')+'</option>'; }).join('')+'</select></div>'+
@@ -3259,6 +3278,7 @@ function lformAlta(l){
     '<div class="campo"><label class="lcheck"><input type="checkbox" data-lf="pagado"'+(F.pagado?' checked':'')+'> El primer pago ya está hecho</label></div>'+
     '</div><table class="cobros-cli lcob"><tbody>'+F.cobros.map(function(c,i){ return '<tr><td>'+(F.cobros.length===1?'Pago único':'Cuota '+(i+1)+'/'+F.cobros.length)+'</td><td><input type="date" data-lcf="fecha" data-i="'+i+'" value="'+esc(c.fecha)+'" aria-label="Fecha del cobro '+(i+1)+'"></td><td><input data-lcf="importe" data-i="'+i+'" inputmode="decimal" value="'+esc(c.importe)+'" aria-label="Importe del cobro '+(i+1)+'"> €</td><td class="e">'+(c.cobrado?'<span class="lok">Cobrado</span>':'Pendiente')+'</td></tr>'; }).join('')+'</tbody></table>'+
     '<p class="estado-m'+(mal?' lerr':'')+'">Suman '+EUR2.format(suma)+(mal?' y el precio es '+EUR2.format(num(F.precio))+': revisa los importes.':'. Termina el '+esc(fCorta(sumarMes(F.inicio||hoy(),num(F.meses)||0)))+'.')+'</p>'+
+    '<div class="campos"><div class="campo ancho"><label>Recordatorios de pago (opcional)</label><input data-lf="nota_pago" value="'+esc(F.nota_pago||'')+'" placeholder="«paga el día 5 de cada mes por Bizum», «recordarle el día antes»…"><small class="estado-m">sale junto a cada cobro pendiente y en sus avisos</small></div></div>'+
     '<div class="campos"><div class="campo ancho"><label>Notas para su alta (opcional)</label><textarea data-lf="notas" rows="2" placeholder="Lo que quieras que tenga en cuenta al montar sus documentos y su plan.">'+esc(F.notas)+'</textarea></div></div>'+
     '<div class="racc"><button class="btn prim" data-lcrear'+(mal?' disabled':'')+'>Crear ficha y cobros</button><button class="btn" data-lcancelar>Cancelar</button></div>'+
     '<p class="estado-m">Se crea su ficha en Clientes con los cobros, y en el siguiente chequeo monto su alta: documentos, hoja de la app y su chat.</p></div>';
@@ -3330,7 +3350,7 @@ function enlazarLlamadas(){
       var F2=LC.form; if(!String(F2.nombre).trim()){ alerta('Falta el nombre'); return; }
       b.disabled=true; b.textContent='Creando…';
       if(pend['Leads|'+id]) enviar('Leads|'+id);
-      api('llamadaCrearCliente',{lead_id:id,alta:{nombre:F2.nombre,telefono:F2.telefono,programa:F2.programa,meses:F2.meses,precio:F2.precio,metodo:F2.metodo,inicio:F2.inicio,notas:F2.notas,cobros:F2.cobros}})
+      api('llamadaCrearCliente',{lead_id:id,alta:{nombre:F2.nombre,telefono:F2.telefono,instagram:F2.instagram,lugar:F2.lugar,dias:F2.dias,nota_pago:F2.nota_pago,programa:F2.programa,meses:F2.meses,precio:F2.precio,metodo:F2.metodo,inicio:F2.inicio,notas:F2.notas,cobros:F2.cobros}})
         .then(function(r){ S.data.clientes.push(r.cliente); r.cobros.forEach(function(c){ S.data.cobros.push(c); }); LC.altas.push(r.alta); Object.assign(l,r.lead); LC.alta=null; LC.form=null; $('#nCli').textContent=S.data.clientes.filter(function(c){return vivo(c)&&c.estado==='Activo';}).length; lrepintar(id); flash(); })
         .catch(function(er){ b.disabled=false; b.textContent='Crear ficha y cobros'; alerta(er); });
       return;

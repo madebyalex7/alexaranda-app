@@ -645,17 +645,19 @@ function LL_crearCliente(leadId, a) {
     forma_pago: n === 1 ? 'Pago único' : n + ' cuotas', metodo: a.metodo || '', cuotas: String(n),
     importe_cuota: n === 1 ? String(precio) : String(P_num(cobros[0].importe)), dia_cobro: n > 1 ? String(+cobros[0].fecha.slice(8, 10)) : '',
     seguimiento: 'Normal', semaforo: 'verde', semaforo_nota: 'Recién entrado',
-    notas: 'Alta desde la llamada del ' + String(l.llamada || '').slice(0, 10) + (l.instagram ? ' · IG ' + l.instagram : '') + (a.notas ? '\n' + a.notas : '')
+    notas: 'Alta desde la llamada del ' + String(l.llamada || '').slice(0, 10) + (a.instagram || l.instagram ? ' · IG ' + (a.instagram || l.instagram) : '') +
+      (a.lugar ? ' · entrena en ' + String(a.lugar).toLowerCase() : '') + (a.dias ? ' · ' + a.dias + ' días' : '') + (a.nota_pago ? '\nPago: ' + a.nota_pago : '') + (a.notas ? '\n' + a.notas : '')
   });
   var nuevos = cobros.map(function (c, i) {
     return P_nuevo('Cobros', { fecha: c.fecha, cliente_id: cli.id, cliente: nombre, concepto: (n === 1 ? 'Pago único' : 'Cuota ' + (i + 1) + '/' + n) + ' · ' + programa,
-      importe: String(Math.round(P_num(c.importe) * 100) / 100), estado: c.cobrado ? 'Cobrado' : 'Pendiente', ultimo: i === n - 1 ? 'Sí' : '', metodo: a.metodo || '' });
+      importe: String(Math.round(P_num(c.importe) * 100) / 100), estado: c.cobrado ? 'Cobrado' : 'Pendiente', ultimo: i === n - 1 ? 'Sí' : '', metodo: a.metodo || '', notas: String(a.nota_pago || '').slice(0, 300) });
   });
   var guion = R_json(l.guion, {}), partes = Object.keys(guion).filter(function (k) { return String(guion[k] || '').trim(); })
     .map(function (k) { return '- ' + k + ': ' + guion[k]; }).join('\n');
   var resumen = [l.preocupacion && 'Le preocupa: ' + l.preocupacion, partes && 'Lo hablado en la llamada:\n' + partes, l.notas_llamada && 'Notas de la llamada: ' + l.notas_llamada,
-    l.ultima_resumen && 'Última conversación: ' + l.ultima_resumen, a.notas && 'Notas de Alex para el alta: ' + a.notas].filter(Boolean).join('\n');
-  var alta = P_nuevo('Altas', { fecha: P_hoy(), cliente_id: cli.id, cliente: nombre, lead_id: l.id, telefono: cli.telefono, instagram: l.instagram,
+    l.ultima_resumen && 'Última conversación: ' + l.ultima_resumen, (a.lugar || a.dias) && 'Empieza en ' + String(a.lugar || '').toLowerCase() + (a.dias ? ', ' + a.dias + ' días por semana (si en el formulario dice menos, mandan los del formulario)' : ''),
+    a.nota_pago && 'Pago: ' + a.nota_pago, a.notas && 'Notas de Alex para el alta: ' + a.notas].filter(Boolean).join('\n');
+  var alta = P_nuevo('Altas', { fecha: P_hoy(), cliente_id: cli.id, cliente: nombre, lead_id: l.id, telefono: cli.telefono, instagram: a.instagram || l.instagram,
     programa: programa, inicio: inicio, resumen: resumen, estado: 'pendiente' });
   var lead = P_guardar('Leads', l.id, { nombre: l.nombre || nombre, whatsapp: l.whatsapp || cli.telefono, estado: 'Cerrado', llamada_estado: 'cerrado', cliente_id: cli.id, ultima_fecha: P_hoy(), proximo_contacto: '', siguiente_paso: 'Cliente: ' + programa });
   return { cliente: cli, cobros: nuevos, alta: alta, lead: lead };

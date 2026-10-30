@@ -145,7 +145,7 @@ async function rondaVersiones(b, env) {
   if (!g || !g.ok) return g || { ok: false, error: "Google no responde ahora" };
   const f = g.data, actual = b.actual != null ? String(b.actual) : (f.mensaje || ""), pet = String(b.peticion || "").slice(0, 1000);
   if (f.mensaje_estado === "enviado") return { ok: false, error: "Ese mensaje ya está enviado" };
-  const raw = await claudeTexto(env, VOZ_ALEX + "\n\n" + TRES_VERSIONES, `${contextoFila(f)}\n\n## Mensaje propuesto ahora\n${actual || "(ninguno)"}${pet ? "\n\n## Lo que pide Alex además\n" + pet : ""}`, 1400);
+  const raw = await claudeTexto(env, VOZ_ALEX + "\n\n" + TRES_VERSIONES, `${contextoFila(f)}\n\n## Mensaje propuesto ahora\n${actual || "(ninguno)"}${b.extra ? "\n\n## Esta semana, además (de su app)\n" + String(b.extra).slice(0, 600) + "\nSi no se pesó o no mandó los vídeos pedidos, recuérdaselo con una frase corta, sin reproche." : ""}${pet ? "\n\n## Lo que pide Alex además\n" + pet : ""}`, 1400);
   let j; try { j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); } catch (e) { return { ok: false, error: "La respuesta no se entendió; prueba otra vez" }; }
   const versiones = [["cercano", "Más cercano"], ["directo", "Más directo"], ["corto", "Más corto"]].map(([k, t]) => ({ tipo: k, titulo: t, texto: String(j[k] || "").trim() })).filter(v => v.texto);
   if (!versiones.length) return { ok: false, error: "No han salido versiones; prueba otra vez" };
