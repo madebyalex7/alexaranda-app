@@ -18,7 +18,7 @@ if [ -z "$(leer EXEC)" ]; then
   poner EXEC "https://script.google.com/macros/s/$ID/exec"; poner DEPLOY "$ID"
   python3 build.py --beta
 else
-  (cd dist-beta && clasp create-deployment -i "$(leer DEPLOY)" -d "beta $(date '+%d/%m %H:%M')" >/dev/null)
+  DEP=$(leer DEPLOY); (cd dist-beta && clasp create-deployment -i "$DEP" -d "beta $(date '+%d/%m %H:%M')" >/dev/null)
 fi
 node --check dist-beta/worker.js
 wrangler deploy --config wrangler.beta.toml 2>&1 | grep -E "workers.dev|Uploaded|ERROR" || true
