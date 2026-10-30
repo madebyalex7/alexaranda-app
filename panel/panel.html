@@ -677,9 +677,11 @@ function euros(v){ var s=String(v==null?'':v).trim(); if(!s) return ''; if(isNaN
 function vivo(r){ return !r.archivado; }
 
 /* WhatsApp en el ordenador (Alex 30/10): usa WhatsApp Web (su Business) e intenta reutilizar siempre la misma pestaña. La app de escritorio es su número personal: no usarla. En el móvil, wa.me abre la app */
-window.addEventListener('click',function(e){ var a=e.target.closest&&e.target.closest('a[href*="wa.me/"]'); if(!a||window.matchMedia('(max-width:640px)').matches) return;
+window.addEventListener('click',function(e){ var a=e.target.closest&&e.target.closest('a[href*="wa.me/"]'); if(!a) return;
   var u; try{ u=new URL(a.href); }catch(er){ return; } if(!/(^|\.)wa\.me$/.test(u.hostname)) return;
-  var tel=u.pathname.replace(/\D/g,''), tx=u.searchParams.get('text')||''; e.preventDefault();
+  var tel=u.pathname.replace(/\D/g,''), tx=u.searchParams.get('text')||'';
+  if(!tel){ e.preventDefault(); e.stopImmediatePropagation(); alerta(new Error('Esta ficha no tiene teléfono. Ponlo en su ficha antes de escribirle, para no equivocarte de chat.')); return; }   // sin número, WhatsApp deja elegir el chat a mano
+  if(window.matchMedia('(max-width:640px)').matches) return; e.preventDefault();
   var w=window.open('https://web.whatsapp.com/send?'+(tel?'phone='+tel+'&':'')+'text='+encodeURIComponent(tx),'whatsapp_alex'); if(w) w.focus(); },true);
 
 /* ───────── red ───────── */
@@ -1765,7 +1767,7 @@ function cuerpo(f,d){
         '<button class="btn" data-copiar>Copiar</button>'+
         (f.mensaje_estado==='enviado'?'<button class="btn" data-mest="propuesto">Deshacer enviado</button>':'<button class="btn prim" data-mest="enviado">Marcar enviado</button>')+
         (f.mensaje_estado==='descartado'?'':'<button class="btn" data-mest="descartado">No enviar</button>')+' '+est+'</div>'+
-      (telDe(f)?'':'<p class="estado-m" style="margin:6px 0 0">Sin teléfono guardado: WhatsApp te pedirá elegir el chat.</p>')+
+      (telDe(f)?'':'<p class="estado-m" style="margin:6px 0 0">Sin teléfono en su ficha: ponlo para poder abrir WhatsApp.</p>')+
       (f.mensaje_estado==='enviado'?'':'<div class="lab" style="margin-top:12px">Cambiar el mensaje'+(R.ia?'':' <span class="estado-m">(sin la API conectada, lo rehago en el siguiente chequeo)</span>')+'</div>')+
       anadirMsg(f,d)+tresVersiones(f)+opcionesMsg(f,d)+
       (f.mensaje_estado==='enviado'?'':'<div class="pedir"><input type="text" data-ped="mensaje" placeholder="O escribe lo que quieras: «pregúntale por la boda», «sin emojis»…" aria-label="Pedir otro cambio del mensaje"><button class="btn" data-pedir="mensaje">Cambiar</button></div>')+
