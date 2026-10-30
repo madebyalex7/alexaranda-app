@@ -32,6 +32,7 @@ const filas=ej.map(f=>RC.map(c=>f[c]||''));
 const real=Object.assign({},ej[0],{id:'r-test',cliente:'Prueba Real',ejemplo:'',codigo_app:'PRUEBA-1',fecha:'2026-10-19'});
 filas.push(RC.map(c=>real[c]||''));
 panel.Ronda=[RC,...filas];
+if(process.env.REPORTES){ if(panel.Clientes[0].indexOf('codigo_app')<0) panel.Clientes[0].push('codigo_app'); const ii=panel.Clientes[0].indexOf('inicio'), ca=panel.Clientes[0].indexOf('codigo_app'), r8=panel.Clientes.find(r=>r[0]==='c08'); if(r8&&ii>=0){ r8[ii]=new Date(Date.now()-5*864e5).toISOString().slice(0,10); if(ca>=0) r8[ca]='CLA-1'; } }
 if(process.env.REPORTES){ const ci=panel.Clientes[0].indexOf('fin'); const r3=panel.Clientes.find(r=>r[0]==='c03'); if(r3) r3[ci]=new Date(Date.now()+12*864e5).toISOString().slice(0,10); }
 const BOOKS={ PANEL: book(panel),
   MAESTRA: book({'Semana de Alex':[['codigo','nota','valida_hasta']]}),

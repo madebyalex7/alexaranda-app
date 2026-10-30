@@ -524,6 +524,11 @@ nav.tabs .ti svg{width:100%;height:100%}
 .cvfila .cvpq{grid-column:1/-1;color:var(--sec);font-size:12px;margin:-2px 0 4px}
 .cvchk{display:block;font-size:14px;margin:4px 0}.cvchk small{color:var(--sec)}
 @media (max-width:700px){.cvform{grid-template-columns:1fr}.cvfila,.cvfila.v{grid-template-columns:1fr auto}.cvfila select{grid-column:1/-1}}
+.nvbar{display:inline-block;width:70px;height:6px;border-radius:9px;background:var(--line);vertical-align:middle;margin-right:8px;overflow:hidden}.nvbar i{display:block;height:100%;background:linear-gradient(90deg,var(--arena),#4E7A55);border-radius:9px;transition:width .6s ease}
+.nvlista{list-style:none;margin:0;padding:0}.nvlista li{display:grid;grid-template-columns:26px 1fr;gap:0 8px;padding:7px 0;border-bottom:1px solid var(--line)}
+.nvlista li small{grid-column:2;color:var(--sec);font-size:12.5px}.nvc{grid-row:span 2;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:var(--sel);color:var(--sec)}
+.nvlista li.ok .nvc{background:#4E7A55;color:#fff}.nvlista li.mal .nvc{background:#B5462F;color:#fff}.nvlista li.mal b{color:#C0553A}
+.ctic{width:26px;text-align:center;font-size:16px;flex:none}
 </style>
 </head>
 <body>
@@ -1191,8 +1196,9 @@ function avisosRenov(cid){
 
 function pintarRonda(){
   $('#nRon').textContent = R.cargado ? (R.filas.filter(function(f){return !rhecha(f);}).length||'') : '';
-  var sel='<div class="rtipo" role="group" aria-label="Qué reporte">'+[['mensual','Mensual'+(R.pendMens?' <span class="c">'+R.pendMens+'</span>':'')],['lunes','Lunes'],['viernes','Viernes'],['videos','🎥 Vídeos']].map(function(x){ return '<button class="chip" data-rtipo="'+x[0]+'" aria-pressed="'+(R.tipo===x[0])+'">'+x[1]+'</button>'; }).join('')+'</div>';
+  var sel='<div class="rtipo" role="group" aria-label="Qué reporte">'+[['mensual','Mensual'+(R.pendMens?' <span class="c">'+R.pendMens+'</span>':'')],['lunes','Lunes'],['viernes','Viernes'],['videos','🎥 Vídeos'],['nuevos','🌱 Nuevos'+(nuevos().length?' <span class="c">'+nuevos().length+'</span>':'')]].map(function(x){ return '<button class="chip" data-rtipo="'+x[0]+'" aria-pressed="'+(R.tipo===x[0])+'">'+x[1]+'</button>'; }).join('')+'</div>';
   if(R.tipo==='videos'){ pintarVideos(sel); return; }
+  if(R.tipo==='nuevos'){ pintarNuevos(sel); return; }
   if(!R.cargado){ $('#app').innerHTML = R.err ? '<div class="pantalla"><h2>No se ha podido cargar el reporte</h2><p>'+esc(R.err)+'</p><p><button class="btn prim" id="rOtra">Volver a cargar</button></p></div>' : '<div class="cargando"></div>'; if(!R.cargando&&!R.err) rondaCargar(); enlazarRonda(); return; }
   if(!R.filas.length){ $('#app').innerHTML=sel+'<div class="pantalla"><h2>'+(esMensual()?'No hay revisiones mensuales pendientes':'Todavía no hay reporte del '+(esViernes()?'viernes':'lunes'))+'</h2><p>'+(esMensual()?'Cuando a un cliente le toca su revisión del mes (cada 4 semanas, o cuando sube fotos y medidas), te preparo aquí su tarjeta: constancia del mes, peso, centímetros, fuerza, fotos, mini objetivos para elegir y el mensaje.':esViernes()?'El viernes por la mañana, después de la lectura de las 6:00, preparo una tarjeta corta por cliente: cómo va la semana, qué le queda, su finde y un mensaje breve.':'El lunes por la mañana, después de la lectura de las 6:00, preparo una tarjeta por cliente: su semana en gráficos, cómo va en repes y pesos, el mensaje que te propongo y los cambios de plan, con su porqué.')+'</p></div>'; enlazarRonda(); return; }
   var fs=R.filas, hechas=fs.filter(rhecha).length, tot={sube:0,igual:0,baja:0}, pend=0, enviados=0;
@@ -1389,7 +1395,7 @@ function enlazarVideos(){
   app.onkeydown=null; app.onchange=null;
   app.onclick=function(e){
     var b=e.target.closest('button,a'); if(!b) return;
-    if(b.hasAttribute('data-rtipo')){ var t=b.getAttribute('data-rtipo'); if(t==='videos') return; R.tipo=t; R.cargado=false; R.abierta=null; R.filtro='todas'; R.fecha=''; rondaCargar(); pintarRonda(); return; }
+    if(b.hasAttribute('data-rtipo')){ var t=b.getAttribute('data-rtipo'); if(t===R.tipo) return; R.tipo=t; if(t==='videos'||t==='nuevos'){ pintarRonda(); return; } R.cargado=false; R.abierta=null; R.filtro='todas'; R.fecha=''; rondaCargar(); pintarRonda(); return; }
     var art=b.closest('[data-cv]'); if(!art) return;
     var cid=art.getAttribute('data-cv'), c=CV.lista.filter(function(x){ return x.id===cid; })[0], r=CV.res[cid]=CV.res[cid]||{};
     var repintar=function(){ var y=scrollY; pintarRonda(); scrollTo(0,y); };
@@ -1414,6 +1420,80 @@ function enlazarVideos(){
         .then(function(o){ CV.hecho[cid]='Guardado: '+o.correcciones+' corrección'+(o.correcciones===1?'':'es')+(o.superadas?', '+o.superadas+' superada'+(o.superadas>1?'s':''):'')+' y '+o.videos+' vídeo'+(o.videos===1?'':'s')+(o.hasta?' hasta el '+fCorta(o.hasta):''); flash(); repintar(); })
         .catch(function(er){ b.disabled=false; b.textContent='Guardar en su ficha y su app'; alerta(er); }); return; }
   };
+}
+/* ── Controles (Alex 30/10): bloques de 12 semanas; cada 4 viernes fotos + peso + medidas + formulario de control (en lugar del semanal)
+   y el lunes siguiente la revisión mensual (sustituye a la semanal). Se cuenta desde su primer día de servicio (Clientes › inicio);
+   las pausas no se descuentan aquí: si alguien estuvo en pausa, manda la semana de su app. ── */
+function cMeses(c){ var m=/(\d+)\s*mes/i.exec(String(c.programa||'')); return m?+m[1]:0; }
+function cSemana(c,f){ return esFecha(c.inicio)&&c.inicio<=f?Math.floor(dias(c.inicio,f)/7)+1:0; }
+function cFormulario(w,meses){
+  var b=Math.ceil(w/12), wb=((w-1)%12)+1, ultimo=meses&&b*3>=meses;
+  if(wb===12) return {f:'Fin de '+(b*3)+' meses',fin:ultimo};
+  if(wb===8&&ultimo) return {f:'Previo a renovación'};
+  if(wb===4&&b===1) return {f:'Primer mes'};
+  return {f:'Mensual'+(w===8?' (mes 2: cómo se ve en un año)':'')};
+}
+function controlesSemana(){
+  var h=hoy(), dow=(new Date(h+'T12:00:00').getDay()+6)%7, lun=sumar(h,-dow), vie=sumar(lun,4), out=[];
+  ((S.data&&S.data.clientes)||[]).filter(function(c){ return vivo(c)&&c.estado==='Activo'&&esFecha(c.inicio); }).forEach(function(c){
+    var meses=cMeses(c), total=meses*4,   /* 3 meses = un bloque de 12 semanas */ wv=cSemana(c,vie), wl=cSemana(c,lun);
+    if(wv&&wv%4===0){ var fo=cFormulario(wv,meses); out.push({c:c,cuando:vie,dia:'Viernes',t:'Fotos, peso, medidas y formulario «'+fo.f+'»',sub:'en lugar del semanal'+(fo.fin?' · último bloque contratado':''),tipo:'control'}); }
+    if(wl>1&&(wl-1)%4===0){ var mes=(wl-1)/4, ex=[]; if(mes>=1&&mes<=4) ex.push('⭐ mira si es momento del Grand Slam');
+      if(total&&wl-1>=total-4) ex.push('⏳ habla de renovar');
+      out.push({c:c,cuando:lun,dia:'Lunes',t:'Revisión '+(mes%3===0?'de fin de bloque (mes '+mes+')':'mensual (mes '+mes+')'),sub:['sustituye a la semanal'].concat(ex).join(' · '),tipo:'revision'}); }
+    else if(total&&wl>=total-3&&wl<=total) out.push({c:c,cuando:lun,dia:'Esta semana',t:'Renovación: le quedan '+(total-wl+1)+' semana'+(total-wl+1===1?'':'s'),sub:'recordatorio semanal desde su última revisión',tipo:'renovar'});
+  });
+  return out.sort(function(a,b){ return a.cuando.localeCompare(b.cuando)||String(a.c.nombre).localeCompare(String(b.c.nombre)); });
+}
+/* ── Reportes › Nuevos (Alex 30/10): clientes con menos de 14 días desde su primer día de servicio (Clientes › inicio) ── */
+var NV={abierto:null};
+function nuevos(){ var h=hoy(); return ((S.data&&S.data.clientes)||[]).filter(function(c){ return vivo(c)&&c.estado==='Activo'&&esFecha(c.inicio)&&c.inicio<=h&&dias(c.inicio,h)<14; })
+  .sort(function(a,b){ return a.inicio.localeCompare(b.inicio); }); }
+function nvDia(c){ return dias(c.inicio,hoy())+1; }
+/* Lista de control de las 2 primeras semanas, con lo que dice su app */
+function nvChecks(c,d){
+  var h=hoy(), ini=c.inicio, out=[], dia=nvDia(c);
+  var add=function(ok,t,sub,urg){ out.push({ok:ok,t:t,sub:sub||'',urg:!ok&&!!urg}); };
+  if(!c.codigo_app){ add(false,'Tiene la app','sin código de la app: ponlo en «Programa y pagos»',dia>=2); return out; }
+  if(!d) return out;
+  if(d.sinApp){ add(false,'Tiene la app','no encuentro su hoja de la app',true); return out; }
+  var en=(d.entrenos||[]).filter(function(e){ return e.hecho&&e.fecha>=ini; }), ps=(d.peso||[]).filter(function(x){ return x.fecha>=sumar(ini,-7); }), fo=(d.fotos||[]).filter(function(f){ return f>=sumar(ini,-7); });
+  var todo=[].concat(en.map(function(e){ return e.fecha; }),ps.map(function(x){ return x.fecha; }),fo,(d.extras||[]).map(function(x){ return x.fecha; })).filter(function(f){ return f>=sumar(ini,-7); }).sort();
+  var ult=todo[todo.length-1]||'', sinNada=ult?dias(ult,h):dias(ini,h);
+  add(!!todo.length,'Ha empezado a usar la app',ult?'último registro '+relativo(ult):'todavía nada apuntado',dia>=3);
+  add(fo.length>0,'Fotos iniciales',fo.length?'el '+fCorta(fo[0]):'sin fotos todavía',dia>=4);
+  add(ps.length>0,'Peso inicial',ps.length?String(ps[0].peso).replace('.',',')+' kg el '+fCorta(ps[0].fecha):'sin peso todavía',dia>=4);
+  add(en.length>0,'Primer entreno',en.length?'el '+fCorta(en.map(function(e){ return e.fecha; }).sort()[0]):'todavía no',dia>=4);
+  [1,2].forEach(function(n){ var a=sumar(ini,(n-1)*7), b=sumar(a,6); if(a>h) return; var w=(d.semanas||[]).filter(function(x){ return x.lunes<=b&&sumar(x.lunes,6)>=a; })[0], obj=w?w.objetivo:null, hechos=en.filter(function(e){ return e.fecha>=a&&e.fecha<=b; }).length, cerrada=b<h;
+    add(obj?hechos>=obj:hechos>0,'Entrenos semana '+n,hechos+(obj?' de '+obj:'')+(cerrada?'':' (en curso)'),cerrada); });
+  // Viernes de peso desde que empezó (obligatorio)
+  for(var f=ini; f<=h; f=sumar(f,1)){ if(new Date(f+'T12:00:00').getDay()!==5) continue; var ok=ps.some(function(x){ return Math.abs(dias(x.fecha,f))<=1; });
+    add(ok,'Peso del viernes '+fCorta(f),ok?'apuntado':f===h?'toca hoy':'no lo apuntó',f<h); }
+  if(sinNada>=3&&dia>=3) out.unshift({ok:false,t:sinNada+' días sin apuntar nada en la app',sub:'escríbele hoy',urg:true});
+  return out;
+}
+function nvRecordatorios(c){ var dia=nvDia(c), r=['Pídele foto y un mensajito después de cada entreno'];
+  if(dia<=7) r.push('Esta semana, fotos de comidas y cenas'); r.push('Viernes: peso (el martes, si quiere)'); return r; }
+function pintarNuevos(sel){
+  var lista=nuevos(), app=$('#app');
+  lista.forEach(function(c){ if(c.codigo_app&&!CAC[c.id]&&!c._cargandoCal){ c._cargandoCal=1; api('calendarioCliente',{cliente_id:c.id}).then(function(d){ d._fresco=1; CAC[c.id]=d; if(S.tab==='ronda'&&R.tipo==='nuevos'){ var y=scrollY; pintarRonda(); scrollTo(0,y); } }).catch(function(){ c._cargandoCal=0; }); } });
+  var h=sel+'<div class="rcab"><h2>Clientes nuevos<small>las 2 primeras semanas, con más control · '+lista.length+(lista.length===1?' cliente':' clientes')+'</small></h2></div>';
+  if(!lista.length){ app.innerHTML=h+'<div class="pantalla"><h2>Ahora no hay clientes nuevos</h2><p>Cuando des de alta a alguien y pongas su primer día de servicio («Inicio» en su ficha), sale aquí durante 14 días con todo lo que tienes que vigilar.</p></div>'; enlazarRonda(); return; }
+  h+='<div class="rlista">'+lista.map(function(c){ var d=CAC[c.id], ch=nvChecks(c,d), urg=ch.filter(function(x){ return x.urg; }).length, ok=ch.filter(function(x){ return x.ok; }).length, ab=NV.abierto===c.id, dia=nvDia(c), tel=String(c.telefono||'').replace(/\D/g,'');
+    var chips='<span class="mini n">día '+dia+' de 14</span>'+(ch.length?'<span class="mini '+(urg?'r':ok===ch.length?'v':'a')+'">'+ok+'/'+ch.length+'</span>':'')+(urg?'<span class="mini r">⚠ '+urg+'</span>':'');
+    return '<article class="rfila nvfila'+(ab?' abierta':'')+'" data-nv="'+esc(c.id)+'"><div class="rhead"><button class="rc" data-nvab aria-expanded="'+ab+'"><span class="punto '+(urg?'rojo':'verde')+'"></span><span class="rnom">'+esc(c.nombre)+'</span><span class="rchips">'+chips+'</span>'+
+      '<span class="rtit"><span class="nvbar" aria-hidden="true"><i style="width:'+Math.round(dia*100/14)+'%"></i></span>'+esc((ch.filter(function(x){ return x.urg; })[0]||{}).t||(d||!c.codigo_app?'Todo en marcha':'Mirando su app…'))+'</span></button></div>'+
+      (ab?'<div class="rcuerpo"><section class="rsec"><h3>Lista de control</h3><ul class="nvlista">'+ch.map(function(x){ return '<li class="'+(x.ok?'ok':x.urg?'mal':'')+'"><span class="nvc" aria-hidden="true">'+(x.ok?'✓':x.urg?'!':'·')+'</span><b>'+esc(x.t)+'</b><small>'+esc(x.sub)+'</small></li>'; }).join('')+'</ul></section>'+
+        '<section class="rsec"><h3>Estas semanas, pídele</h3><ul class="tec">'+nvRecordatorios(c).map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul>'+
+        '<div class="racc" style="margin-top:12px">'+(tel?'<a class="btn wa" href="https://wa.me/'+tel+'" target="_blank" rel="noopener">WhatsApp</a>':'')+'<button class="btn" data-nvficha>Su ficha y calendario →</button></div></section></div>':'')+'</article>'; }).join('')+'</div>';
+  app.innerHTML=h;
+  app.onclick=function(e){ var b=e.target.closest('button,a'); if(!b) return;
+    if(b.hasAttribute('data-rtipo')){ var t=b.getAttribute('data-rtipo'); if(t===R.tipo) return; R.tipo=t; if(t!=='videos'){ R.cargado=false; R.abierta=null; R.filtro='todas'; R.fecha=''; rondaCargar(); } pintarRonda(); return; }
+    var art=b.closest('[data-nv]'); if(!art) return; var cid=art.getAttribute('data-nv');
+    if(b.hasAttribute('data-nvab')){ NV.abierto=NV.abierto===cid?null:cid; var y=scrollY; pintarRonda(); scrollTo(0,y); return; }
+    if(b.hasAttribute('data-nvficha')){ PG={cid:cid,sec:'calendario'}; S.tab='clientes'; try{ history.pushState({pg:1},'','#c/'+encodeURIComponent(cid)+'/calendario'); }catch(er){} pintar(); window.scrollTo(0,0); return; }
+  };
+  app.oninput=null; app.onkeydown=null;
 }
 function siguientePend(id){ var o=R.filas.filter(function(x){ return !rhecha(x)&&x.id!==id; }); return o.length?o[0]:null; }
 function cuerpo(f,d){
@@ -1861,7 +1941,7 @@ function enlazarRonda(){
   app.onclick=function(e){
     var b=e.target.closest('button,a'); if(!b) return;
     if(b.hasAttribute('data-rfil')){ R.filtro=b.getAttribute('data-rfil'); pintarRonda(); return; }
-    if(b.hasAttribute('data-rtipo')&&b.getAttribute('data-rtipo')==='videos'){ if(R.tipo==='videos') return; R.tipo='videos'; pintarRonda(); return; }
+    if(b.hasAttribute('data-rtipo')&&/^(videos|nuevos)$/.test(b.getAttribute('data-rtipo'))){ if(R.tipo===b.getAttribute('data-rtipo')) return; R.tipo=b.getAttribute('data-rtipo'); pintarRonda(); return; }
     if(b.hasAttribute('data-rtipo')){ var t=b.getAttribute('data-rtipo'); if(t===R.tipo) return; R.tipo=t; R.cargado=false; R.abierta=null; R.filtro='todas'; R.fecha=''; rondaCargar(); pintarRonda(); return; }
     var art=b.closest('.rfila'); if(!art) return;
     var id=art.getAttribute('data-rid'), f=rbuscar(id); if(!f) return;
@@ -3326,6 +3406,12 @@ function pintarHoy(soloSecs){
       return '<li class="av-'+esc(a.nivel)+'"><span class="punto '+(a.nivel==='rojo'?'rojo':'amarillo')+'"></span><button class="quien" '+(a.cliente_id?'data-abrir="Clientes|'+esc(a.cliente_id)+'"':'disabled')+'><b>'+esc(a.cliente)+' · '+esc(a.titulo)+'</b><span>'+esc(a.detalle||'')+'</span></button><span class="avacc"><a class="btn wa" href="https://wa.me/'+(tel||'')+'" target="_blank" rel="noopener">WhatsApp</a><button class="btn" data-avvisto="'+esc(a.id)+'">Visto</button></span></li>'; }).join('')+
     urgT.map(function(t){ return filaTarea(t,S.tAb===t.id); }).join('')+'</ul>';
   html+='</section>';
+  // 1 bis. Clientes nuevos (Alex 30/10): sus 2 primeras semanas tienen su pestaña en Reportes
+  var nv=nuevos(); if(nv.length) html+='<section class="bloque nvhoy"><h2>Clientes nuevos <span class="n">'+nv.length+'</span></h2><ul class="corta">'+nv.map(function(c){ var ch=nvChecks(c,CAC[c.id]), u=ch.filter(function(x){ return x.urg; })[0];
+    return '<li><span class="punto '+(u?'rojo':'verde')+'"></span><button class="quien" data-irnuevo="'+esc(c.id)+'"><b>'+esc(c.nombre)+' · día '+nvDia(c)+' de 14</b><span>'+esc(u?u.t:'Pídele foto y un mensajito después de cada entreno')+'</span></button></li>'; }).join('')+'</ul></section>';
+  // 1 ter. Controles de esta semana
+  var ctl=controlesSemana(); if(ctl.length) html+='<section class="bloque"><h2>Controles de esta semana <span class="n">'+ctl.length+'</span></h2><ul class="corta">'+ctl.map(function(x){
+    return '<li><span class="ctic '+x.tipo+'" aria-hidden="true">'+(x.tipo==='control'?'📸':x.tipo==='revision'?'📋':'⏳')+'</span><button class="quien" data-abrir="Clientes|'+esc(x.c.id)+'"><b>'+esc(x.dia)+' · '+esc(x.c.nombre)+'</b><span>'+esc(x.t)+(x.sub?' · '+esc(x.sub):'')+'</span></button></li>'; }).join('')+'</ul></section>';
   // 2. Entregas de los clientes
   var ent=EN.lista;
   html+='<section class="bloque"><h2>Pendiente de los clientes <span class="n">'+(EN.cargado?ent.length+pesoA.length:'')+'</span></h2><p class="estado-m" style="margin:-4px 0 6px">Formularios, fotos, medidas y peso. El semanal lo ves el lunes en la Ronda.</p>';
@@ -3374,6 +3460,7 @@ function enlazarHoy(){
     var b=e.target.closest('button,a'); if(!b) return;
     if(b.hasAttribute('data-abrir')&&/^Clientes\|/.test(b.getAttribute('data-abrir'))){ guardarLocal('panel_tab','clientes'); irFicha(b.getAttribute('data-abrir').split('|')[1]); return; }
     if(b.hasAttribute('data-abrir')){ var k=b.getAttribute('data-abrir').split('|'); S.tab='clientes'; S.fCli='Todos'; S.fSem=''; S.qCli=''; S.verArch=false; S.abierta=null; guardarLocal('panel_tab','clientes'); abrir(k[0]+'|'+k[1],true); return; }
+    if(b.hasAttribute('data-irnuevo')){ NV.abierto=b.getAttribute('data-irnuevo'); R.tipo='nuevos'; S.tab='ronda'; guardarLocal('panel_tab','ronda'); pintar(); return; }
     if(b.hasAttribute('data-irll')){ LC.abierta=b.getAttribute('data-irll'); S.tab='llamadas'; guardarLocal('panel_tab','llamadas'); pintar(); return; }
     if(b.hasAttribute('data-avvisto')){ var aid=b.getAttribute('data-avvisto'), av=AV.lista.filter(function(x){ return x.id===aid; })[0]; AV.lista=AV.lista.filter(function(x){ return x.id!==aid; }); tRepintar();
       api('avisoVisto',{id:aid,codigo:av&&av.codigo,tipo:av&&av.tipo}).catch(function(err){ if(av){ AV.lista.push(av); tRepintar(); } alerta(err); }); return; }
