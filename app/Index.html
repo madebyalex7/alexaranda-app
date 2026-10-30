@@ -605,6 +605,10 @@ details.calplega[open] .calver{display:none}
 .avf-ic{width:38px;height:38px;border-radius:12px;background:var(--soft);display:flex;align-items:center;justify-content:center;color:var(--accent-2)}.avf-ic .ic{width:22px;height:22px}
 .avf-go{font-size:24px;color:var(--muted)}
 .avcard.avtop{border-style:solid;border-color:var(--accent);margin:0 0 14px}
+/* Carta cerrada por el candado (Alex 30/10): gris, como desactivada, y el candado grande en medio por encima del texto */
+.fcard.cerrada{position:relative}
+.fcard.cerrada .fc-in{filter:grayscale(1);opacity:.42}
+.fcard.cerrada::after{content:"🔒";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:58px;line-height:1;opacity:.82;pointer-events:none;z-index:5;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35))}
 </style>
 </head>
 <body>
@@ -1898,9 +1902,9 @@ function hub(){
   ${nuncaDosVeces()}
   <p class="sub hubsub">${esc(fraseHub())}</p>
   <div class="fcards">
-    ${estadoCandado() ? carta("home", "Entrenamiento", ["Se abre muy pronto", "Con tus fotos, tu peso y tu plan listo"], "entrenamiento", `<span class="fc-lock">🔒 Muy pronto</span>`, "pronto") : carta("home", "Entrenamiento", ent, "entrenamiento", `<span class="fc-meta">${n} de ${OBJ()} esta semana${rec && vidsPend(rec) ? " · 🎥 " + vidsPend(rec) : ""}</span>`)}
+    ${estadoCandado() ? carta("home", "Entrenamiento", ["Se abre muy pronto", "Con tus fotos, tu peso y tu plan listo"], "entrenamiento", "", "cerrada") : carta("home", "Entrenamiento", ent, "entrenamiento", `<span class="fc-meta">${n} de ${OBJ()} esta semana${rec && vidsPend(rec) ? " · 🎥 " + vidsPend(rec) : ""}</span>`)}
     ${carta("prog", "Mi progreso", prog, "control", tocaPeso() ? `<span class="fc-dot" aria-hidden="true"></span>` : "", tocaPeso() ? "aviso" : "")}
-    ${estadoCandado() ? carta("nutri", "Alimentación", ["Se abre muy pronto", "Con tu plan a tu medida"], "alimentacion", `<span class="fc-lock">🔒 Muy pronto</span>`, "pronto") : D.nutri ? carta("nutri", "Alimentación", ["Tu plan de alimentación", "Ábrelo o descárgalo para imprimirlo"], "alimentacion") : carta("nutri", "Alimentación", ["Tu plan está en camino", "Te lo preparo a tu medida y aparece aquí"], "alimentacion", `<span class="fc-lock">En preparación</span>`, "pronto")}
+    ${estadoCandado() ? carta("nutri", "Alimentación", ["Se abre muy pronto", "Con tu plan a tu medida"], "alimentacion", "", "cerrada") : D.nutri ? carta("nutri", "Alimentación", ["Tu plan de alimentación", "Ábrelo o descárgalo para imprimirlo"], "alimentacion") : carta("nutri", "Alimentación", ["Tu plan está en camino", "Te lo preparo a tu medida y aparece aquí"], "alimentacion", `<span class="fc-lock">En preparación</span>`, "pronto")}
   </div>
   ${D.notaAlex ? `<div class="alexq"><div class="label">${ic("nota")} Esta semana te digo</div><p>${esc(D.notaAlex)}</p><span class="firma"><img class="av" src="/alex.jpg" alt="" width="36" height="36" onerror="this.remove()">— Alex</span></div>` : ""}
   <p class="sync" id="sync">${textoSync()}</p>`;
