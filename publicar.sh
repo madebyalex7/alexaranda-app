@@ -51,4 +51,4 @@ if [ "$CAMBIA_GAS" = si ] && ok "el Apps Script (app y panel)"; then
   echo "$H_GAS" > dist/.publicado-gas
   VERSION_DATOS > dist/.publicado-version-datos
 fi
-if [ -n "$NO_PUBLICADO" ]; then echo "Ojo: no se ha publicado todo. Vuelve a ejecutarlo."; else echo "Listo."; fi
+if [ -n "${NO_PUBLICADO:-}" ]; then echo "Ojo: no se ha publicado todo. Vuelve a ejecutarlo."; else echo "Listo."; fi
