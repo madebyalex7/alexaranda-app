@@ -61,7 +61,7 @@ function L_vertical(url) { return /shorts\//.test(String(url || '')); }
 
 /** Días de entreno de la hoja (todos los de «Días plan» menos «st») */
 function L_diasEntreno(diasplan) {
-  var k = (diasplan || []).map(function (d) { return String(d.dia || ''); }).filter(function (x) { return x && x !== 'st'; });
+  var k = (diasplan || []).map(function (d) { return String(d.dia || ''); }).filter(function (x) { return x && x !== 'st' && x !== 'casa'; });   // «casa» (clientes de gimnasio, Alex 30/10): entreno corto opcional, no sube el objetivo
   return k.length ? k : DIAS_ENTRENO.slice();
 }
 /** Objetivo de días por semana: ajuste «dias_semana» o, si no está, el número de días de entreno */
@@ -401,6 +401,7 @@ function L_diasHechos(diasSemana, entreno, objetivo) {
   if (st && st.hecho && n < objetivo) {
     if (!st.sustituye || !h[st.sustituye]) n++;
   }
+  if (diasSemana.casa && diasSemana.casa.hecho && n < objetivo) n++;   // el corto en casa cuenta como un día hecho
   return Math.min(n, objetivo);
 }
 

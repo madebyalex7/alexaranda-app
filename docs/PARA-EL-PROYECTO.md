@@ -23,3 +23,12 @@ Los paseos salen del formulario. Si se apuntan en `datos.paseos` (número de dí
 
 ## 5. Correcciones de vídeo hechas desde el panel
 Reportes › 🎥 Vídeos deja una fila en **Aplicados** (`tipo` = `correccion`, `detalle` con el enlace de Cap, el mensaje, las correcciones y los vídeos pedidos). Ya quedan escritas en la pestaña Correcciones de su hoja y en Vídeos pedidos de la maestra; falta pasarlas a `<cliente>-correcciones.md` y a su estado, y marcar `pasado_a_docs`.
+
+## 6. Promesas de Alex (skill `actualizacion-diaria-clientes`)
+En la lectura de WhatsApp, cuando Alex le dice a alguien que hará algo («mañana te envío», «el lunes te lo miro», «luego te paso»), añadir una fila en **Tareas** del panel: `tarea` (qué prometió), `cliente`, `cliente_id`, `fecha` (el día prometido, en yyyy-MM-dd), `prioridad` = `semana`, `estado` = `pendiente`, `origen` = `Promesa (WhatsApp)`. Si ya lo hizo, no se apunta o se marca `hecha`. Salen en Hoy › Lo que has prometido, ordenadas por día.
+
+## 7. Entreno corto en casa para clientes de gimnasio (skill `planes-entreno-clientes`)
+Añadir en su hoja un día `casa` en **Días plan** y sus ejercicios en **Plan**: unos 15 minutos, sin material y a su nivel, con tus normas. La app lo enseña como un día más; es opcional, no sube el objetivo de la semana y, si lo hace, cuenta como un entreno hecho.
+
+## 8. Peso los viernes
+La app, los avisos y el panel ya piden el peso el viernes (martes opcional). Revisar en las skills y documentos lo que aún diga «miércoles», y hacer lo mismo con `recordatorios-formularios.md` si lo menciona.

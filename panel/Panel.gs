@@ -1035,7 +1035,7 @@ function CA_cliente(cid) {
     var hechos = {}; entrenos.forEach(function (e) { if (e.w === w && e.hecho) hechos[e.k] = 1; });
     semanas.push({ w: w, lunes: lun, objetivo: D.objetivo, hechos: Object.keys(hechos).length });
   }
-  var dias = {}; (D.orden || []).forEach(function (k) { var d = D.dias[k]; if (d && k !== 'st') dias[k] = { n: d.n, ds: d.ds }; });
+  var dias = {}; (D.orden || []).forEach(function (k) { var d = D.dias[k]; if (d && k !== 'st' && k !== 'casa') dias[k] = { n: d.n, ds: d.ds }; });
   var acceso = { candado: !!aj.candado, desbloqueado: !!aj.desbloqueado, plan_ok: aj.plan_ok || '', cerrado: D.candado || null };
   return { acceso: acceso, nombre: D.nombre, semana: D.semana, desde: desde, hoy: D.hoy || P_hoy(), entrenos: entrenos, peso: peso, medidas: medidas, fotos: fotos, extras: extras, semanas: semanas, dias: dias };
 }

@@ -530,6 +530,7 @@ nav.tabs .ti svg{width:100%;height:100%}
 .nvlista li.ok .nvc{background:#4E7A55;color:#fff}.nvlista li.mal .nvc{background:#B5462F;color:#fff}.nvlista li.mal b{color:#C0553A}
 .ctic{width:26px;text-align:center;font-size:16px;flex:none}
 .acceso{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:var(--sel)}.acceso.cerr{background:rgba(184,146,74,.16)}.acceso .racc{margin:0 0 0 auto}
+.prdia{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--sec);margin:10px 0 2px}.prdia.tarde{color:#C0553A;font-weight:600}.prdia.hoy{color:var(--cafe);font-weight:600}.prn{margin-top:10px}
 </style>
 </head>
 <body>
@@ -3426,6 +3427,19 @@ function entregasCargar(){
   return api('entregas',{}).then(function(d){ EN.cargado=true; EN.cargando=false; EN.lista=d.entregas||[]; if(S.tab==='hoy') pintarHoy(true); })
     .catch(function(e){ EN.cargando=false; EN.err=e.message; if(S.tab==='hoy') pintarHoy(true); });
 }
+/* Promesas (Alex 30/10): lo que le has dicho a alguien que harás («mañana te envío…»). Son filas de Tareas con origen «Promesa…»: las apunta la lectura diaria del Proyecto o Alex aquí */
+function esPromesa(t){ return /^promesa/i.test(String(t.origen||'')); }
+function prDia(f){ var h=hoy(); if(!esFecha(f)) return 'Sin fecha'; if(f<h) return 'Atrasadas'; if(f===h) return 'Hoy'; var n=dias(h,f); if(n===1) return 'Mañana'; if(n<7) return fLarga(f).split(' ')[0].replace(/^./,function(c){ return c.toUpperCase(); }); return fCorta(f); }
+function bloquePromesas(){
+  var l=tareasVivas().filter(esPromesa).sort(function(a,b){ return (esFecha(a.fecha)?a.fecha:'9').localeCompare(esFecha(b.fecha)?b.fecha:'9'); }), g=[], tard=l.filter(function(t){ return esFecha(t.fecha)&&t.fecha<hoy(); }).length;
+  l.forEach(function(t){ var d=prDia(t.fecha), u=g[g.length-1]; if(!u||u.d!==d) g.push({d:d,l:[t]}); else u.l.push(t); });
+  return '<section class="bloque promesas"><h2>🤝 Lo que has prometido <span class="n">'+l.length+'</span>'+(tard?' <span class="mini r">'+tard+' atrasada'+(tard>1?'s':'')+'</span>':'')+'</h2>'+
+    (l.length?g.map(function(x){ return '<div class="prdia'+(x.d==='Atrasadas'?' tarde':x.d==='Hoy'?' hoy':'')+'">'+esc(x.d)+'</div><ul class="corta">'+x.l.map(function(t){ return filaTarea(t,S.tAb===t.id); }).join('')+'</ul>'; }).join(''):'<p class="aviso-vacio">Nada pendiente de lo que has dicho.</p>')+
+    '<div class="tnueva prn"><input id="prTxt" type="text" placeholder="Qué le has dicho… «le mando la dieta»" aria-label="Qué has prometido"><input id="prCli" type="text" list="dl-prcli" placeholder="A quién" aria-label="A quién"><input id="prF" type="date" value="'+esc(sumar(hoy(),1))+'" aria-label="Para cuándo"><button class="btn" id="prAdd">Añadir</button><datalist id="dl-prcli">'+(S.data.clientes||[]).filter(vivo).map(function(c){ return '<option>'+esc(c.nombre)+'</option>'; }).join('')+'</datalist></div></section>';
+}
+document.addEventListener('click',function(e){ var b=e.target.closest&&e.target.closest('#prAdd'); if(!b) return; var i=$('#prTxt'), tx=i.value.trim(); if(!tx){ i.focus(); return; }
+  var cn=$('#prCli').value.trim(), cl=(S.data.clientes||[]).filter(function(c){ return vivo(c)&&c.nombre===cn; })[0]; b.disabled=true;
+  api('nuevo',{tabla:'Tareas',campos:{tarea:tx,cliente:cn,cliente_id:cl?cl.id:'',fecha:$('#prF').value||'',prioridad:'semana',estado:'pendiente',origen:'Promesa (panel)',creada:hoy()}}).then(function(t){ S.data.tareas=S.data.tareas||[]; S.data.tareas.push(t); flash(); tRepintar(); }).catch(function(er){ b.disabled=false; alerta(er); }); });
 function tareasVivas(){ return (S.data.tareas||[]).filter(function(t){ return vivo(t)&&(t.estado||'pendiente')==='pendiente'; }); }
 function tGrupo(t){ var h=hoy(), f=esFecha(t.fecha)?t.fecha:''; if(f&&f<h) return 'vencida'; if(f===h) return 'hoy'; if(t.prioridad==='urgente') return 'hoy'; if(t.prioridad==='semana'||(f&&dias(h,f)<=7)) return 'semana'; return 'cuando'; }
 function tOrden(a,b){ return (esFecha(a.fecha)?a.fecha:'9999').localeCompare(esFecha(b.fecha)?b.fecha:'9999')||String(a.creada||'').localeCompare(String(b.creada||'')); }
@@ -3463,7 +3477,7 @@ function pintarHoy(soloSecs){
   if(!EN.cargado&&!EN.cargando) entregasCargar();
   if(!AV.cargado&&!AV.cargando) avisosCargar(false);
   var h=hoy(), ts=tareasVivas();
-  var urgT=ts.filter(function(t){ var g=tGrupo(t); return g==='vencida'||g==='hoy'; }).sort(tOrden);
+  var urgT=ts.filter(function(t){ var g=tGrupo(t); return !esPromesa(t)&&(g==='vencida'||g==='hoy'); }).sort(tOrden);
   var urgA=AV.lista.filter(function(a){ return a.nivel==='rojo'||a.tipo==='molestia'||a.tipo==='nota'; });
   var pesoA=AV.lista.filter(function(a){ return a.tipo==='peso'; });
   var hoyLl=(S.data.leads||[]).filter(function(l){ return vivo(l)&&(l.llamada_estado||'agendada')==='agendada'&&typeof lfecha==='function'&&lfecha(l)===h; });
@@ -3478,6 +3492,7 @@ function pintarHoy(soloSecs){
       return '<li class="av-'+esc(a.nivel)+'"><span class="punto '+(a.nivel==='rojo'?'rojo':'amarillo')+'"></span><button class="quien" '+(a.cliente_id?'data-abrir="Clientes|'+esc(a.cliente_id)+'"':'disabled')+'><b>'+esc(a.cliente)+' · '+esc(a.titulo)+'</b><span>'+esc(a.detalle||'')+'</span></button><span class="avacc"><a class="btn wa" href="https://wa.me/'+(tel||'')+'" target="_blank" rel="noopener">WhatsApp</a><button class="btn" data-avvisto="'+esc(a.id)+'">Visto</button></span></li>'; }).join('')+
     urgT.map(function(t){ return filaTarea(t,S.tAb===t.id); }).join('')+'</ul>';
   html+='</section>';
+  html+=bloquePromesas();
   // 1 bis. Clientes nuevos (Alex 30/10): sus 2 primeras semanas tienen su pestaña en Reportes
   var nv=nuevos(); if(nv.length) html+='<section class="bloque nvhoy"><h2>Clientes nuevos <span class="n">'+nv.length+'</span></h2><ul class="corta">'+nv.map(function(c){ var ch=nvChecks(c,CAC[c.id]), u=ch.filter(function(x){ return x.urg; })[0];
     return '<li><span class="punto '+(u?'rojo':'verde')+'"></span><button class="quien" data-irnuevo="'+esc(c.id)+'"><b>'+esc(c.nombre)+' · día '+nvDia(c)+' de 14</b><span>'+esc(u?u.t:'Pídele foto y un mensajito después de cada entreno')+'</span></button></li>'; }).join('')+'</ul></section>';

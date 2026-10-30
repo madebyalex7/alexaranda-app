@@ -825,7 +825,7 @@ const ENT = ()=>D.entreno || ["d1","d2","d3"];
 const OBJ = ()=>D.objetivo || ENT().length;
 const reg = (k, id, j)=>D.reg[`${k}|${id}|${j}`] || {};
 const cubierto = k=>!!(D.est.hechos.st && D.est.sust.st === k && !D.est.hechos[k]);
-function nHechos(){ const h = D.est.hechos, o = OBJ(); let n = ENT().filter(k=>h[k]).length; if(h.st && n < o){ const s = D.est.sust.st; if(!s || !h[s]) n++; } return Math.min(n, o); }
+function nHechos(){ const h = D.est.hechos, o = OBJ(); let n = ENT().filter(k=>h[k]).length; if(h.st && n < o){ const s = D.est.sust.st; if(!s || !h[s]) n++; } if(h.casa && n < o) n++; return Math.min(n, o); }
 function recomendado(){ if(nHechos() >= OBJ()) return null; return ENT().find(k=>!D.est.hechos[k] && !cubierto(k)) || null; }
 /* Día tranquilo (normas 25/10): principales con sus series y 2 repes menos (mismo peso); el resto a 2 series y 2 repes menos;
    el ejercicio marcado en Plan › tranquilo = «fuera» no se hace (o un número = esas series); sin finisher */
