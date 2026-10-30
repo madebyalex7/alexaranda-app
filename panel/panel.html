@@ -681,7 +681,7 @@ window.addEventListener('click',function(e){ var a=e.target.closest&&e.target.cl
   var u; try{ u=new URL(a.href); }catch(er){ return; } if(!/(^|\.)wa\.me$/.test(u.hostname)) return;
   var tel=u.pathname.replace(/\D/g,''), tx=u.searchParams.get('text')||'';
   if(!tel){ e.preventDefault(); e.stopImmediatePropagation(); alerta(new Error('Esta ficha no tiene teléfono. Ponlo en su ficha antes de escribirle, para no equivocarte de chat.')); return; }   // sin número, WhatsApp deja elegir el chat a mano
-  if(window.matchMedia('(max-width:640px)').matches) return;
+  if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1)) return;   // por dispositivo, no por ancho: una ventana estrecha del Mac caía en wa.me y abría la app personal
   a.href='https://web.whatsapp.com/send?phone='+tel+'&text='+encodeURIComponent(tx); a.target='_blank'; },true);
 
 /* ───────── red ───────── */
