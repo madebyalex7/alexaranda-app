@@ -3603,19 +3603,22 @@ function dnRango(){ var h=new Date(hoy()+'T12:00:00'), n=DN_PER[DN.per][0], y=h.
 /* Cuánto gasta en cada mes: {ym: importe} para un gasto (con su repetición) */
 function dnGastoEn(g,ym){ var f=String(g.fecha||'').slice(0,7), imp=num(g.importe); if(!f||!imp||ym<f) return 0; if(g.hasta&&ym>String(g.hasta).slice(0,7)) return 0;
   if(g.recurrente==='mensual') return imp; if(g.recurrente==='anual') return ym.slice(5)===f.slice(5)?imp:0; return ym===f?imp:0; }
+/* Meses cerrados con las cifras reales que da Alex (la migración de app descuadra lo apuntado). Mandan sobre lo calculado; los meses siguientes se calculan como siempre */
+var DN_FIJO={'2026-10':{fact:7450,cash:4263,gasto:750,altas:8}};
 function dnDatos(R0){
   var por={}; R0.meses.forEach(function(m){ por[m]={cash:0,fact:0,gasto:0,pend:0}; });
   (S.data.cobros||[]).filter(vivo).forEach(function(p){ var m=String(p.fecha||'').slice(0,7); if(!por[m]) return; if(p.estado==='Cobrado') por[m].cash+=num(p.importe); else por[m].pend+=num(p.importe); });
   (S.data.clientes||[]).filter(vivo).forEach(function(c){ var cs=cobrosDe(c.id), f=cs.length?cs[0].fecha:c.inicio, m=String(f||'').slice(0,7); if(por[m]) por[m].fact+=num(c.precio_total); });
   (S.data.renovaciones||[]).filter(vivo).forEach(function(r){ var m=String(r.fecha||'').slice(0,7); if(por[m]&&r.resultado==='renueva') por[m].fact+=num(r.precio); });
-  var cats={}; (S.data.gastos||[]).filter(vivo).forEach(function(g){ R0.meses.forEach(function(m){ var v=dnGastoEn(g,m); if(v){ por[m].gasto+=v; var c=g.categoria||'Sin categoría'; cats[c]=(cats[c]||0)+v; } }); });
+  var cats={}; (S.data.gastos||[]).filter(vivo).forEach(function(g){ R0.meses.forEach(function(m){ if(DN_FIJO[m]) return; var v=dnGastoEn(g,m); if(v){ por[m].gasto+=v; var c=g.categoria||'Sin categoría'; cats[c]=(cats[c]||0)+v; } }); });
+  R0.meses.forEach(function(m){ var fx=DN_FIJO[m]; if(!fx) return; por[m].cash=fx.cash; por[m].fact=fx.fact; por[m].gasto=fx.gasto; cats['Sin desglosar ('+MESES_L[+m.slice(5)-1]+')']=(cats['Sin desglosar ('+MESES_L[+m.slice(5)-1]+')']||0)+fx.gasto; });
   var T={cash:0,fact:0,gasto:0,pend:0}; R0.meses.forEach(function(m){ Object.keys(T).forEach(function(k){ T[k]+=por[m][k]; }); });
   return {por:por,T:T,cats:cats};
 }
 /* Métricas (Alex 30/10): coste por cliente con TODOS los gastos, lo que deja cada uno, renovación, abandonos y previsión a 3 meses */
 function dnMetricas(R0,X){
   var e=function(v){ return EUR.format(Math.round(v)); }, T=X.T, hh=hoy();
-  var altas=(S.data.clientes||[]).filter(vivo).filter(function(c){ var cs=cobrosDe(c.id), f=cs.length?cs[0].fecha:c.inicio; return R0.meses.indexOf(String(f||'').slice(0,7))>=0; }).length;
+  var altas=(S.data.clientes||[]).filter(vivo).filter(function(c){ var cs=cobrosDe(c.id), m=String((cs.length?cs[0].fecha:c.inicio)||'').slice(0,7); return R0.meses.indexOf(m)>=0&&!DN_FIJO[m]; }).length+R0.meses.reduce(function(a,m){ return a+(DN_FIJO[m]?DN_FIJO[m].altas:0); },0);
   var activos=(S.data.clientes||[]).filter(function(c){ return vivo(c)&&c.estado==='Activo'; }).length, anu=Object.keys(X.cats).filter(function(c){ return /anunc/i.test(c); }).reduce(function(a,c){ return a+X.cats[c]; },0);
   var tile2=function(t,v,sub,cl){ return '<div class="dnt '+(cl||'')+'"><span>'+t+'</span><b>'+v+'</b><small>'+sub+'</small></div>'; };
   var spr=(S.data.clientes||[]).filter(function(c){ return vivo(c)&&c.estado==='Activo'&&!num(c.precio_total); }).map(function(c){ return c.nombre; });
@@ -3651,7 +3654,8 @@ document.addEventListener('click',function(e){ var b=e.target.closest&&e.target.
   api(q==='ahora'?'copiaAhora':'copiaProgramar',{}).then(function(r){ S.data.config=S.data.config||{}; if(q==='ahora') S.data.config.copia_ultima=r.fecha+' · '+r.hechas+' hojas'+(r.fallos.length?' · falló: '+r.fallos.join(', '):''); else S.data.config.copia_programada=hoy(); flash(); pintarHoy(); }).catch(function(er){ b.disabled=false; b.textContent='Reintentar'; alerta(er); }); });
 function pintarDinero(){
   var R0=dnRango(), X=dnDatos(R0), T=X.T, ben=T.cash-T.gasto, e=function(v){ return EUR.format(Math.round(v)); };
-  var h='<div class="rcab"><h2>Dinero<small>'+esc(R0.etq)+'</small></h2></div><div class="dnsel"><div class="rtipo">'+Object.keys(DN_PER).map(function(k){ return '<button class="chip" data-dnper="'+k+'" aria-pressed="'+(DN.per===k)+'">'+DN_PER[k][1]+'</button>'; }).join('')+'</div><span class="racc" style="margin:0"><button class="btn" data-dnoff="-1" aria-label="Anterior">‹</button><button class="btn" data-dnoff="0">Hoy</button><button class="btn" data-dnoff="1" aria-label="Siguiente">›</button></span></div>'+
+  var fijos=R0.meses.filter(function(m){ return DN_FIJO[m]; });
+  var h='<div class="rcab"><h2>Dinero<small>'+esc(R0.etq)+(fijos.length?' · '+esc(fijos.map(function(m){ return MESES_L[+m.slice(5)-1]; }).join(', '))+' con tus cifras reales':'')+'</small></h2></div><div class="dnsel"><div class="rtipo">'+Object.keys(DN_PER).map(function(k){ return '<button class="chip" data-dnper="'+k+'" aria-pressed="'+(DN.per===k)+'">'+DN_PER[k][1]+'</button>'; }).join('')+'</div><span class="racc" style="margin:0"><button class="btn" data-dnoff="-1" aria-label="Anterior">‹</button><button class="btn" data-dnoff="0">Hoy</button><button class="btn" data-dnoff="1" aria-label="Siguiente">›</button></span></div>'+
     '<div class="dntiles">'+[['Cash collected',T.cash,'cobrado de verdad','ok'],['Facturación',T.fact,'lo vendido en el periodo',''],['Gastos',T.gasto,'con los recurrentes','mal'],['Lo que queda',ben,'cash menos gastos',ben>=0?'ok':'mal'],['Por cobrar',T.pend,'cobros pendientes','']].map(function(x){ return '<div class="dnt '+x[3]+'"><span>'+x[0]+'</span><b>'+e(x[1])+'</b><small>'+x[2]+'</small></div>'; }).join('')+'</div>';
   h+=dnMetricas(R0,X);
   // Barras por mes
