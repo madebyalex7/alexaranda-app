@@ -566,6 +566,10 @@ nav.tabs .ti{transition:transform .18s ease}
 @media (prefers-reduced-motion:reduce){.btn,.chip,.rfila,.fila,.vtile,.calc,.rcuerpo,.bloque,.cv{transition:none!important;animation:none!important}}
 .semsug{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--sec);margin:10px 0 0}
 .dnprev th{font:500 12px Jost,sans-serif;color:var(--sec);text-align:right;padding:4px 8px}.dncatw{margin-top:10px}
+.rcorto{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.rmas>summary{cursor:pointer;color:var(--sec);font-size:14px;padding:6px 0}
+.revgraf .spark{width:100%;height:96px;margin-top:6px}
+.hoytienes li.mal b{color:#C0553A}
 </style>
 </head>
 <body>
@@ -1308,6 +1312,13 @@ function linea(vals,etqs,fmt){
 }
 function tile(t,val,sub,graf,cl){ return '<div class="vtile'+(cl?' '+cl:'')+'"><div class="vt">'+t+'</div><div class="vv">'+val+'</div>'+(sub?'<div class="vs">'+sub+'</div>':'')+(graf||'')+'</div>'; }
 function delta(a,b,fmt,menosMejor){ if(a==null||b==null) return ''; var dd=a-b; if(Math.abs(dd)<1e-9) return '= que la semana anterior'; var bien=menosMejor?dd<0:dd>0; return '<span class="'+(bien?'dv':'dn')+'">'+(dd>0?'↑ ':'↓ ')+fmt(Math.abs(dd))+'</span> frente a la anterior'; }
+function resumenCorto(f,d){ var e=d.entrenos||{}, x=semExtra(f), ms=(d.molestias||[]), mx=ms.reduce(function(a,m){ return Math.max(a,+m.valor||0); },0), c=rprog(f), o=[];
+  if(e.objetivo!=null) o.push(tile('Entrenos',(+e.hechos||0)+' <small>de '+(+e.objetivo)+'</small>','',null,(+e.hechos||0)>=(+e.objetivo)?'ok':(+e.hechos||0)>0?'':'mal'));
+  if(x) o.push(tile('Peso del viernes',x.peso?'✓':'✕',x.peso?esc(String(x.peso.peso).replace('.',','))+' kg':'no lo apuntó',null,x.peso?'ok':'mal'),tile('Vídeos',x.videos?'🎥 '+x.videos:'—',x.videos?'grabados':x.pedidos?'pedidos sin grabar':'no pedidos',null,x.videos?'ok':x.pedidos?'mal':''));
+  if(ms.length) o.push(tile('Molestia',mx+'<small>/10</small>',esc(ms.map(function(m){ return m.zona; }).join(' · ')),null,mx>3?'mal':''));
+  if(c.sube+c.baja) o.push(tile('Cargas','<span class="dv">↑'+c.sube+'</span> <span class="'+(c.baja?'dn':'')+'">↓'+c.baja+'</span>','',null));
+  var tec=String(f.tener_en_cuenta||'').split('\n').map(function(t){ return t.replace(/^[-·•]\s*/,'').trim(); }).filter(String).slice(0,2);
+  return '<section class="rsec ancho2"><div class="vtiles rcorto">'+o.join('')+'</div>'+(tec.length?'<ul class="tec" style="margin-top:8px">'+tec.map(function(t){ return '<li>'+esc(t)+'</li>'; }).join('')+'</ul>':'')+'</section>'; }
 function vistazo(f,d){
   var hs=(d.historia||[]).slice(esMensual()?-12:-6), et=hs.map(function(x){ return 'Semana '+(x.semana||''); }), e=d.entrenos||{}, T=[];
   var ult=hs[hs.length-1]||{}, ant=hs[hs.length-2]||{};
@@ -1348,11 +1359,25 @@ function opcionesMsg(f,d){
   return '<div class="ropc" role="group" aria-label="Cambiar el mensaje">'+ops.map(function(o){ return '<button class="chip" data-opc="'+esc(o[1])+'">'+esc(o[0])+'</button>'; }).join('')+'</div>';
 }
 /* Frases propuestas para añadir al mensaje con un toque (objetivo de la semana, mini objetivos…) */
+/* Lo que se puede sumar al mensaje con un toque (Alex 30/10): lo que propone el Proyecto y, siempre, frases con los datos de su semana o su mes */
+function listaAnadir(f,d){
+  var out=(d.anadir||[]).filter(function(a){ return a&&a.texto; }).slice(), n=String(f.cliente||'').split(/\s+/)[0], e=d.entrenos||{}, cn=d.constancia||{};
+  var add=function(t,x){ if(!out.some(function(o){ return o.texto===x; })) out.push({titulo:t,texto:x}); };
+  if(esMensual()&&+cn.previstos) add('👏 Constancia del mes',(+cn.hechos||0)+' de '+(+cn.previstos)+' entrenos este mes, '+n+'. Eso es lo que marca la diferencia.');
+  else if(e.objetivo!=null&&+e.hechos>=+e.objetivo&&+e.objetivo>0) add('👏 Semana completa','Semana completa: '+(+e.hechos)+' de '+(+e.objetivo)+' entrenos. Así se hace.');
+  else if(e.objetivo!=null&&+e.hechos>0) add('👏 Lo que sí hizo',(+e.hechos)+' de '+(+e.objetivo)+' entrenos con la semana que has tenido. Eso cuenta.');
+  rj(f.progreso,[]).filter(function(p){ return p.dir==='sube'&&p.ej; }).slice(0,2).forEach(function(p){ add('💪 Mejora: '+p.ej,'En '+p.ej+' has pasado de '+(p.antes||'')+' a '+(p.ahora||'')+'. Se nota el trabajo.'); });
+  (d.marcas||[]).slice(0,2).forEach(function(m){ add('💪 Fuerza: '+m.ej,'En '+m.ej+' empezaste con '+(m.inicio||'')+' y ya vas por '+(m.ahora||'')+'.'); });
+  subirTxt(CAC[f.cliente_id]).slice(0,2).forEach(function(t){ add('⬆️ Subir peso',t.split(' (')[0]+': ya llegas al tope de repes en todas las series. La próxima subimos un pelín el peso, vale?'); });
+  var x=semExtra(f); if(x&&!x.peso) add('⚖️ Recordar peso','No vi tu peso del viernes. Acuérdate de apuntarlo, vale?'); if(x&&!x.videos&&x.pedidos) add('🎥 Recordar vídeo','Me falta tu vídeo de esta semana. Grábalo el día que entrenes, vale?');
+  if(d.foco) add('🎯 Objetivo del mes','Para el mes que viene: '+d.foco);
+  return out;
+}
 function anadirMsg(f,d){
   if(f.mensaje_estado==='enviado') return '';
-  var ad=(d.anadir||[]).filter(function(a){ return a&&a.texto; }); if(!ad.length) return '';
+  var ad=listaAnadir(f,d); if(!ad.length) return '';
   var cur=String(f.mensaje||'');
-  return '<div class="lab" style="margin-top:12px">'+(esMensual()?'Mini objetivos y frases para añadir':'Añadir al mensaje')+'</div><div class="ranad">'+ad.map(function(a,i){ var ya=cur.indexOf(a.texto)>=0;
+  return '<div class="lab" style="margin-top:12px">'+'Añadir al mensaje <small class="estado-m">aplausos, objetivos y recordatorios: toca para sumar o quitar</small>'+'</div><div class="ranad">'+ad.map(function(a,i){ var ya=cur.indexOf(a.texto)>=0;
     return '<button class="anad'+(ya?' ya':'')+'" data-anad="'+i+'" aria-pressed="'+ya+'"><b>'+(ya?'✓ ':'+ ')+esc(a.titulo||'Añadir')+'</b><span>'+esc(a.texto)+'</span></button>'; }).join('')+'</div>';
 }
 function meterEnMensaje(txt,t){
@@ -1621,7 +1646,11 @@ function cuerpo(f,d){
   var pie='<section class="rsec ancho2"><h3>Tu nota <small>para su seguimiento</small>'+' <button class="linkbtn" data-forms style="margin-left:auto;padding:0">📋 Formularios</button> <button class="linkbtn" data-formsr style="padding:0;margin-left:12px">⭐ Para redes</button>'+(f.cliente_id?' <button class="linkbtn" data-fotosr style="padding:0;margin-left:12px">📷 Fotos</button> <button class="linkbtn" data-entrr style="padding:0;margin-left:12px">🏋️ Su entreno</button> <button class="linkbtn" data-nutrr style="padding:0;margin-left:12px">🥗 Nutrición</button> <button class="linkbtn" data-calr style="padding:0;margin-left:12px">📅 Calendario</button>':'')+(f.cliente_id?' <button class="linkbtn" data-ficha style="padding:0;margin-left:12px">Ver su ficha →</button>':'')+'</h3><textarea class="nota-alex" data-rc="nota_alex" placeholder="Lo que quieras que tenga en cuenta: lo paso a su ficha.">'+esc(f.nota_alex||'')+'</textarea>'+
       '<div class="rpie" style="margin-top:12px"><small class="estado-m">'+(rhecha(f)?'✓ Hecho'+(f.revisado?' el '+esc(fCorta(String(f.revisado).slice(0,10))):''):'')+'</small>'+
       (rhecha(f)?(sig?'<button class="btn prim" data-siguiente>Siguiente: '+esc(sig.cliente)+' →</button>':'<span class="estado-m ok">Todos hechos ✓</span>'):'<button class="btn prim" data-revisar="1">Hecho ✓ · siguiente</button>')+'</div></section>';
-  return banners+vistazo(f,d)+(men?revSeccion(f):'')+(!vi&&subirHtml(f)?'<section class="rsec ancho2 rbans">'+subirHtml(f)+'</section>':'')+mensual+(men?nutriSeccion(f,d)+aaSeccion(f):'')+(vi?semana+mensaje+comoVa+cambios:semana+comoVa+mensaje+cambios)+pie;
+  var ban2=!vi&&subirHtml(f)?'<section class="rsec ancho2 rbans">'+subirHtml(f)+'</section>':'';
+  if(men) return banners+revSeccion(f)+vistazo(f,d)+ban2+mensual+semana+comoVa+aaSeccion(f)+nutriSeccion(f,d)+mensaje+cambios+pie;
+  /* Lunes y viernes (Alex 30/10): lo justo arriba y el mensaje; el resto, recogido */
+  var mas=semana+comoVa+vistazo(f,d);
+  return banners+ban2+resumenCorto(f,d)+mensaje+(cs.length?cambios:'')+'<details class="rsec ancho2 rmas"><summary>Ver más de su semana</summary><div class="rcuerpo">'+mas+(cs.length?'':cambios)+'</div></details>'+pie;
 }
 
 /* ── Su entreno (ficha): plan visual + datos que importan (25/10) ── */
@@ -1877,7 +1906,8 @@ function revSeccion(f){
   var ps=(d.peso||[]).slice().sort(function(a,b){ return a.fecha.localeCompare(b.fecha); }).slice(-12), pv=ps.map(function(x){ return rnum(x.peso); }), pe=ps.map(function(x){ return fCorta(x.fecha); });
   var fo=(d.fotos||[]).slice().sort().pop(), me=(d.medidas||[]).slice().sort().pop(), ts=d.troncales||[], sel=ts.filter(function(t){ return t.id===TRS[f.cliente_id]; })[0]||ts[0];
   var pdif=pv.length>1&&pv[0]!=null&&pv[pv.length-1]!=null?Math.round((pv[pv.length-1]-pv[0])*10)/10:null;
-  var h='<section class="rsec ancho2"><h3>Desde su app</h3><div class="vtiles">'+tile('Fotos',fo?'✓':'✕',fo?'últimas: '+esc(fCorta(fo)):'sin fotos todavía',null,fo?'ok':'mal')+tile('Medidas',me?'✓':'—',me?'últimas: '+esc(fCorta(me)):'sin medidas',null)+
+  var cw=buscar('Clientes',f.cliente_id)||{}, wk=cSemana(cw,hoy()), mesN=wk>1?Math.round((wk-1)/4):0;
+  var h='<section class="rsec ancho2 revgraf"><h3>Desde su app'+(mesN?' <small>'+(mesN%3===0?'fin de bloque: '+(mesN)+' meses':'mes '+mesN)+'</small>':'')+'</h3><div class="vtiles">'+tile('Fotos',fo?'✓':'✕',fo?'últimas: '+esc(fCorta(fo)):'sin fotos todavía',null,fo?'ok':'mal')+tile('Medidas',me?'✓':'—',me?'últimas: '+esc(fCorta(me)):'sin medidas',null)+
     tile('Peso',ps.length?esc(String(ps[ps.length-1].peso).replace('.',','))+' <small>kg</small>':'—',pdif!=null?(pdif>0?'+':'')+String(pdif).replace('.',',')+' kg en '+ps.length+' pesajes':'',linea(pv,pe,function(v){ return String(v).replace('.',',')+' kg'; }))+'</div>';
   var mU=(d.medUlt||[])[(d.medUlt||[]).length-1], mP=d.medPrim; if(mU&&mP&&mU.fecha!==mP.fecha){ h+='<div class="lab" style="margin-top:12px">Medidas: desde el principio</div><table class="prog"><tbody>'+['cintura','cadera','pecho','muslo','brazo'].filter(function(z){ return mU[z]!=null&&mP[z]!=null; }).map(function(z){ var df=Math.round((mU[z]-mP[z])*10)/10; return '<tr><td>'+z+'</td><td class="k">'+mP[z]+' cm</td><td class="k"><b>'+mU[z]+' cm</b></td><td class="d '+(df<0?'sube':df>0?'baja':'igual')+'">'+(df>0?'+':'')+String(df).replace('.',',')+'</td></tr>'; }).join('')+'</tbody></table>'; }
   if(sel){ var kv=sel.serie.slice(-12); h+='<div class="lab" style="margin-top:12px">Ejercicios troncales</div><div class="rtipo" role="group" aria-label="Elegir ejercicio">'+ts.map(function(t){ return '<button class="chip" data-trsel="'+esc(t.id)+'" aria-pressed="'+(t.id===sel.id)+'">'+esc(t.nm)+(t.subir?' ⬆️':'')+'</button>'; }).join('')+'</div>'+
@@ -2094,7 +2124,7 @@ function enlazarRonda(){
       else rguardar(f,{revisado:hoy()},true);
       rrepintar(id); return; }
     if(b.hasAttribute('data-siguiente')){ var sg=siguientePend(id); R.abierta=sg?sg.id:null; guardarLocal('ronda_abierta',R.abierta||''); rrepintar(R.abierta||id,!!R.abierta); return; }
-    if(b.hasAttribute('data-anad')){ var dd0=rj(f.datos,{}), ad0=(dd0.anadir||[])[+b.getAttribute('data-anad')]; if(!ad0) return;
+    if(b.hasAttribute('data-anad')){ var dd0=rj(f.datos,{}), ad0=listaAnadir(f,dd0)[+b.getAttribute('data-anad')]; if(!ad0) return;
       var ta1=$('textarea[data-rc="mensaje"]',art), nuevo=meterEnMensaje(ta1?ta1.value:f.mensaje,ad0.texto);
       rguardar(f,{mensaje:nuevo},true); rrepintar(id); return; }
     if(b.hasAttribute('data-opc')){ rIA(f,'mensaje','',b.getAttribute('data-opc'),b); return; }
@@ -3517,6 +3547,36 @@ function esPromesa(t){ return !!String(t.cliente_id||'').trim()&&!/^(Nutrición|
 function prGrupo(f){ var h=hoy(); if(!esFecha(f)) return 'Más adelante'; if(f<h) return 'Vencidas'; if(f===h) return 'Hoy'; var n=dias(h,f); return n===1?'Mañana':n<=7?'Esta semana':'Más adelante'; }
 function filaPromesa(t){ var c=buscar('Clientes',t.cliente_id)||{}, tel=avTel({telefono:c.telefono||''}), v=esFecha(t.fecha)&&t.fecha<hoy()?dias(t.fecha,hoy()):0;
   return '<li data-prid="'+esc(t.id)+'"><span class="punto '+(v?'rojo':'amarillo')+'"></span><button class="quien" data-abrir="Clientes|'+esc(t.cliente_id)+'"><b>'+esc(c.nombre||t.cliente||'')+' · '+esc(t.tarea||'')+'</b><span>'+(v?'Hace '+v+(v===1?' día':' días')+' · ':'')+(esFecha(t.fecha)?esc(fCorta(t.fecha)):'sin fecha')+'</span></button><span class="avacc"><a class="btn wa" href="https://wa.me/'+(tel||'')+'" target="_blank" rel="noopener">WhatsApp</a><button class="btn" data-prhecho="'+esc(t.id)+'">Hecho</button></span></li>'; }
+function hoyTienes(dolor,llamadas,cobros){
+  var h=hoy(), dow=new Date(h+'T12:00:00').getDay(), fil=[];
+  var fila=function(ic,t,sub,attr,cl){ return '<li class="'+(cl||'')+'"><span class="ctic" aria-hidden="true">'+ic+'</span><button class="quien" '+(attr||'disabled')+'><b>'+esc(t)+'</b><span>'+esc(sub||'')+'</span></button></li>'; };
+  // Revisiones y controles de hoy: un resumen, sin desplegar
+  var ct=controlesSemana().filter(function(x){ return x.cuando===h&&x.tipo!=='renovar'; }), rv=ct.filter(function(x){ return x.tipo==='revision'; }), cn=ct.filter(function(x){ return x.tipo==='control'; });
+  var pm=R.pendMens||0; if(rv.length||pm) fil.push(fila('📋',(rv.length||pm)+((rv.length||pm)===1?' revisión mensual':' revisiones mensuales'),rv.map(function(x){ return x.c.nombre; }).join(', ')||'pendientes en Reportes','data-irrep="mensual"'));
+  if(dow===1) fil.push(fila('📝','Reporte del lunes','','data-irrep="lunes"')); if(dow===5) fil.push(fila('📝','Reporte del viernes','','data-irrep="viernes"'));
+  if(cn.length) fil.push(fila('📸','Control de fotos, peso y medidas',cn.map(function(x){ return x.c.nombre; }).join(', ')));
+  // Promesas vencidas, de hoy y de mañana
+  var prs=tareasVivas().filter(esPromesa).filter(function(t){ return ['Vencidas','Hoy','Mañana'].indexOf(prGrupo(t.fecha))>=0; }).sort(function(a,b){ return String(a.fecha).localeCompare(String(b.fecha)); });
+  // Clientes nuevos: solo lo que ha pasado o lo que urge
+  nuevos().forEach(function(c){ var d=CAC[c.id]; if(c.codigo_app&&!d&&!c._calPed){ c._calPed=1; api('calendarioCliente',{cliente_id:c.id}).then(function(x){ x._fresco=1; CAC[c.id]=x; if(S.tab==='hoy') pintarHoy(true); }).catch(function(){}); } if(!d) return;
+    var en=(d.entrenos||[]).filter(function(e){ return e.hecho&&e.fecha>=c.inicio; }).map(function(e){ return e.fecha; }).sort();
+    if(en.length===1&&dias(en[0],h)<=2) fil.push(fila('🎉',c.nombre+' ha hecho su primer entreno',relativo(en[0])+' · buen momento para escribirle','data-irnuevo="'+esc(c.id)+'"'));
+    var u=nvChecks(c,d).filter(function(x){ return x.urg; })[0]; if(u) fil.push(fila('🌱',c.nombre+' · '+u.t,'día '+nvDia(c)+' de 14','data-irnuevo="'+esc(c.id)+'"','mal')); });
+  dolor.forEach(function(a){ fil.push(fila('🔴',a.cliente+' · '+a.titulo,a.detalle,a.cliente_id?'data-abrir="Clientes|'+esc(a.cliente_id)+'"':'','mal')); });
+  llamadas.forEach(function(l){ fil.push(fila('📞','Llamada · '+(l.nombre||''),typeof lambas==='function'?lambas(l):'','data-irll="'+esc(l.id)+'"')); });
+  var cbH=cobros.map(function(p){ var tarde=p.fecha<h; return '<li><span class="ctic" aria-hidden="true">💳</span><button class="quien" data-abrir="Clientes|'+esc(p.cliente_id)+'"><b>Cobro · '+esc(p.cliente)+'</b><span>'+esc(euros(p.importe)||'')+(tarde?' · '+esc(relativo(p.fecha)):'')+'</span></button>'+btnCobro(p)+'<button class="btn" data-cobrar="'+esc(p.id)+'">Cobrado</button></li>'; }).join('');
+  var tot=fil.length+prs.length+cobros.length;
+  return '<section class="bloque hoytienes"><h2>Hoy tienes <span class="n">'+tot+'</span></h2>'+(tot?'<ul class="corta avl">'+prs.map(filaPromesa).join('')+fil.join('')+cbH+'</ul>':'<p class="aviso-vacio">Nada urgente hoy.</p>')+'</section>';
+}
+/* Lo demás de Hoy, recogido: se abre si hace falta */
+function restoHoy(){
+  var nv=nuevos(), ctl=controlesSemana(), prR=tareasVivas().filter(esPromesa).filter(function(t){ return ['Esta semana','Más adelante'].indexOf(prGrupo(t.fecha))>=0; }).sort(function(a,b){ return String(a.fecha).localeCompare(String(b.fecha)); }), h='';
+  h+='<details class="bloque lsec"><summary>🤝 Otras promesas <span class="n">'+prR.length+'</span></summary>'+(prR.length?'<ul class="corta avl">'+prR.map(filaPromesa).join('')+'</ul>':'')+bloquePromesaForm()+'</details>';
+  if(ctl.length) h+='<details class="bloque lsec"><summary>📅 Controles de esta semana <span class="n">'+ctl.length+'</span></summary><ul class="corta">'+ctl.map(function(x){ return '<li><span class="ctic" aria-hidden="true">'+(x.tipo==='control'?'📸':x.tipo==='revision'?'📋':'⏳')+'</span><button class="quien" data-abrir="Clientes|'+esc(x.c.id)+'"><b>'+esc(x.dia)+' · '+esc(x.c.nombre)+'</b><span>'+esc(x.t)+(x.sub?' · '+esc(x.sub):'')+'</span></button></li>'; }).join('')+'</ul></details>';
+  if(nv.length) h+='<details class="bloque lsec"><summary>🌱 Clientes nuevos <span class="n">'+nv.length+'</span></summary><ul class="corta">'+nv.map(function(c){ return '<li><button class="quien" data-irnuevo="'+esc(c.id)+'"><b>'+esc(c.nombre)+'</b><span>día '+nvDia(c)+' de 14</span></button></li>'; }).join('')+'</ul></details>';
+  return h;
+}
+function bloquePromesaForm(){ return '<div class="tnueva prn"><input id="prTxt" type="text" placeholder="Qué le has dicho… «le mando la dieta»" aria-label="Qué has prometido"><input id="prCli" type="text" list="dl-prcli" placeholder="A quién" aria-label="A quién"><input id="prF" type="date" value="'+esc(sumar(hoy(),1))+'" aria-label="Para cuándo"><button class="btn" id="prAdd">Añadir</button><datalist id="dl-prcli">'+(S.data.clientes||[]).filter(vivo).map(function(c){ return '<option>'+esc(c.nombre)+'</option>'; }).join('')+'</datalist></div>'; }
 function bloquePromesas(){
   var l=tareasVivas().filter(esPromesa).sort(function(a,b){ return (esFecha(a.fecha)?a.fecha:'9').localeCompare(esFecha(b.fecha)?b.fecha:'9'); });
   var html=['Vencidas','Hoy','Mañana','Esta semana','Más adelante'].map(function(g){ var x=l.filter(function(t){ return prGrupo(t.fecha)===g; }); if(!x.length) return '';
@@ -3558,7 +3618,8 @@ function dnMetricas(R0,X){
   var altas=(S.data.clientes||[]).filter(vivo).filter(function(c){ var cs=cobrosDe(c.id), f=cs.length?cs[0].fecha:c.inicio; return R0.meses.indexOf(String(f||'').slice(0,7))>=0; }).length;
   var activos=(S.data.clientes||[]).filter(function(c){ return vivo(c)&&c.estado==='Activo'; }).length, anu=Object.keys(X.cats).filter(function(c){ return /anunc/i.test(c); }).reduce(function(a,c){ return a+X.cats[c]; },0);
   var tile2=function(t,v,sub,cl){ return '<div class="dnt '+(cl||'')+'"><span>'+t+'</span><b>'+v+'</b><small>'+sub+'</small></div>'; };
-  var h='<section class="bloque"><h2>Coste y rentabilidad</h2><div class="dntiles">'+tile2('Altas',String(altas),'clientes nuevos en el periodo')+
+  var spr=(S.data.clientes||[]).filter(function(c){ return vivo(c)&&c.estado==='Activo'&&!num(c.precio_total); }).map(function(c){ return c.nombre; });
+  var h=(spr.length?'<p class="estado-m">Sin precio en su ficha, no suman en facturación: '+esc(spr.join(', '))+'.</p>':'')+'<section class="bloque"><h2>Coste y rentabilidad</h2><div class="dntiles">'+tile2('Altas',String(altas),'clientes nuevos en el periodo')+
     tile2('Coste por cliente nuevo',altas?e(T.gasto/altas):'—','todos los gastos, IA incluida, entre las altas')+tile2('Solo anuncios',altas?e(anu/altas):'—','anuncios entre las altas')+
     tile2('Coste por cliente activo',activos?e(T.gasto/activos):'—',activos+' activos en este periodo')+tile2('Te deja cada activo',activos?e((T.cash-T.gasto)/activos):'—','cash menos gastos, entre activos',T.cash>=T.gasto?'ok':'mal')+'</div>'+
     (Object.keys(X.cats).some(function(c){ return /ia|claude/i.test(c); })?'':'<p class="estado-m">Apunta abajo lo que pagas por Claude en la categoría «IA (Claude)», como gasto mensual, para que entre en el coste.</p>')+'</section>';
@@ -3683,26 +3744,9 @@ function pintarHoy(soloSecs){
   var cob=S.data.cobros.filter(function(p){ return vivo(p)&&p.estado!=='Cobrado'&&esFecha(p.fecha)&&p.fecha<=h; }).sort(function(a,b){ return a.fecha.localeCompare(b.fecha); });
   var dW=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'][new Date().getDay()];
   var html='<div class="rcab"><h2>Hoy, '+esc(dW)+' '+esc(fCorta(h))+'<small>'+
-    (function(){ var n=tareasVivas().filter(function(t){ return esPromesa(t)&&['Vencidas','Hoy','Mañana'].indexOf(prGrupo(t.fecha))>=0; }).length+urgA.length+hoyLl.length+cob.length; return n?n+(n===1?' alerta':' alertas'):'Sin alertas'; })()+' · '+(EN.cargado?EN.lista.length+pesoA.length+' entregas pendientes':'mirando entregas…')+'</small></h2></div>';
-  html+=bloquePromesas();
-  // 1. Urgente
-  html+='<section class="bloque"><h2>Dolor de 6 o más <span class="n">'+(urgT.length+urgA.length)+'</span></h2>';
-  if(!urgT.length&&!urgA.length) html+='<p class="aviso-vacio">'+(AV.cargado?'Nadie con dolor de 6 o más.':'Mirando la app…')+'</p>';
-  else html+='<ul class="corta avl">'+urgA.map(function(a){ var tel=avTel(a);
-      return '<li class="av-'+esc(a.nivel)+'"><span class="punto '+(a.nivel==='rojo'?'rojo':'amarillo')+'"></span><button class="quien" '+(a.cliente_id?'data-abrir="Clientes|'+esc(a.cliente_id)+'"':'disabled')+'><b>'+esc(a.cliente)+' · '+esc(a.titulo)+'</b><span>'+esc(a.detalle||'')+'</span></button><span class="avacc"><a class="btn wa" href="https://wa.me/'+(tel||'')+'" target="_blank" rel="noopener">WhatsApp</a><button class="btn" data-avvisto="'+esc(a.id)+'">Visto</button></span></li>'; }).join('')+
-    urgT.map(function(t){ return filaTarea(t,S.tAb===t.id); }).join('')+'</ul>';
-  html+='</section>';
-  // 3. Hoy
-  html+='<section class="bloque"><h2>Hoy también</h2><ul class="corta">'+
-    (hoyLl.length?hoyLl.map(function(l){ return '<li><span class="punto caliente"></span><button class="quien" data-irll="'+esc(l.id)+'"><b>Llamada · '+esc(l.nombre||'')+'</b><span>'+esc(typeof lambas==='function'?lambas(l):'')+'</span></button></li>'; }).join(''):'<li><span class="quien"><span>Sin llamadas hoy.</span></span></li>')+
-    (cob.length?cob.map(function(p){ var tarde=p.fecha<h; return '<li><button class="quien" data-abrir="Clientes|'+esc(p.cliente_id)+'"><b>Cobro · '+esc(p.cliente)+'</b><span>'+esc(p.concepto)+' · '+esc(euros(p.importe)||'')+'</span></button><span class="cuando'+(tarde?' tarde':'')+'">'+esc(tarde?relativo(p.fecha):'hoy')+'</span>'+btnCobro(p)+'<button class="btn" data-cobrar="'+esc(p.id)+'">Cobrado</button></li>'; }).join(''):'<li><span class="quien"><span>Sin cobros pendientes hoy.</span></span></li>')+
-    '</ul></section>';
-  // 1 bis. Clientes nuevos (Alex 30/10): sus 2 primeras semanas tienen su pestaña en Reportes
-  var nv=nuevos(); if(nv.length) html+='<section class="bloque nvhoy"><h2>Clientes nuevos <span class="n">'+nv.length+'</span></h2><ul class="corta">'+nv.map(function(c){ var ch=nvChecks(c,CAC[c.id]), u=ch.filter(function(x){ return x.urg; })[0];
-    return '<li><span class="punto '+(u?'rojo':'verde')+'"></span><button class="quien" data-irnuevo="'+esc(c.id)+'"><b>'+esc(c.nombre)+' · día '+nvDia(c)+' de 14</b><span>'+esc(u?u.t:'Pídele foto y un mensajito después de cada entreno')+'</span></button></li>'; }).join('')+'</ul></section>';
-  // 1 ter. Controles de esta semana
-  var ctl=controlesSemana(); if(ctl.length) html+='<section class="bloque"><h2>Controles de esta semana <span class="n">'+ctl.length+'</span></h2><ul class="corta">'+ctl.map(function(x){
-    return '<li><span class="ctic '+x.tipo+'" aria-hidden="true">'+(x.tipo==='control'?'📸':x.tipo==='revision'?'📋':'⏳')+'</span><button class="quien" data-abrir="Clientes|'+esc(x.c.id)+'"><b>'+esc(x.dia)+' · '+esc(x.c.nombre)+'</b><span>'+esc(x.t)+(x.sub?' · '+esc(x.sub):'')+'</span></button></li>'; }).join('')+'</ul></section>';
+    (EN.cargado?EN.lista.length+pesoA.length+' entregas pendientes':'mirando entregas…')+'</small></h2></div>';
+  // Hoy tienes (Alex 30/10): solo lo que toca hoy, en una línea cada cosa. El detalle, en su pestaña
+  html+=hoyTienes(urgA,hoyLl,cob);
   // 2. Entregas de los clientes
   var ent=EN.lista;
   html+='<section class="bloque"><h2>Pendiente de los clientes <span class="n">'+(EN.cargado?ent.length+pesoA.length:'')+'</span></h2><p class="estado-m" style="margin:-4px 0 6px">Formularios, fotos, medidas y peso. El semanal lo ves el lunes en la Ronda.</p>';
@@ -3714,7 +3758,7 @@ function pintarHoy(soloSecs){
     pesoA.map(function(a){ var tel=avTel(a); return '<li><span class="punto amarillo"></span><button class="quien" '+(a.cliente_id?'data-abrir="Clientes|'+esc(a.cliente_id)+'"':'disabled')+'><b>'+esc(a.cliente)+' · Peso</b><span>'+esc(a.titulo)+' · '+esc(a.detalle||'')+'</span></button><span class="avacc"><a class="btn wa" href="https://wa.me/'+(tel||'')+'" target="_blank" rel="noopener">WhatsApp</a><button class="btn" data-avvisto="'+esc(a.id)+'">Visto</button></span></li>'; }).join('')+'</ul>';
   html+='</section>';
   var renov=[]; (S.data.clientes||[]).filter(function(c){ return vivo(c)&&c.estado==='Activo'; }).forEach(function(c){ avisosRenov(c.id).forEach(function(x){ if(!x.cobro) renov.push({c:c,x:x}); }); });
-  html+=miSemana(renov);
+  html+=restoHoy()+miSemana(renov);
   if(renov.length) html+='<section class="bloque"><h2>Renovaciones <span class="n">'+renov.length+'</span></h2><ul class="corta">'+renov.map(function(r){ return '<li><span class="punto '+(r.x.n==='r'?'rojo':'amarillo')+'"></span><button class="quien" data-abrir="Clientes|'+esc(r.c.id)+'"><b>'+esc(r.c.nombre)+'</b><span>'+esc(r.x.t)+'</span></button></li>'; }).join('')+'</ul></section>';
   html+=copiaHtml();
   $('#app').innerHTML=html; enlazarHoy();
@@ -3747,6 +3791,7 @@ function enlazarHoy(){
     var b=e.target.closest('button,a'); if(!b) return;
     if(b.hasAttribute('data-abrir')&&/^Clientes\|/.test(b.getAttribute('data-abrir'))){ guardarLocal('panel_tab','clientes'); irFicha(b.getAttribute('data-abrir').split('|')[1]); return; }
     if(b.hasAttribute('data-abrir')){ var k=b.getAttribute('data-abrir').split('|'); S.tab='clientes'; S.fCli='Todos'; S.fSem=''; S.qCli=''; S.verArch=false; S.abierta=null; guardarLocal('panel_tab','clientes'); abrir(k[0]+'|'+k[1],true); return; }
+    if(b.hasAttribute('data-irrep')){ R.tipo=b.getAttribute('data-irrep'); R.cargado=false; R.abierta=null; R.filtro='todas'; R.fecha=''; S.tab='ronda'; pintar(); return; }
     if(b.hasAttribute('data-irnuevo')){ NV.abierto=b.getAttribute('data-irnuevo'); R.tipo='nuevos'; S.tab='ronda'; guardarLocal('panel_tab','ronda'); pintar(); return; }
     if(b.hasAttribute('data-irll')){ LC.abierta=b.getAttribute('data-irll'); S.tab='llamadas'; guardarLocal('panel_tab','llamadas'); pintar(); return; }
     if(b.hasAttribute('data-avvisto')){ var aid=b.getAttribute('data-avvisto'), av=AV.lista.filter(function(x){ return x.id===aid; })[0]; AV.lista=AV.lista.filter(function(x){ return x.id!==aid; }); tRepintar();
