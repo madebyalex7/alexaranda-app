@@ -596,6 +596,7 @@ nav.tabs .tipol{font-size:19px;line-height:1;align-items:center;justify-content:
 .fcomp{display:grid;grid-template-columns:58px minmax(0,190px) minmax(0,190px);gap:8px;align-items:center}.fcomp .hd{font-size:13px;color:var(--sec);font-weight:600}.fcomp .vs{font-size:13px;color:var(--sec)}.fcomp img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:10px;background:var(--beige);display:block}.fcomp .nof{aspect-ratio:3/4;border-radius:10px;background:var(--beige);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--sec);text-align:center;padding:6px}
 .rmsg>summary{font-size:14px;color:var(--sec)}
 .tcopia{flex:none}
+.recs .cambio{margin-bottom:8px}
 .ralerta.aud{background:rgba(90,120,170,.15);border-color:#6F8FBF}.ralerta .aupt{list-style:disc;padding-left:20px;margin:6px 0 8px}.ralerta .aupt li{display:list-item;border:0;padding:2px 0}
 </style>
 </head>
@@ -1403,6 +1404,16 @@ function formBloque(d){ var fo=d.formulario; if(!fo) return ''; if(/sin hacer/i.
   var rs=formResp(fo.respuestas), en=/^https?:\/\//.test(String(fo.enlace||''))?fo.enlace:''; if(!rs.length&&!fo.resumen&&!en) return '';
   return '<details class="rsec ancho2 rform"><summary>📋 Su formulario'+(fo.tipo?' · '+esc(fo.tipo):'')+(esFecha(fo.fecha)?' · '+esc(fCorta(fo.fecha)):'')+'</summary>'+(!rs.length&&fo.resumen?'<p>'+esc(fo.resumen)+'</p>':'')+rs.map(function(x){ return '<p class="rfq">'+esc(x.p)+'</p><p class="rfa">'+esc(x.r)+'</p>'; }).join('')+(en?'<div class="racc" style="margin-top:12px"><a class="btn" href="'+esc(en)+'" target="_blank" rel="noopener">Abrir en la hoja</a></div>':'')+'</details>'; }
 
+/* Recomendaciones en la ficha (Alex 31/10): los cambios de plan que propone el Proyecto, para decidirlos aquí. Mismo camino que «Aplicar» en Reportes */
+var REC={};
+function recPintar(cid){ var el=$('#pgRec'); if(!el) return; var l=REC[cid]; if(!l){ el.innerHTML=''; return; }
+  el.innerHTML='<section class="bloque recs"><h2>Recomendaciones <span class="n">'+l.length+'</span></h2>'+(l.length?l.map(function(r){ return '<div class="cambio propuesto" data-recid="'+esc(r.id)+'" data-reccid="'+esc(r.cid)+'"><div class="ct"><span>'+esc(r.titulo||'Cambio de plan')+'</span><span class="mini n">'+esc(esFecha(String(r.fecha).slice(0,10))?fCorta(String(r.fecha).slice(0,10)):'')+'</span></div>'+(r.porque?'<p class="cp">'+esc(r.porque)+'</p>':'')+'<div class="racc"><button class="btn prim" data-recap>Aplicar</button><button class="btn" data-recno>No</button></div></div>'; }).join(''):'<p class="aviso-vacio">Ahora no hay cambios propuestos. Las recomendaciones las escribe el Proyecto en los reportes.</p>')+'</section>'; }
+function recCargar(cid){ recPintar(cid); api('recomendaciones',{cliente_id:cid}).then(function(l){ REC[cid]=l||[]; recPintar(cid); }).catch(function(er){ var el=$('#pgRec'); if(el) el.innerHTML='<p class="aviso-vacio">No he podido leer las recomendaciones: '+esc(er.message)+'</p>'; }); }
+document.addEventListener('click',function(e){ if(!e.target.closest) return; var b=e.target.closest('[data-recap],[data-recno]'); if(!b) return; e.stopPropagation(); var box=b.closest('[data-recid]'), id=box.getAttribute('data-recid'), cd=box.getAttribute('data-reccid'), cl=PG&&PG.cid, ap=b.hasAttribute('data-recap'), v=b.textContent;
+  Array.prototype.forEach.call(box.querySelectorAll('button'),function(x){ x.disabled=true; }); b.textContent=ap?'Aplicando…':'Guardando…';
+  (ap?api('rondaAplicar',{id:id,cid:cd}):api('rondaCambio',{id:id,cid:cd,estado:'descartado'})).then(function(){ REC[cl]=(REC[cl]||[]).filter(function(x){ return !(x.id===id&&x.cid===cd); }); recPintar(cl); if(ap){ delete ECC[cl]; api('entrenoCliente',{cliente_id:cl}).then(function(d){ d._fresco=1; ECC[cl]=d; var el=$('#pgEnt'); if(el) el.innerHTML=ecHtml(d); }).catch(function(){}); } flash(); avisoSync(ap?'Aplicado ✓':'Descartado'); }).catch(function(er){ Array.prototype.forEach.call(box.querySelectorAll('button'),function(x){ x.disabled=false; }); b.textContent=v; alerta(er); }); },true);
+function avisoSync(t){ var el=$('#sync'); if(el){ el.className='estado-sync'; el.textContent=t; } }
+
 /* Panel = lo visual (Alex 30/10): los mensajes y razonamientos van por el chat de Reportes */
 function bloqueTag(d){ var b=d&&d.bloque; if(!b||(!b.bloque&&!b.semana)) return ''; return '<span class="mini n">B'+esc(b.bloque||'')+' · S'+esc(b.semana||'')+(b.de?'/'+esc(b.de):'')+'</span>'; }
 function serieTxt(x){ if(x&&typeof x==='object') return (x.kg!=null?x.kg+'×':'')+(x.reps!=null?x.reps:x.re!=null?x.re:''); return String(x); }
@@ -2062,7 +2073,7 @@ function paginaCliente(){
 }
 function pgSeccion(c){
   var T='Clientes';
-  if(PG.sec==='entreno') return '<div id="pgEnt"><div class="cargando" style="min-height:160px"></div></div>';
+  if(PG.sec==='entreno') return '<div id="pgRec"></div><div id="pgEnt"><div class="cargando" style="min-height:160px"></div></div>';
   if(PG.sec==='camino') return '<div id="pgCam"><div class="cargando" style="min-height:160px"></div></div>';
   if(PG.sec==='calendario') return '<div id="pgCal"><div class="cargando" style="min-height:160px"></div></div>';
   if(PG.sec==='nutricion') return nutriPagina(c);
@@ -2208,6 +2219,7 @@ function pgTrasPintar(){
     if(CAC[c.id]) pk(); if(!CAC[c.id]||!CAC[c.id]._fresco) api('calendarioCliente',{cliente_id:c.id}).then(function(d){ d._fresco=1; CAC[c.id]=d; pk(); }).catch(function(e){ var el=$('#pgCal'); if(el&&!CAC[c.id]) el.innerHTML='<p class="aviso-vacio">No he podido leer su app: '+esc(e.message)+'</p>'; }); }
   if(vis){ var pv=function(d){ var el=$('#pgVis'); if(el) el.innerHTML=d.sinApp?'<p class="aviso-vacio">Todavía no tiene la app.</p>':ecHtml(d,true); };
     if(ECC[c.id]) pv(ECC[c.id]); if(!ECC[c.id]||!ECC[c.id]._fresco) api('entrenoCliente',{cliente_id:c.id}).then(function(d){ d._fresco=1; ECC[c.id]=d; pv(d); }).catch(function(e){ var el=$('#pgVis'); if(el) el.innerHTML='<p class="aviso-vacio">No he podido leer la app: '+esc(e.message)+'</p>'; }); }
+  if(ent) recCargar(c.id);
   if(ent){ var pe=function(d){ var el=$('#pgEnt'); if(el) el.innerHTML=ecHtml(d); };
     if(ECC[c.id]) pe(ECC[c.id]); if(!ECC[c.id]||!ECC[c.id]._fresco) api('entrenoCliente',{cliente_id:c.id}).then(function(d){ d._fresco=1; ECC[c.id]=d; pe(d); }).catch(function(e){ var el=$('#pgEnt'); if(el&&!ECC[c.id]) el.innerHTML='<p class="aviso-vacio">No he podido leerlo: '+esc(e.message)+'</p>'; }); }
   if(cam){ var pc=function(){ var el=$('#pgCam'); if(el) el.innerHTML=cmHtml(c.id,c.nombre||'',CMC[c.id]); };

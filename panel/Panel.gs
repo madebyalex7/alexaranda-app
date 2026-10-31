@@ -62,6 +62,7 @@ function P_despachar(cuerpo) {
       case 'desarchivar': return { ok: true, data: P_escribir(function () { return P_guardar(d.tabla, d.id, { archivado: '' }); }) };
       case 'rondaCargar': return { ok: true, data: R_cargar(d.fecha, d.tipo) };
       case 'rondaFila': return { ok: true, data: R_fila(d.id) };
+      case 'recomendaciones': return { ok: true, data: R_recomendaciones(d.cliente_id) };
       case 'rondaPedir': return { ok: true, data: P_escribir(function () { return R_pedir(d); }) };
       case 'rondaAplicar': return { ok: true, data: P_escribir(function () { return R_aplicar(d.id, d.cid); }) };
       case 'rondaNuevoMensaje': return { ok: true, data: P_escribir(function () { return R_nuevoMensaje(d.id, d.texto, d.peticion, d.actual); }) };
@@ -363,6 +364,16 @@ function R_alargarCambio(ss, S, p) {
   return '«' + p.nuevo + '» sigue ' + mas + ' semanas más (hasta la ' + nf + ')' + (fV >= 0 ? '; «' + p.viejo + '» vuelve en la ' + (nf + 1) : '');
 }
 
+/** Ficha › Entreno (Alex 31/10): los cambios de plan que el Proyecto ha propuesto a este cliente y siguen sin decidir, con la tarjeta de la que salen */
+function R_recomendaciones(cid) {
+  var out = [], desde = P_sumarDias(P_hoy(), -28);   // las más viejas ya no valen: el plan ha podido cambiar
+  P_leer('Ronda').forEach(function (r) {
+    if (r.archivado || r.cliente_id !== cid || String(r.fecha).slice(0, 10) < desde || String(r.ejemplo).toUpperCase() === 'TRUE' || r.ejemplo === 'sí') return;
+    var l; try { l = JSON.parse(r.cambios || '[]'); } catch (e) { return; }
+    (Array.isArray(l) ? l : []).forEach(function (c) { if (!c.estado || c.estado === 'propuesto') out.push({ id: r.id, fecha: r.fecha, tipo_reporte: r.tipo, cid: c.cid, tipo: c.tipo, titulo: c.titulo, porque: c.porque, params: c.params || {} }); });
+  });
+  return out.sort(function (a, b) { return String(b.fecha).localeCompare(String(a.fecha)); });
+}
 function R_aplicar(id, cid) {
   var r = R_fila(id), x = R_cambio(r, cid), c = x.c;
   if (String(r.ejemplo).toUpperCase() === 'TRUE' || r.ejemplo === 'sí') throw new Error('Es una tarjeta de ejemplo: no se aplica en ninguna hoja');
