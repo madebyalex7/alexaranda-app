@@ -607,8 +607,8 @@ details.calplega[open] .calver{display:none}
 .avcard.avtop{border-style:solid;border-color:var(--accent);margin:0 0 14px}
 /* Carta cerrada por el candado (Alex 30/10): gris, como desactivada, y el candado grande en medio por encima del texto */
 .fcard.cerrada{position:relative}
-.fcard.cerrada .fc-front{filter:grayscale(1);opacity:.42}
-.fcard.cerrada::after{content:"🔒";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:58px;line-height:1;opacity:.82;pointer-events:none;z-index:5;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35))}
+.fcard.cerrada .fc-front{filter:grayscale(1);opacity:.7}
+.fcard.cerrada::after{content:"🔒";position:absolute;right:16px;top:14px;font-size:30px;line-height:1;opacity:.82;pointer-events:none;z-index:5;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35))}
 /* Progreso más visual (Alex 30/10) */
 .ptiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 16px}
 .ptile{display:flex;flex-direction:column;gap:2px;text-decoration:none;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:10px 10px 12px;min-width:0}
@@ -1902,7 +1902,8 @@ const semanaDePeso = ()=>{ const f = FREC(), d = (D.mp || {}).pesoDesde || 1; re
 const tocaPeso = ()=>DOW() === 5 && semanaDePeso() && !pesoHoy();
 const pesoOpcional = ()=>DOW() === 2 && semanaDePeso() && !pesoHoy() && FREC() !== "no";
 function hub(){
-  const rec = recomendado(), hh = hechoHoy(), n = nHechos(), md = mejorDato();
+  const r0 = recomendado(), rec = r0 && D.dias[r0] ? r0 : null, hh = hechoHoy(),   // un alta recién creada aún no tiene plan
+  n = nHechos(), md = mejorDato();
   const ent = hh ? ["Hoy ya está hecho 💪", "Descansa y recupera"] : rec ? [`Hoy te toca: ${dd(rec).n}`, dd(rec).t + (dd(rec).ds ? " · entreno del " + dd(rec).ds : "")] : n >= OBJ() ? ["Semana completa 🎉", "Todos tus días hechos"] : ["Tu semana", "Elige tu día"];
   const prog = tocaPeso() ? ["Hoy toca pesarse ⚖️", "En ayunas, después del baño"] : pesoOpcional() ? ["Si quieres, pésate hoy", "Es opcional: el que cuenta es el del viernes"] : md ? [md.big + " " + md.txt, "Lo que más has mejorado"] : ["Peso, fotos y medidas", "Aquí verás todo lo que vas consiguiendo"];
   const carta = (id, t, sub, icono, extra, cls)=>`<button type="button" class="fcard ${cls || ""}" data-go="${id}"><span class="fc-in"><span class="fc-back" aria-hidden="true"><span class="la1">A</span><span class="la2">A</span></span>
