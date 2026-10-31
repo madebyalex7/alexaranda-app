@@ -597,6 +597,7 @@ nav.tabs .tipol{font-size:19px;line-height:1;align-items:center;justify-content:
 .rmsg>summary{font-size:14px;color:var(--sec)}
 .tcopia{flex:none}
 .recs .cambio{margin-bottom:8px}
+.hcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:12px}.hcard{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--gris);border-radius:14px;padding:12px 14px}.hcard h3{margin:0 0 6px;display:flex;align-items:center;gap:8px;font-size:17px}.hcard h3 .n{margin-left:auto}.hcard .corta{border-top:0}.hcard .corta li:last-child{border-bottom:0}.hcard.imp{border-left-color:var(--rojo);background:rgba(192,62,44,.09)}.hcard.pro{border-left-color:var(--ambar)}.hcard.pol{border-left-color:#E0B83A}.hcard.rep{border-left-color:var(--moca)}.hcard.lla{border-left-color:var(--verde)}.hcard.cob{border-left-color:#6F8FBF}.hlibre{text-align:center;padding:26px 12px;font-size:17px;color:var(--sec)}.hlibre b{display:block;font-size:34px;margin-bottom:4px}
 .ralerta.aud{background:rgba(90,120,170,.15);border-color:#6F8FBF}.ralerta .aupt{list-style:disc;padding-left:20px;margin:6px 0 8px}.ralerta .aupt li{display:list-item;border:0;padding:2px 0}
 </style>
 </head>
@@ -1288,6 +1289,7 @@ function avisosRenov(cid){
 }
 
 function pintarRonda(){
+  HR.cargado=false;
   $('#nRon').textContent = R.cargado ? (R.filas.filter(function(f){return !rhecha(f);}).length||'') : '';
   var sel='<div class="rtipo" role="group" aria-label="Qué reporte">'+[['mensual','Mensual'+(R.pendMens?' <span class="c">'+R.pendMens+'</span>':'')],['lunes','Lunes'],['viernes','Viernes'],['videos','🎥 Vídeos']].map(function(x){ return '<button class="chip" data-rtipo="'+x[0]+'" aria-pressed="'+(R.tipo===x[0])+'">'+x[1]+'</button>'; }).join('')+'</div>';
   if(R.tipo==='videos'){ pintarVideos(sel); return; }
@@ -3775,16 +3777,25 @@ function semanaBar(cob){ var h=hoy(), lun=hhLun(), dom=sumar(lun,6), ctl=control
   SB_GR=G;
   return '<section class="sembar"><h2>Esta semana</h2>'+(G.length?'<div class="sbg">'+G.map(function(g,i){ return '<button class="sbt" data-hsem="'+i+'" aria-expanded="false"><b>'+g.ic+' '+g.n+'</b><span>'+esc(g.t)+'</span></button>'; }).join('')+'</div><p class="sbn" id="sbNom" hidden></p>':'<p class="aviso-vacio">Nada pendiente esta semana.</p>')+'</section>'; }
 document.addEventListener('click',function(e){ var b=e.target.closest&&e.target.closest('[data-hsem]'); if(!b) return; e.stopPropagation(); var i=+b.getAttribute('data-hsem'), p=$('#sbNom'), g=SB_GR[i]; if(!p||!g) return; var igual=!p.hidden&&p.getAttribute('data-i')===String(i); p.hidden=igual; p.setAttribute('data-i',i); p.textContent=g.l.join(', '); Array.prototype.forEach.call(document.querySelectorAll('[data-hsem]'),function(x){ x.setAttribute('aria-expanded',String(x===b&&!igual)); }); },true);
+/* Las tareas que ya van dentro de un reporte de hoy sin hacer no se repiten en Hoy (Alex 31/10). Al marcar la tarjeta como hecha, lo que siga pendiente vuelve a salir. Las molestias fuertes se quedan siempre */
+var HR={cli:{},n:0,cargado:false,cargando:false};
+function hrCargar(){ if(HR.cargado||HR.cargando) return; HR.cargando=true; var h=hoy();
+  api('rondaCargar',{}).then(function(d){ var ul=d.ultimas||{}, tp=['lunes','viernes','mensual'].filter(function(t){ return ul[t]===h; });
+    return Promise.all(tp.map(function(t){ return t===d.tipo?d:api('rondaCargar',{tipo:t}); })); })
+  .then(function(ls){ var c={}, n=0; ls.forEach(function(d){ (d.filas||[]).forEach(function(f){ if(f.fecha===h&&f.cliente_id&&!rhecha(f)&&String(f.ejemplo).toUpperCase()!=='TRUE'){ c[f.cliente_id]=1; } }); }); HR.cli=c; HR.cargado=true; HR.cargando=false; if(S.tab==='hoy') pintarHoy(); })
+  .catch(function(){ HR.cargando=false; HR.cargado=true; }); }
 function hoyTienes(dolor,llamadas,cobros){
-  var h=hoy(), dow=new Date(h+'T12:00:00').getDay(), fil=[];
-  var fila=function(ic,t,sub,attr,cl){ var k='h|'+t; if(hhEs(k)) return ''; return '<li class="'+(cl||'')+'"><span class="ctic" aria-hidden="true">'+ic+'</span><button class="quien" '+(attr||'disabled')+'><b>'+esc(t)+'</b><span>'+esc(sub||'')+'</span></button>'+hhBtn(k)+'</li>'; };
+  var h=hoy(), dow=new Date(h+'T12:00:00').getDay(), fil=[], CT={imp:[],pro:[],pol:[],rep:[],lla:[],cob:[]}, enRep=0;
+  hrCargar();
+  var fila=function(ic,t,sub,attr,cl){ var k='h|'+t; if(hhEs(k)) return ''; var cat=ic==='🔴'?'imp':ic==='📞'?'lla':/^(📋|📸)$/.test(ic)||/^Reporte/.test(t)?'rep':'pol'; CT[cat].push(filaLi(ic,t,sub,attr,cl,k)); return ''; };
+  var filaLi=function(ic,t,sub,attr,cl,k){ return '<li class="'+(cl||'')+'"><span class="ctic" aria-hidden="true">'+ic+'</span><button class="quien" '+(attr||'disabled')+'><b>'+esc(t)+'</b><span>'+esc(sub||'')+'</span></button>'+hhBtn(k)+'</li>'; };
   // Revisiones y controles de hoy: un resumen, sin desplegar
   var ct=controlesSemana().filter(function(x){ return x.cuando===h&&x.tipo!=='renovar'&&!hhEs(ctlKey(x)); }), rv=ct.filter(function(x){ return x.tipo==='revision'; }), cn=ct.filter(function(x){ return x.tipo==='control'; });
   var pm=R.pendMens||0; if(rv.length||pm) fil.push(fila('📋',(rv.length||pm)+((rv.length||pm)===1?' revisión mensual':' revisiones mensuales'),rv.map(function(x){ return x.c.nombre; }).join(', ')||'pendientes en Reportes','data-irrep="mensual"'));
-  if(dow===1) fil.push(fila('📝','Reporte del lunes','','data-irrep="lunes"')); if(dow===5) fil.push(fila('📝','Reporte del viernes','','data-irrep="viernes"'));
+  var filaRep=function(){ var sb=enRep?enRep+(enRep===1?' aviso de sus clientes va dentro':' avisos de sus clientes van dentro'):''; if(dow===1) fila('📝','Reporte del lunes',sb,'data-irrep="lunes"'); if(dow===5) fila('📝','Reporte del viernes',sb,'data-irrep="viernes"'); };
   if(cn.length) fil.push(fila('📸','Control de fotos, peso y medidas',cn.map(function(x){ return x.c.nombre; }).join(', ')));
   // Promesas vencidas, de hoy y de mañana
-  var prs=tareasVivas().filter(esPromesa).filter(function(t){ return ['Vencidas','Hoy','Mañana'].indexOf(prGrupo(t.fecha))>=0; }).sort(function(a,b){ return String(a.fecha).localeCompare(String(b.fecha)); });
+  var prs=tareasVivas().filter(esPromesa).filter(function(t){ if(['Vencidas','Hoy','Mañana'].indexOf(prGrupo(t.fecha))<0) return false; if(HR.cli[t.cliente_id]){ enRep++; return false; } return true; }).sort(function(a,b){ return String(a.fecha).localeCompare(String(b.fecha)); });
   // Clientes nuevos: solo lo que ha pasado o lo que urge
   nuevos().forEach(function(c){ var d=CAC[c.id]; if(c.codigo_app&&!d&&!c._calPed){ c._calPed=1; api('calendarioCliente',{cliente_id:c.id}).then(function(x){ x._fresco=1; CAC[c.id]=x; if(S.tab==='hoy') pintarHoy(true); }).catch(function(){}); } if(!d) return;
     var en=(d.entrenos||[]).filter(function(e){ return e.hecho&&e.fecha>=cArranque(c); }).map(function(e){ return e.fecha; }).sort();
@@ -3795,9 +3806,11 @@ function hoyTienes(dolor,llamadas,cobros){
   nuevos().forEach(function(c){ var al=altaDe(c.id); if(!al||al.listo||al.app_enviada||/App enviada/.test(al.paso||'')) return; var fo=formIniDe(al); if(fo) fil.push(fila('📝',c.nombre+' ha rellenado el formulario','Mándale su app y los vídeos','data-irnuevo="'+esc(c.id)+'"')); });
   ALD.dolor=dolor; dolor.forEach(function(a,i){ fil.push(fila('🔴',a.cliente+' · '+a.titulo,a.detalle,'data-alt="dolor|'+i+'"','mal')); });
   llamadas.forEach(function(l){ fil.push(fila('📞','Llamada · '+(l.nombre||''),typeof lambas==='function'?lambas(l):'','data-irll="'+esc(l.id)+'"')); });
-  var cbH=cobros.map(function(p){ var tarde=p.fecha<h; return '<li><span class="ctic" aria-hidden="true">💳</span><button class="quien" data-abrir="Clientes|'+esc(p.cliente_id)+'"><b>Cobro · '+esc(p.cliente)+'</b><span>'+esc(euros(p.importe)||'')+(tarde?' · '+esc(relativo(p.fecha)):'')+'</span></button>'+btnCobro(p)+'<button class="btn" data-cobrar="'+esc(p.id)+'">Cobrado</button></li>'; }).join('');
-  fil=fil.filter(Boolean); var tot=fil.length+prs.length+cobros.length;
-  return '<section class="bloque hoytienes"><h2>Hoy tienes <span class="n">'+tot+'</span></h2>'+(tot?'<ul class="corta avl">'+prs.map(filaPromesa).join('')+fil.join('')+cbH+'</ul>':'<p class="aviso-vacio">Nada urgente hoy.</p>')+'</section>';
+  filaRep();
+  CT.cob=cobros.map(function(p){ var tarde=p.fecha<h; return '<li><span class="ctic" aria-hidden="true">💳</span><button class="quien" data-abrir="Clientes|'+esc(p.cliente_id)+'"><b>'+esc(p.cliente)+'</b><span>'+esc(euros(p.importe)||'')+(tarde?' · '+esc(relativo(p.fecha)):'')+'</span></button>'+btnCobro(p)+'<button class="btn" data-cobrar="'+esc(p.id)+'">Cobrado</button></li>'; });
+  CT.pro=prs.map(filaPromesa);
+  var GR=[['imp','🚨','Importante'],['pro','🤝','Promesas'],['pol','🐥','Pollitos'],['rep','📋','Reportes y revisiones'],['lla','📞','Llamadas'],['cob','💳','Cobros']].filter(function(g){ return CT[g[0]].length; }), tot=GR.reduce(function(a,g){ return a+CT[g[0]].length; },0);
+  return '<section class="bloque hoytienes"><h2>Hoy tienes <span class="n">'+tot+'</span></h2>'+(tot?'<div class="hcards">'+GR.map(function(g){ return '<div class="hcard '+g[0]+'"><h3><span aria-hidden="true">'+g[1]+'</span>'+g[2]+'<span class="n">'+CT[g[0]].length+'</span></h3><ul class="corta avl">'+CT[g[0]].join('')+'</ul></div>'; }).join('')+'</div>':'<div class="hlibre"><b>✅</b>Hoy no tienes nada urgente.</div>')+'</section>';
 }
 /* Lo demás de Hoy, recogido: se abre si hace falta */
 function restoHoy(){
@@ -3986,17 +3999,17 @@ function pintarHoy(soloSecs){
   html+=hoyTienes(urgA,hoyLl,cob);
   // 2. Entregas de los clientes
   var ent=EN.lista;
-  html+='<section class="bloque"><h2>Pendiente de los clientes <span class="n">'+(EN.cargado?ent.length+pesoA.length:'')+'</span></h2><p class="estado-m" style="margin:-4px 0 6px">Formularios, fotos, medidas y peso. El semanal lo ves el lunes en la Ronda.</p>';
+  html+='<details class="bloque lsec"><summary>📥 Pendiente de los clientes <span class="n">'+(EN.cargado?ent.length+pesoA.length:'')+'</span></summary><p class="estado-m" style="margin:6px 0 6px">Formularios, fotos, medidas y peso. El semanal lo ves el lunes en la Ronda.</p>';
   if(!EN.cargado) html+='<p class="aviso-vacio">'+(EN.err?'No he podido mirarlo: '+esc(EN.err):'Mirando formularios y fotos…')+'</p>';
   else if(!ent.length&&!pesoA.length) html+='<p class="aviso-vacio">Todo entregado.</p>';
   else html+='<ul class="corta enl">'+ent.map(function(e){ var tel=avTel(e), que=e.tipo==='formulario'?'Formulario «'+(e.formulario||'')+'»':(EN_TXT[e.tipo]||e.tipo);
       return '<li data-eid="'+esc(e.id)+'"><span class="punto '+(e.dias>=3?'rojo':'amarillo')+'"></span><button class="quien" '+(e.cliente_id?'data-abrir="Clientes|'+esc(e.cliente_id)+'"':'disabled')+'><b>'+esc(e.cliente)+' · '+esc(que)+'</b><span>'+(e.dias>0?'Tocaba desde el '+esc(fCorta(e.desde))+' ('+e.dias+(e.dias===1?' día':' días')+')':'Toca desde hoy')+(e.notas?' · '+esc(e.notas):'')+'</span></button>'+
         '<span class="avacc"><a class="btn wa" href="'+waU(tel)+'" target="_blank" rel="noopener">WhatsApp</a><button class="btn" data-eest="hecha">Hecho</button><button class="btn" data-eest="no_aplica" title="Ya no hace falta">No</button></span></li>'; }).join('')+
     pesoA.map(function(a){ var tel=avTel(a); return '<li><span class="punto amarillo"></span><button class="quien" '+(a.cliente_id?'data-abrir="Clientes|'+esc(a.cliente_id)+'"':'disabled')+'><b>'+esc(a.cliente)+' · Peso</b><span>'+esc(a.titulo)+' · '+esc(a.detalle||'')+'</span></button><span class="avacc"><a class="btn wa" href="'+waU(tel)+'" target="_blank" rel="noopener">WhatsApp</a><button class="btn" data-avvisto="'+esc(a.id)+'">Visto</button></span></li>'; }).join('')+'</ul>';
-  html+='</section>';
+  html+='</details>';
   var renov=[]; (S.data.clientes||[]).filter(function(c){ return vivo(c)&&c.estado==='Activo'; }).forEach(function(c){ avisosRenov(c.id).forEach(function(x){ if(!x.cobro) renov.push({c:c,x:x}); }); });
   html+=restoHoy()+miSemana(renov);
-  if(renov.length) html+='<section class="bloque"><h2>Renovaciones <span class="n">'+renov.length+'</span></h2><ul class="corta">'+renov.map(function(r){ return '<li><span class="punto '+(r.x.n==='r'?'rojo':'amarillo')+'"></span><button class="quien" data-abrir="Clientes|'+esc(r.c.id)+'"><b>'+esc(r.c.nombre)+'</b><span>'+esc(r.x.t)+'</span></button></li>'; }).join('')+'</ul></section>';
+  if(renov.length) html+='<details class="bloque lsec"><summary>⏳ Renovaciones <span class="n">'+renov.length+'</span></summary><ul class="corta">'+renov.map(function(r){ return '<li><span class="punto '+(r.x.n==='r'?'rojo':'amarillo')+'"></span><button class="quien" data-abrir="Clientes|'+esc(r.c.id)+'"><b>'+esc(r.c.nombre)+'</b><span>'+esc(r.x.t)+'</span></button></li>'; }).join('')+'</ul></details>';
   html+=copiaHtml();
   $('#app').innerHTML=html; enlazarHoy();
 }
