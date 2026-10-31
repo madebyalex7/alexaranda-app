@@ -97,6 +97,7 @@ http.createServer((req,res)=>{
           {tipo:'Primer mes',fecha:'2026-11-02T10:00',qa:[['Cómo te ves y cómo te notas este mes?','Con más energía'],['Me dejas usar alguna frase tuya, sin tu nombre, en mis redes?','Sí'],['Si tuvieras que resumir tu primer mes en una frase, cuál sería?','Por fin he encontrado algo que me engancha y que puedo mantener con mi trabajo']]},
           {tipo:'Inicial',fecha:'2026-10-05T10:00',qa:[['Cómo te ves y cómo te sientes hoy?','Me veo hinchada y sin energía, me cuesta subir escaleras y no me gusta cómo me queda la ropa'],['Qué quieres conseguir?','Sentirme fuerte y bajar la tripa'],['Y si dentro de 6 meses todo siguiera igual, cómo te sentirías?','Fatal, decepcionada conmigo'],['Cintura (cm)','82'],['Del 1 al 5, cuánto estrés tienes últimamente?','4'],['Y del 1 al 5, qué tal duermes?','2'],['Cuántas horas duermes?','6'],['Cuántas comidas haces al día?','3']]}]}};
         else { out=ctx.P_despachar(body); if(out.ok&&body.accion==='rondaCargar') out.data.ia=false; if(out.ok&&body.accion==='llamadasCargar') out.data.ia=!process.env.SIN_IA; }
+        if(out&&out.data&&body.accion==='calendarioCliente'&&!out.data.subido) out.data.subido={entreno:true,nutri:false};
       }catch(e){ out={ok:false,error:String(e)}; }
       if(process.env.LOG) console.log(body.accion||'ia', '->', out.ok, out.error||'');
       send(out); },LAT); }); return; }

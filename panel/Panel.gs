@@ -1073,7 +1073,8 @@ function CA_cliente(cid, fresco) {
     troncales.push({ id: id, nm: String(p.nombre || id), rango: String(p.repes || ''), serie: serie, subir: !!tope && deU.every(function (x) { return x.re >= tope; }) });
   });
   var acceso = { candado: !!aj.candado, desbloqueado: !!aj.desbloqueado, plan_ok: aj.plan_ok || '', cerrado: L_candado(aj, fotosCrudo, pesoCrudo, S) };
-  var res = { medUlt: medUlt, medPrim: medPrim, troncales: troncales, acceso: acceso, nombre: aj.nombre, semana: D.semana, desde: desde, hoy: D.hoy || P_hoy(), entrenos: entrenos, peso: peso, medidas: medidas, fotos: fotos, extras: extras, semanas: semanas, dias: dias };
+  var subido = { entreno: D_leer(ss, 'Plan').some(function (p) { return p.ejercicio_id; }), nutri: D_leer(ss, 'Ajustes').some(function (x) { return String(x.clave || '').trim() === 'nutricion_pdf' && String(x.valor || '').trim(); }) };
+  var res = { subido: subido, medUlt: medUlt, medPrim: medPrim, troncales: troncales, acceso: acceso, nombre: aj.nombre, semana: D.semana, desde: desde, hoy: D.hoy || P_hoy(), entrenos: entrenos, peso: peso, medidas: medidas, fotos: fotos, extras: extras, semanas: semanas, dias: dias };
   try { cc.put(ck, JSON.stringify(res), 300); } catch (e) {}
   return res;
 }
