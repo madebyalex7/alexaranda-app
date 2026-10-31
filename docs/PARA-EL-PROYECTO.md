@@ -41,3 +41,6 @@ La app ya no pide los pasos de ayer (Alex 30/10): van en el formulario semanal o
 
 ## Campos que lee la tarjeta del lunes (30/10)
 En `datos.historia`: `peso`, `peso_nota`, `energia`, `animo`, `sueno`, `entrenos`, `objetivo`. En `datos.formulario`: `tipo`, `fecha`, `estado`, `enlace` y `respuestas` (`[{pregunta, respuesta}]`). En `progreso`, `dir` admite además `costo`, `molestia` y `saltado`. En `datos.molestias`, `fecha` si la hay.
+
+## Formato que espera la tarjeta (31/10)
+`datos.fotos_comparar`: `{carpeta, antes: {fecha, frente, lado, espalda}, ahora: {fecha, frente, lado, espalda}}`, con ids o enlaces de Drive. `datos.molestias_historia`: `[{zona, valores: [2, 3, 5], cambio: 3}]`, donde `valores` va por semana (también vale `{semana, valor}`) y `cambio` es el número de semana. En `progreso`, `series` como `["35×12"]` y `zona` = alta, media o baja.
