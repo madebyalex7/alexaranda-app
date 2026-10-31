@@ -598,6 +598,8 @@ nav.tabs .tipol{font-size:19px;line-height:1;align-items:center;justify-content:
 .tcopia{flex:none}
 .recs .cambio{margin-bottom:8px}
 .hcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:12px}.hcard{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--gris);border-radius:14px;padding:12px 14px}.hcard h3{margin:0 0 6px;display:flex;align-items:center;gap:8px;font-size:17px}.hcard h3 .n{margin-left:auto}.hcard .corta{border-top:0}.hcard .corta li:last-child{border-bottom:0}.hcard.imp{border-left-color:var(--rojo);background:rgba(192,62,44,.09)}.hcard.pro{border-left-color:var(--ambar)}.hcard.pol{border-left-color:#E0B83A}.hcard.rep{border-left-color:var(--moca)}.hcard.lla{border-left-color:var(--verde)}.hcard.cob{border-left-color:#6F8FBF}.hlibre{text-align:center;padding:26px 12px;font-size:17px;color:var(--sec)}.hlibre b{display:block;font-size:34px;margin-bottom:4px}
+.metro{display:flex;gap:2px;overflow-x:auto;padding:4px 6px 8px 24px;scrollbar-width:thin}.mp{flex:1 0 62px;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;text-align:center;opacity:.55}.mp i{font-style:normal;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--line);filter:grayscale(1);z-index:1;font-size:14px}.mp small{font-size:11px;color:var(--sec);line-height:1.15}.mp::before{content:"";position:absolute;top:15px;left:-50%;width:100%;height:2px;background:var(--line)}.mp:first-child::before{display:none}.mp.on{opacity:1}.mp.on i{background:rgba(107,138,90,.35);filter:none;box-shadow:0 0 0 2px var(--verde)}.mp.on::before{background:var(--verde)}.mp.mal{opacity:1}.mp.mal i{background:rgba(192,62,44,.25);filter:none;box-shadow:0 0 0 2px var(--rojo)}.mp.mal small{color:var(--rojo);font-weight:600}
+.blq{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}.blq button{all:unset;cursor:pointer;display:block;width:100%;box-sizing:border-box;padding:6px 8px;border-radius:8px}.blq button:hover,.blq button:focus-visible{background:var(--sel)}.blq .mal button{color:var(--rojo);font-weight:600}.blq .yo button{font-weight:600}
 .ralerta.aud{background:rgba(90,120,170,.15);border-color:#6F8FBF}.ralerta .aupt{list-style:disc;padding-left:20px;margin:6px 0 8px}.ralerta .aupt li{display:list-item;border:0;padding:2px 0}
 </style>
 </head>
@@ -1718,7 +1720,7 @@ function nvChecks(c,d){
   if(!c.codigo_app){ add(false,'Tiene la app','sin código de la app: ponlo en «Programa y pagos»',dia>=2); return out; }
   if(!d) return out;
   if(d.sinApp){ add(false,'Tiene la app','no encuentro su hoja de la app',true); return out; }
-  if(d.acceso&&d.acceso.cerrado){ var zc=d.acceso.cerrado; add(false,'Su app sigue cerrada','falta '+[!zc.fotos&&'fotos',!zc.peso&&'peso',!zc.plan&&'tu OK al plan'].filter(Boolean).join(', ')+'. Si hace falta, «Desbloquear ya»',dia>=2); }
+  if(d.acceso&&d.acceso.cerrado){ var zc=d.acceso.cerrado; add(false,'Su app sigue cerrada','falta '+[!zc.fotos&&'su foto',!zc.plan&&'tu OK al plan'].filter(Boolean).join(' y ')+'. Si hace falta, «Desbloquear ya»',dia>=2); }
   var en=(d.entrenos||[]).filter(function(e){ return e.hecho&&e.fecha>=ini; }), ps=(d.peso||[]).filter(function(x){ return x.fecha>=sumar(ini,-7); }), fo=(d.fotos||[]).filter(function(f){ return f>=sumar(ini,-7); });
   var todo=[].concat(en.map(function(e){ return e.fecha; }),ps.map(function(x){ return x.fecha; }),fo,(d.extras||[]).map(function(x){ return x.fecha; })).filter(function(f){ return f>=sumar(ini,-7); }).sort();
   var ult=todo[todo.length-1]||'', sinNada=ult?dias(ult,h):dias(ini,h);
@@ -1737,7 +1739,7 @@ function nvChecks(c,d){
 /* Acceso a su app (candado de cliente nuevo): estado y botones. Ante la duda, el cliente ve su plan: el candado solo cierra si se pone a propósito */
 function accesoHtml(cid){
   var d=CAC[cid]; if(!d||d.sinApp||!d.acceso) return '';
-  var a=d.acceso, z=a.cerrado, est=!a.candado?'Abierta (sin candado)':a.desbloqueado?'Abierta (desbloqueada a mano)':z?'🔒 Cerrada: falta '+[!z.fotos&&'fotos',!z.peso&&'peso',!z.plan&&'tu OK al plan'].filter(Boolean).join(', '):'Abierta: ya tiene fotos, peso y tu OK';
+  var a=d.acceso, z=a.cerrado, est=!a.candado?'Abierta (sin candado)':a.desbloqueado?'Abierta (desbloqueada a mano)':z?'🔒 Entreno cerrado: falta '+[!z.fotos&&'su foto',!z.plan&&'tu OK al plan'].filter(Boolean).join(' y '):'Abierta: ya tiene foto y tu OK';
   return '<div class="acceso'+(z?' cerr':'')+'"><b>Su app: </b><span>'+esc(est)+'</span><span class="racc">'+
     (!a.candado&&!(d.entrenos||[]).length?'<button class="btn" data-acc="candado" data-acccid="'+esc(cid)+'">🔒 Poner candado</button>':'')+
     (a.candado&&!a.plan_ok?'<button class="btn prim" data-acc="plan_ok" data-acccid="'+esc(cid)+'">✅ OK al plan</button>':'')+
@@ -1745,7 +1747,7 @@ function accesoHtml(cid){
     (a.candado?'<button class="linkbtn" data-acc="quitar" data-acccid="'+esc(cid)+'">quitar candado</button>':'')+'</span></div>';
 }
 document.addEventListener('click',function(e){ var b=e.target.closest&&e.target.closest('[data-acc]'); if(!b) return; e.stopPropagation(); var cid=b.getAttribute('data-acccid'), q=b.getAttribute('data-acc');
-  if(q==='candado'&&!confirm('Su entreno y su alimentación quedarán cerrados hasta que tenga fotos, peso y tu OK al plan. Seguro?')) return;
+  if(q==='candado'&&!confirm('Su entreno quedará cerrado hasta que tenga foto y tu OK al plan. Seguro?')) return;
   if(q==='quitar'&&!confirm('Quitar el candado: verá su entreno y su alimentación aunque falte algo. Seguro?')) return;
   b.disabled=true; api('appAcceso',{cliente_id:cid,que:q}).then(function(d){ d._fresco=1; CAC[cid]=d; flash(); var y=scrollY; pintar(); scrollTo(0,y); }).catch(function(er){ b.disabled=false; alerta(er); }); },true);
 function nvRecordatorios(c){ var dia=nvDia(c), r=['Pídele foto y un mensajito después de cada entreno'];
@@ -1771,11 +1773,13 @@ function pintarNuevos(sel){
   var h=sel+'<div class="rcab"><h2>🐥 Pollitos<small>tus clientes nuevos: las 2 primeras semanas, con más control · '+lista.length+(lista.length===1?' cliente':' clientes')+'</small></h2><button class="btn prim" data-nvnuevo>+ Nuevo pollito</button></div>'+
     (sinF.length?'<section class="bloque"><h2>Sin ficha todavía <span class="n">'+sinF.length+'</span></h2><ul class="corta">'+sinF.map(function(a){ return '<li><button class="quien" disabled><b>'+esc(a.cliente)+'</b><span>'+esc(String(a.paso||'Falta su ficha con programa y pago'))+'</span></button><span class="avacc"><button class="btn prim" data-nvficha2="'+esc(a.id)+'">Crear su ficha</button></span></li>'; }).join('')+'</ul></section>':'');
   if(!lista.length){ app.innerHTML=h+(sinF.length?'':'')+'<div class="pantalla"><h2>Ahora no hay pollitos</h2><p>Cuando des de alta a alguien y pongas su primer día de servicio («Inicio» en su ficha), sale aquí durante 14 días con todo lo que tienes que vigilar.</p></div>'; app.onclick=function(e){ var b=e.target.closest('button'); if(b&&b.hasAttribute('data-nvnuevo')) irAlta(null); if(b&&b.hasAttribute('data-nvficha2')) irAlta(altasSinFicha().filter(function(a){ return a.id===b.getAttribute('data-nvficha2'); })[0]); }; return; }
+  var blq=lista.map(function(c){ var al=altaDe(c.id); return al?bloqueoDe(c,al,CAC[c.id]):null; }).filter(Boolean).sort(function(a,b){ return (b.mal-a.mal)||(b.yo-a.yo); });
+  if(blq.length) h+='<section class="sembar"><h2>Lo que bloquea a cada alta</h2><ul class="blq">'+blq.map(function(x){ return '<li class="'+(x.mal?'mal':x.yo?'yo':'')+'"><button data-nvblq="'+esc(x.cid)+'">'+(x.mal?'🔴 ':x.yo?'👉 ':'⏳ ')+esc(x.t)+'</button></li>'; }).join('')+'</ul></section>';
   h+='<div class="rlista">'+lista.map(function(c){ var d=CAC[c.id], ch=nvChecks(c,d), urg=ch.filter(function(x){ return x.urg; }).length, ok=ch.filter(function(x){ return x.ok; }).length, ab=NV.abierto===c.id, dia=nvDia(c), tel=String(c.telefono||'').replace(/\D/g,'');
     var alN=altaDe(c.id), foN=alN&&!alN.listo?formIniDe(alN):null, esperaF=alN&&!alN.listo&&alN.formulario_enviado&&!foN&&FOC[c.id];
     var chips=(foN?'<span class="mini v">📝 formulario recibido</span>':esperaF?'<span class="mini a">⏳ esperando formulario</span>':'')+'<span class="mini n">'+(dia<1?'empieza el '+esc(fCorta(cArranque(c))):'día '+dia+' de 14')+'</span>'+(ch.length?'<span class="mini '+(urg?'r':ok===ch.length?'v':'a')+'">'+ok+'/'+ch.length+'</span>':'')+(urg?'<span class="mini r">⚠ '+urg+'</span>':'');
     return '<article class="rfila nvfila'+(ab?' abierta':'')+'" data-nv="'+esc(c.id)+'"><div class="rhead"><button class="rc" data-nvab aria-expanded="'+ab+'"><span class="punto '+(urg?'rojo':'verde')+'"></span><span class="rnom">'+esc(c.nombre)+'</span><span class="rchips">'+chips+'</span>'+nvEstado(c,d)+
-      '<span class="rtit"><span class="nvbar" aria-hidden="true"><i style="width:'+Math.round(dia*100/14)+'%"></i></span>'+esc((ch.filter(function(x){ return x.urg; })[0]||{}).t||(d||!c.codigo_app?'Todo en marcha':'Mirando su app…'))+'</span></button></div>'+
+      '<span class="rtit"><span class="nvbar" aria-hidden="true"><i style="width:'+Math.round(dia*100/14)+'%"></i></span>'+esc((ch.filter(function(x){ return x.urg; })[0]||{}).t||(d||!c.codigo_app?'Todo en marcha':'Mirando su app…'))+'</span></button></div>'+(alN?metroHtml(altaParadas(c,alN,d))+altaAcciones(c,alN,d):'')+
       (ab?'<div class="rcuerpo"><section class="rsec ancho2">'+altaFicha(c.id)+accesoHtml(c.id)+'<div class="racc" style="margin-top:8px"><button class="btn" data-nvver="entreno">🏋️ Ver su entreno</button><button class="btn" data-nvver="nutricion">🥗 Ver su nutrición</button></div></section><section class="rsec"><h3>Lista de control</h3><ul class="nvlista">'+ch.map(function(x){ return '<li class="'+(x.ok?'ok':x.urg?'mal':'')+'"><span class="nvc" aria-hidden="true">'+(x.ok?'✓':x.urg?'!':'·')+'</span><b>'+esc(x.t)+'</b><small>'+esc(x.sub)+'</small></li>'; }).join('')+'</ul></section>'+
         '<section class="rsec"><h3>Estas semanas, pídele</h3><ul class="tec">'+nvRecordatorios(c).map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul>'+
         '<div class="racc" style="margin-top:12px">'+(tel?'<a class="btn wa" href="'+waU(tel)+'" target="_blank" rel="noopener">WhatsApp</a>':'')+'<button class="btn" data-nvficha>Su ficha y calendario →</button></div></section></div>':'')+'</article>'; }).join('')+'</div>';
@@ -1783,8 +1787,10 @@ function pintarNuevos(sel){
   app.onclick=function(e){ var b=e.target.closest('button,a'); if(!b) return;
     if(b.hasAttribute('data-nvnuevo')){ irAlta(null); return; }
     if(b.hasAttribute('data-nvficha2')){ irAlta(altasSinFicha().filter(function(a){ return a.id===b.getAttribute('data-nvficha2'); })[0]); return; }
+    if(b.hasAttribute('data-nvblq')){ NV.abierto=b.getAttribute('data-nvblq'); var y0=scrollY; pintarNuevos(''); scrollTo(0,y0); return; }
     var art=b.closest('[data-nv]'); if(!art) return; var cid=art.getAttribute('data-nv');
     if(b.hasAttribute('data-nvab')){ NV.abierto=NV.abierto===cid?null:cid; var y=scrollY; pintarNuevos(''); scrollTo(0,y); return; }
+    if(b.hasAttribute('data-nvfotos')){ var cf=buscar('Clientes',cid)||{}; abrirFotos(cid,cf.nombre); return; }
     if(b.hasAttribute('data-nvver')){ PG={cid:cid,sec:b.getAttribute('data-nvver')}; S.tab='clientes'; try{ history.pushState({pg:1},'','#c/'+encodeURIComponent(cid)+'/'+PG.sec); }catch(er){} pintar(); window.scrollTo(0,0); return; }
     if(b.hasAttribute('data-nvficha')){ PG={cid:cid,sec:'calendario'}; S.tab='clientes'; try{ history.pushState({pg:1},'','#c/'+encodeURIComponent(cid)+'/calendario'); }catch(er){} pintar(); window.scrollTo(0,0); return; }
   };
@@ -3563,9 +3569,34 @@ function lresultado(l){
 }
 /* --- alta: formulario inicial y en qué paso va (Alex 25/10: el alta la monta el chat de Altas a las 10:00 y a las 20:00) --- */
 var FORM_INI='https://docs.google.com/forms/d/e/1FAIpQLSdJ2OUhlpTyLX9jU9reFnnKUFvmbl-qB4sFrpJ91RrBkKQREA/viewform?usp=pp_url&entry.70144598=';
+/* Altas (Alex 31/10): dos mensajes el día de la llamada, con textos editables en Llamadas › Vídeos y textos de las altas */
+var MSG_D={msg_bienvenida:'Ya estás dentro, {nombre}! 🙌\n\nTe dejo este vídeo cortito con cómo vamos a trabajar juntos:\n{video_pilares}\n\nY aquí tienes el formulario inicial. Con esto conozco bien tu día a día y preparo tu plan a tu medida. Tómate 10-15 minutos con calma:\n{formulario}\n\nCualquier duda, me dices. Un abrazo!',msg_app:'{nombre}, te paso tu app, que es donde va a estar todo 📱\n\n{video_app}\n\nEntra aquí y añádela a tu pantalla de inicio:\n{app}\n\nHoy mismo sube tus fotos de inicio en «Mi progreso». Si tienes báscula y cinta, apunta también tu peso y tus medidas. Sin la foto no se abre tu entreno, vale?\n\nUn abrazo!'};
+function msgAlta(k,al){ var c=buscar('Clientes',al.cliente_id)||{}, nom=String(al.cliente||c.nombre||'').trim(), v={nombre:nom.split(/\s+/)[0]||'',video_pilares:cfg('video_pilares'),video_app:cfg('video_app'),formulario:FORM_INI+encodeURIComponent(nom),app:c.codigo_app?appUrl(c.codigo_app):''};
+  var sal=[]; (cfg(k)||MSG_D[k]).split('\n').forEach(function(lin){ var m=lin.match(/\{(\w+)\}/g); if(m&&m.some(function(x){ return !v[x.slice(1,-1)]; })){ if(sal.length&&/:\s*$/.test(sal[sal.length-1])) sal.pop(); return; } sal.push(lin.replace(/\{(\w+)\}/g,function(_,x){ return v[x]||''; })); });   // sin el dato, tampoco se manda la frase que lo presenta
+  return sal.join('\n').replace(/\n{3,}/g,'\n\n').trim(); }
+function altaTel(al){ var c=buscar('Clientes',al.cliente_id)||{}; return avTel({telefono:al.telefono||c.telefono||''}); }
+function altaBotones(al){ var c=buscar('Clientes',al.cliente_id)||{}, tel=altaTel(al), b1=al.bienvenida_enviada||al.formulario_enviado, b2=al.app_enviada||/App enviada/.test(al.paso||'');
+  return '<div class="racc"><a class="btn'+(b1?'':' prim')+'" data-alenv="1" data-alid="'+esc(al.id)+'" target="_blank" rel="noopener" href="'+waU(tel,msgAlta('msg_bienvenida',al))+'">'+(b1?'✓ ':'')+'1 · Bienvenida + formulario</a>'+(c.codigo_app?'<a class="btn'+(b2?'':' prim')+'" data-alenv="2" data-alid="'+esc(al.id)+'" target="_blank" rel="noopener" href="'+waU(tel,msgAlta('msg_app',al))+'">'+(b2?'✓ ':'')+'2 · App + fotos</a>':'<button class="btn prim" data-almontar="'+esc(al.cliente_id)+'">Crear su hoja de la app</button>')+'</div>'; }
+document.addEventListener('click',function(e){ if(!e.target.closest) return; var a=e.target.closest('[data-alenv]');
+  if(a){ var al=(S.data.altas||[]).filter(function(x){ return x.id===a.getAttribute('data-alid'); })[0]; if(!al||!altaTel(al)) return; var n=a.getAttribute('data-alenv'), h=hoy(), cm=n==='1'?{bienvenida_enviada:h,formulario_enviado:al.formulario_enviado||h}:{app_enviada:h}; Object.assign(al,cm); programar('Altas',al.id,cm,true); setTimeout(function(){ if(S.tab==='pollitos'){ var y=scrollY; pintarNuevos(''); scrollTo(0,y); } },300); return; }
+  var m=e.target.closest('[data-almontar]'); if(!m) return; e.stopPropagation(); var cid=m.getAttribute('data-almontar'); m.disabled=true; m.textContent='Creando su hoja…';
+  api('altaMontar',{cliente_id:cid}).then(function(r){ var c=buscar('Clientes',cid); if(c&&r.cliente) Object.assign(c,r.cliente); delete CAC[cid]; pintar(); }).catch(function(er){ m.disabled=false; m.textContent='Crear su hoja de la app'; alerta(er); }); },true);
+/* Línea de paradas de un alta: se enciende sola con lo que ya hay */
+function altaParadas(c,al,d){ var h=hoy(), fo=formIniDe(al), fFo=fo&&String(fo.fecha||'').slice(0,10), fotos=d&&!d.sinApp?(d.fotos||[]).slice().sort():[], en=d?(d.entrenos||[]).filter(function(e){ return e.hecho; }).map(function(e){ return e.fecha; }).sort():[], vid=(S.data.tareas||[]).filter(function(t){ return vivo(t)&&t.cliente_id===c.id&&/^Entreno:.*vídeo/i.test(String(t.tarea||'')); })[0], ok=d&&d.acceso&&d.acceso.plan_ok;
+  var bv=al.bienvenida_enviada||al.formulario_enviado, ap=al.app_enviada||(/App enviada/.test(al.paso||'')?1:''), tarde=function(f){ return esFecha(f)&&dias(f,h)>2; };
+  return [{k:'llamada',ic:'📞',t:'Llamada',f:al.fecha,on:true},{k:'bienv',ic:'👋',t:'Bienvenida',f:bv,on:!!bv,yo:true},{k:'app',ic:'📱',t:'App enviada',f:ap,on:!!ap,yo:true},{k:'form',ic:'📝',t:'Formulario',f:fFo,on:!!fo,mal:bv&&!fo&&tarde(bv),desde:bv},{k:'fotos',ic:'📸',t:'Fotos',f:fotos[0],on:!!fotos.length,mal:ap&&!fotos.length&&tarde(ap),desde:ap},{k:'video',ic:'🎥',t:'Vídeo día 1',f:vid&&vid.hecha_el,on:!!(vid&&vid.estado==='hecha'),mal:vid&&vid.estado!=='hecha'&&esFecha(vid.fecha)&&vid.fecha<h,yo:true},{k:'plan',ic:'🏋️',t:'Plan listo',f:al.listo,on:!!al.listo},{k:'ok',ic:'✅',t:'Tu OK',f:ok,on:!!ok,yo:true},{k:'entra',ic:'🔓',t:'Entrena',f:en[0],on:!!en.length}]; }
+function metroHtml(ps){ return '<div class="metro" role="list">'+ps.map(function(p){ return '<span class="mp '+(p.on?'on':p.mal?'mal':'')+'" role="listitem" title="'+esc(p.t+(p.on&&esFecha(String(p.f||'').slice(0,10))?': '+fCorta(String(p.f).slice(0,10)):p.on?': hecho':p.mal?': atrasado':': pendiente'))+'"><i aria-hidden="true">'+p.ic+'</i><small>'+esc(p.t)+'</small></span>'; }).join('')+'</div>'; }
+function bloqueoDe(c,al,d){ var ps=altaParadas(c,al,d), f=ps.filter(function(p){ return !p.on; })[0]; if(!f) return null; var n=c.nombre, dd=f.desde&&esFecha(f.desde)?dias(f.desde,hoy()):0, sf=dd?' ('+dd+(dd===1?' día':' días')+')':'';
+  var T={bienv:'mándale la bienvenida',app:'mándale la app',form:'falta el formulario'+sf,fotos:'faltan las fotos'+sf,video:'mándale el vídeo del día 1',plan:'falta su plan',ok:'listo para tu OK',entra:'aún no ha entrenado'}; return {t:n+' · '+(T[f.k]||f.t),mal:!!f.mal,yo:!!f.yo,cid:c.id}; }
+function altaAcciones(c,al,d){ var ps=altaParadas(c,al,d), P={}; ps.forEach(function(p){ P[p.k]=p; }); var tel=altaTel(al), n=String(c.nombre||'').split(/\s+/)[0], o=[];
+  if(P.bienv.on&&!P.form.on) o.push('<a class="btn" target="_blank" rel="noopener" href="'+waU(tel,'Hola '+n+'! Te dejo otra vez el formulario inicial, que lo necesito para prepararte el plan:\n'+FORM_INI+encodeURIComponent(c.nombre||'')+'\n\nCuando puedas, vale?')+'">Recordar formulario</a>');
+  if(P.app.on&&!P.fotos.on) o.push('<a class="btn" target="_blank" rel="noopener" href="'+waU(tel,'Hola '+n+'! Recuerda subir tus fotos de inicio en «Mi progreso» de tu app. Sin la foto no se abre tu entreno, vale?')+'">Recordar fotos</a>');
+  if(P.fotos.on) o.push('<button class="btn" data-nvfotos>Ver fotos</button>');
+  if(P.plan.on) o.push('<button class="btn" data-nvver="entreno">Revisar plan</button>');
+  if(P.plan.on&&!P.ok.on&&d&&d.acceso) o.push('<button class="btn prim" data-acc="plan_ok" data-acccid="'+esc(c.id)+'">✅ OK al plan'+(P.fotos.on?'':' (aún sin foto)')+'</button>');
+  return o.length?'<div class="racc" style="margin:6px 0 2px 24px">'+o.join('')+'</div>':''; }
 function altaFicha(cid){ var al=(S.data.altas||[]).filter(function(a){ return vivo(a)&&a.cliente_id===cid&&a.estado!=='hecha'; }).pop(); if(!al) return '';
-  var dA=CAC[cid], espera=dA&&dA.acceso&&dA.acceso.candado&&!dA.acceso.plan_ok;   // listo con candado = propuesta lista para tu OK; la bienvenida va después
-  return '<div class="grupo"><h3>Su alta</h3><p class="estado-m">'+altaPaso(al)+'</p>'+(al.listo&&!espera?btnBienvenida(al):'<div class="racc">'+(al.listo?'':btnFormIni(al))+'</div>'+btnApp(al,espera))+'</div>'; }
+  return '<div class="grupo"><h3>Su alta</h3>'+(al.paso?'<p class="estado-m">'+esc(al.paso)+'</p>':'')+altaBotones(al)+'</div>'; }
 function altaPaso(al){ if(al.estado==='hecha') return '✓ Alta completa'+(al.resultado?' · '+esc(al.resultado):'');
   return (al.paso?esc(al.paso):'Pendiente: el chat de Altas crea sus documentos y su carpeta a las 10:00 o a las 20:00. Cuando llegue su formulario, te deja la propuesta de entreno y nutrición.')+(al.formulario_enviado?' · Formulario inicial enviado el '+esc(fCorta(al.formulario_enviado)):''); }
 /* Vídeos de las altas (Alex 30/10): se guardan una vez en Llamadas › Vídeos de las altas */
@@ -3621,8 +3652,10 @@ function lformAlta(l){
   var F=LC.form, ps=lplanesAct(), p=ps.filter(function(x){ return x.id===F.plan; })[0], cs=lcuotasDe(p);
   var suma=F.cobros.reduce(function(t,c){ return t+num(c.importe); },0), mal=Math.abs(suma-num(F.precio))>0.05;
   return '<div class="lalta"><h4>Crear su ficha de cliente</h4><div class="campos">'+
-    '<div class="campo"><label>Nombre</label><input data-lf="nombre" value="'+esc(F.nombre)+'"></div>'+
+    '<div class="campo"><label>Nombre y apellidos</label><input data-lf="nombre" value="'+esc(F.nombre)+'"></div>'+
     '<div class="campo"><label>Teléfono</label><input data-lf="telefono" type="tel" value="'+esc(F.telefono)+'" placeholder="con prefijo: 34…"></div>'+
+    '<div class="campo"><label>Correo</label><input data-lf="correo" type="email" value="'+esc(F.correo||'')+'"></div>'+
+    '<div class="campo"><label>Sexo</label><select data-lf="sexo">'+['Mujer','Hombre'].map(function(x){ return '<option'+(x===(F.sexo||'Mujer')?' selected':'')+'>'+x+'</option>'; }).join('')+'</select></div>'+
     '<div class="campo"><label>Instagram</label><input data-lf="instagram" value="'+esc(F.instagram||'')+'" placeholder="@usuario"></div>'+
     '<div class="campo"><label>Dónde entrena</label><select data-lf="lugar">'+['Casa','Gimnasio'].map(function(x){ return '<option'+(x===F.lugar?' selected':'')+'>'+x+'</option>'; }).join('')+'</select></div>'+
     '<div class="campo"><label>Días por semana</label><select data-lf="dias">'+['2','3','4','5'].map(function(x){ return '<option'+(x===String(F.dias)?' selected':'')+'>'+x+'</option>'; }).join('')+'</select><small class="estado-m">si en el formulario dice menos, mandan los del formulario</small></div>'+
@@ -3644,8 +3677,8 @@ function lformAlta(l){
 /* Vídeos de las altas (Alex 30/10): pilares (con el formulario inicial), cómo funciona la app y cómo va el seguimiento (con su usuario) */
 var VID_ALTAS=[['video_pilares','Pilares del servicio','va con el formulario inicial'],['video_app','Cómo funciona la app','va con su usuario de la app'],['video_seguimiento','Cómo funciona el seguimiento','va con su usuario de la app']];
 function vidAltas(){ var falta=VID_ALTAS.filter(function(v){ return !cfg(v[0]); }).length;
-  return '<details class="bloque lsec"'+(falta===3?'':'')+'><summary>🎬 Vídeos de las altas'+(falta?' <span class="n">'+falta+' sin poner</span>':' ✓')+'</summary><p class="estado-m">Pega el enlace (YouTube oculto, Cap…) y se mete solo en los mensajes de las altas.</p><div class="campos">'+
-    VID_ALTAS.map(function(v){ return '<div class="campo ancho"><label>'+v[1]+' <small class="estado-m">· '+v[2]+'</small></label><input type="url" data-cfg="'+v[0]+'" value="'+esc(cfg(v[0]))+'" placeholder="https://…"></div>'; }).join('')+'</div></details>'; }
+  return '<details class="bloque lsec"'+(falta===3?'':'')+'><summary>🎬 Vídeos y textos de las altas'+(falta?' <span class="n">'+falta+' sin poner</span>':' ✓')+'</summary><p class="estado-m">Pega el enlace (YouTube oculto, Cap…) y se mete solo en los mensajes de las altas.</p><div class="campos">'+
+    VID_ALTAS.map(function(v){ return '<div class="campo ancho"><label>'+v[1]+' <small class="estado-m">· '+v[2]+'</small></label><input type="url" data-cfg="'+v[0]+'" value="'+esc(cfg(v[0]))+'" placeholder="https://…"></div>'; }).join('')+[['msg_bienvenida','1 · Bienvenida + formulario'],['msg_app','2 · App + fotos']].map(function(m){ return '<div class="campo ancho"><label>'+m[1]+' <small class="estado-m">· usa {nombre}, {video_pilares}, {formulario}, {video_app} y {app}. Si un dato falta, esa línea no se manda</small></label><textarea rows="8" data-cfg="'+m[0]+'">'+esc(cfg(m[0])||MSG_D[m[0]])+'</textarea></div>'; }).join('')+'</div></details>'; }
 document.addEventListener('change',function(e){ var t=e.target; if(!t.hasAttribute||!t.hasAttribute('data-cfg')) return; var k=t.getAttribute('data-cfg'); S.data.config=S.data.config||{}; S.data.config[k]=t.value.trim(); programar('Config',k,{valor:t.value.trim()},true); flash(); });
 function lplanes(){
   var ps=LC.planes.filter(vivo).sort(function(a,b){ return num(a.orden)-num(b.orden)||num(a.meses)-num(b.meses); });
@@ -3710,11 +3743,11 @@ function enlazarLlamadas(){
     if(b.hasAttribute('data-lcancelar')){ LC.alta=null; LC.form=null; lrepintar(id); return; }
     if(b.hasAttribute('data-lplan')){ var p=buscar('Planes',b.getAttribute('data-lplan')), F=LC.form; F.plan=p.id; F.programa=p.nombre; F.meses=p.meses; F.precio=p.precio; if(lcuotasDe(p).indexOf(+F.cuotas)<0) F.cuotas=1; lrecalc(F); lrepintar(id); return; }
     if(b.hasAttribute('data-lcrear')){
-      var F2=LC.form; if(!String(F2.nombre).trim()){ alerta('Falta el nombre'); return; }
+      var F2=LC.form; if(String(F2.nombre).trim().split(/\s+/).length<2){ alerta('Pon nombre y apellidos'); return; } if(!String(F2.telefono||'').replace(/\D/g,'')){ alerta('Falta el teléfono'); return; } if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(F2.correo||'').trim())){ alerta('Falta el correo'); return; }
       b.disabled=true; b.textContent='Creando…';
       if(pend['Leads|'+id]) enviar('Leads|'+id);
-      api('llamadaCrearCliente',{lead_id:id,alta:{nombre:F2.nombre,telefono:F2.telefono,instagram:F2.instagram,lugar:F2.lugar,dias:F2.dias,nota_pago:F2.nota_pago,alta_id:F2.alta_id||'',programa:F2.programa,meses:F2.meses,precio:F2.precio,metodo:F2.metodo,inicio:F2.inicio,notas:F2.notas,cobros:F2.cobros}})
-        .then(function(r){ S.data.clientes.push(r.cliente); r.cobros.forEach(function(c){ S.data.cobros.push(c); }); LC.altas.push(r.alta); S.data.altas=(S.data.altas||[]).filter(function(a){ return a.id!==r.alta.id; }).concat([r.alta]); var aPol=F2.volverPol; Object.assign(l,r.lead); LC.alta=null; LC.form=null; $('#nCli').textContent=S.data.clientes.filter(function(c){return vivo(c)&&c.estado==='Activo';}).length; if(aPol){ S.tab='pollitos'; NV.abierto=r.cliente.id; pintar(); flash(); return; } lrepintar(id); flash(); })
+      api('llamadaCrearCliente',{lead_id:id,alta:{nombre:F2.nombre,telefono:F2.telefono,correo:F2.correo,sexo:F2.sexo||'Mujer',instagram:F2.instagram,lugar:F2.lugar,dias:F2.dias,nota_pago:F2.nota_pago,alta_id:F2.alta_id||'',programa:F2.programa,meses:F2.meses,precio:F2.precio,metodo:F2.metodo,inicio:F2.inicio,notas:F2.notas,cobros:F2.cobros}})
+        .then(function(r){ if(r.montaje&&r.montaje.error) setTimeout(function(){ alerta(new Error('Ficha creada, pero falta su hoja de la app: '+r.montaje.error+'. Reinténtalo desde Pollitos.')); },300); S.data.clientes.push(r.cliente); r.cobros.forEach(function(c){ S.data.cobros.push(c); }); LC.altas.push(r.alta); S.data.altas=(S.data.altas||[]).filter(function(a){ return a.id!==r.alta.id; }).concat([r.alta]); var aPol=F2.volverPol; Object.assign(l,r.lead); LC.alta=null; LC.form=null; $('#nCli').textContent=S.data.clientes.filter(function(c){return vivo(c)&&c.estado==='Activo';}).length; if(aPol){ S.tab='pollitos'; NV.abierto=r.cliente.id; pintar(); flash(); return; } lrepintar(id); flash(); })
         .catch(function(er){ b.disabled=false; b.textContent='Crear ficha y cobros'; alerta(er); });
       return;
     }
@@ -3801,7 +3834,8 @@ function hoyTienes(dolor,llamadas,cobros){
     var en=(d.entrenos||[]).filter(function(e){ return e.hecho&&e.fecha>=cArranque(c); }).map(function(e){ return e.fecha; }).sort();
     if(en.length===1&&dias(en[0],h)<=2) fil.push(fila('🎉',c.nombre+' ha hecho su primer entreno',relativo(en[0])+' · buen momento para escribirle','data-irnuevo="'+esc(c.id)+'"'));
     var u=nvChecks(c,d).filter(function(x){ return x.urg; })[0]; if(u) fil.push(fila('🐥',c.nombre+' · '+u.t,nvDia(c)<1?'empieza el '+fCorta(cArranque(c)):'día '+nvDia(c)+' de 14','data-irnuevo="'+esc(c.id)+'"','mal')); });
-  nuevos().forEach(function(c){ var d=CAC[c.id], al=altaDe(c.id); if(d&&d.acceso&&d.acceso.candado&&!d.acceso.plan_ok&&al&&al.listo) fil.push(fila('✅','Aprobar el plan de '+c.nombre,'Revísalo y dale a «OK al plan»','data-irnuevo="'+esc(c.id)+'"')); });
+  nuevos().forEach(function(c){ var d=CAC[c.id], al=altaDe(c.id); if(d&&d.acceso&&d.acceso.candado&&!d.acceso.plan_ok&&al&&al.listo) CT.pol.push('<li><span class="ctic" aria-hidden="true">✅</span><button class="quien" data-irnuevo="'+esc(c.id)+'"><b>'+esc(c.nombre)+' · listo para tu OK</b><span>Revisa su plan</span></button><button class="btn prim" data-acc="plan_ok" data-acccid="'+esc(c.id)+'">✅ OK al plan</button></li>'); });
+  tareasVivas().filter(function(t){ return /^Entreno:.*vídeo/i.test(String(t.tarea||''))&&esFecha(t.fecha)&&t.fecha<=h; }).forEach(function(t){ CT.pol.push(filaPromesa(t)); });
   // Formulario inicial recibido (Alex 30/10): se mira solo al abrir el panel o al darle a recargar
   nuevos().forEach(function(c){ var al=altaDe(c.id); if(!al||al.listo||al.app_enviada||/App enviada/.test(al.paso||'')) return; var fo=formIniDe(al); if(fo) fil.push(fila('📝',c.nombre+' ha rellenado el formulario','Mándale su app y los vídeos','data-irnuevo="'+esc(c.id)+'"')); });
   ALD.dolor=dolor; dolor.forEach(function(a,i){ fil.push(fila('🔴',a.cliente+' · '+a.titulo,a.detalle,'data-alt="dolor|'+i+'"','mal')); });

@@ -19,7 +19,7 @@ var TZ = 'Europe/Madrid';
 var CACHE_CLIENTE_S = 60;     // si Alex pone activa = FALSE, como mucho tarda 1 minuto en cortar
 var CACHE_DATOS_S = 300;
 /** Cambia con cada versión del código: así, al publicar una versión nueva, no se sirven datos guardados por la anterior */
-var VERSION_DATOS = '2026-10-30a';      // cambios de Alex en el plan se ven en 5 minutos como mucho
+var VERSION_DATOS = '2026-10-31a';      // cambios de Alex en el plan se ven en 5 minutos como mucho
 var DIAS_ENTRENO = ['d1', 'd2', 'd3'];   // por defecto; cada hoja lo define en «Días plan» (todos menos «st»)
 
 // ═════════════════════════ 1. LÓGICA (pura) ═════════════════════════
@@ -433,7 +433,7 @@ function L_candado(aj, fotos, peso, semana) {
     // Si la app aún no le deja pesarse (sin báscula o se pesa más adelante), el peso no puede cerrarle la app
     var sinPeso = aj.peso_frecuencia === 'no' || (semana && aj.peso_desde_semana && semana < aj.peso_desde_semana);
     if (sinPeso) p = true;
-    return f && p && ok ? null : { fotos: f, peso: p, plan: ok, sinPeso: !!sinPeso };
+    return f && ok ? null : { fotos: f, peso: p, plan: ok, sinPeso: !!sinPeso };   // Alex 31/10: abre con la foto y su OK; el peso ya no cierra
   } catch (e) { return null; }
 }
 /** Primera semana del programa que vivió en ESTA app (Alex 30/10: las de antes de migrar no son entrenos saltados).

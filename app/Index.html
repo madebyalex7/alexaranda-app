@@ -1915,9 +1915,9 @@ function hub(){
   ${nuncaDosVeces()}
   <p class="sub hubsub">${esc(fraseHub())}</p>
   <div class="fcards">
-    ${estadoCandado() ? carta("home", "Entrenamiento", ["Se abre muy pronto", "Con tus fotos, tu peso y tu plan listo"], "entrenamiento", "", "cerrada") : carta("home", "Entrenamiento", ent, "entrenamiento", `<span class="fc-meta">${n} de ${OBJ()} esta semana${rec && vidsPend(rec) ? " · 🎥 " + vidsPend(rec) : ""}</span>`)}
+    ${estadoCandado() ? carta("home", "Entrenamiento", estadoCandado().fotos ? ["Se abre muy pronto", "Te estoy preparando tu plan"] : ["Sube tu foto de inicio", "Para desbloquear tu entreno"], "entrenamiento", "", "cerrada") : carta("home", "Entrenamiento", ent, "entrenamiento", `<span class="fc-meta">${n} de ${OBJ()} esta semana${rec && vidsPend(rec) ? " · 🎥 " + vidsPend(rec) : ""}</span>`)}
     ${carta("prog", "Mi progreso", prog, "control", tocaPeso() ? `<span class="fc-dot" aria-hidden="true"></span>` : "", tocaPeso() ? "aviso" : "")}
-    ${estadoCandado() ? carta("nutri", "Alimentación", ["Se abre muy pronto", "Con tu plan a tu medida"], "alimentacion", "", "cerrada") : D.nutri ? carta("nutri", "Alimentación", ["Tu plan de alimentación", "Ábrelo o descárgalo para imprimirlo"], "alimentacion") : carta("nutri", "Alimentación", ["Tu plan está en camino", "Te lo preparo a tu medida y aparece aquí"], "alimentacion", `<span class="fc-lock">En preparación</span>`, "pronto")}
+    ${D.nutri ? carta("nutri", "Alimentación", ["Tu plan de alimentación", "Ábrelo o descárgalo para imprimirlo"], "alimentacion") : carta("nutri", "Alimentación", ["Tu plan está en camino", "Te lo preparo a tu medida y aparece aquí"], "alimentacion", `<span class="fc-lock">En preparación</span>`, "pronto")}
   </div>
   ${D.notaAlex ? `<div class="alexq"><div class="label">${ic("nota")} Esta semana te digo</div><p>${esc(D.notaAlex)}</p><span class="firma"><img class="av" src="/alex.jpg" alt="" width="36" height="36" onerror="this.remove()">— Alex</span></div>` : ""}
   <p class="sync" id="sync">${textoSync()}</p>`;
@@ -2418,23 +2418,19 @@ function estadoCandado(){
     const c = D && D.candado; if(!c || typeof c !== "object") return null;
     if(Date.now() - (+lsGet("cand_visto_" + CODIGO) || Date.now()) > 72 * 36e5) return null;   // 3 días sin poder confirmarlo con el servidor: abierto
     const mp = D.mp || {}, f = c.fotos === true || (mp.fotos || []).length > 0, p = c.peso === true || (mp.pesos || []).length > 0, ok = c.plan === true;
-    return f && p && ok ? null : {fotos: f, peso: p, plan: ok, sinPeso: !!c.sinPeso};
+    return f && ok ? null : {fotos: f, peso: p, plan: ok, sinPeso: !!c.sinPeso};
   }catch(e){ return null; }
 }
-const vistaCerrada = v=>v === "home" || v === "week" || v === "nutri" || v === "extra" || !!(D && D.dias && D.dias[v]);
+const vistaCerrada = v=>v === "home" || v === "week" || v === "extra" || !!(D && D.dias && D.dias[v]);
 function pantallaCandado(c){
-  const fila = (ok, t, sub, go)=>`<li class="${ok ? "ok" : ""}"><span class="ck" aria-hidden="true">${ok ? "✓" : ""}</span><div><b>${t}</b><small>${sub}</small></div>${!ok && go ? `<button type="button" class="mini" data-go="${go}">Subir</button>` : ""}</li>`;
   app.innerHTML = `${cabecera("")}
   <div class="candado">
     <div class="cand-ic" aria-hidden="true">🔒</div>
-    <h1>Tu plan se abre muy pronto</h1>
-    <p class="sub">Tu entreno y tu alimentación se desbloquean en cuanto tengamos esto. Vamos a por ello 💪</p>
-    <ul class="cand-lista">
-      ${c.sinPeso ? "" : fila(c.peso, "Tu peso de hoy", c.peso ? "Apuntado" : "En ayunas, después del baño", "prog")}
-      ${fila(c.fotos, "Tus fotos de inicio", c.fotos ? "Hechas" : "De frente, de lado y de espalda. Solo las veo yo", "prog")}
-      ${fila(c.plan, "Tu plan a tu medida", c.plan ? "Listo" : "Te lo estoy preparando con tu formulario", "")}
-    </ul>
-    <p class="sub" style="font-size:13.5px">Mientras tanto, lo que te falte lo subes en «Progreso».</p>
+    ${c.fotos ? `<h1>Tu entreno se abre muy pronto</h1>
+    <p class="sub">Ya tengo tu foto. En cuanto tu plan esté listo, se abre solo 💪</p>` : `<h1>Sube tu foto de inicio para desbloquear tu entreno</h1>
+    <p class="sub">De frente, de lado y de espalda. Solo las veo yo.</p>
+    <button type="button" class="mini" data-go="prog">Subir mis fotos</button>`}
+    <p class="sub" style="font-size:13.5px">Mientras tanto, ya puedes usar «Progreso» y ver tu alimentación.</p>
     <img class="cand-alex" src="/alex.jpg" alt="" width="56" height="56" onerror="this.remove()">
   </div>`;
   app.querySelectorAll("[data-go]").forEach(b=>b.onclick = ()=>ir(b.dataset.go));

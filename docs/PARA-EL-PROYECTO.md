@@ -44,3 +44,6 @@ En `datos.historia`: `peso`, `peso_nota`, `energia`, `animo`, `sueno`, `entrenos
 
 ## Formato que espera la tarjeta (31/10)
 `datos.fotos_comparar`: `{carpeta, antes: {fecha, frente, lado, espalda}, ahora: {fecha, frente, lado, espalda}}`, con ids o enlaces de Drive. `datos.molestias_historia`: `[{zona, valores: [2, 3, 5], cambio: 3}]`, donde `valores` va por semana (también vale `{semana, valor}`) y `cambio` es el número de semana. En `progreso`, `series` como `["35×12"]` y `zona` = alta, media o baja.
+
+## Altas desde el panel (31/10)
+El panel crea ya la hoja de la app, el código, la carpeta y la tarea del vídeo del día 1. Si la ficha ya tiene `codigo_app`, no crees otra hoja: rellena esa. El candado ahora solo pide foto y `plan_ok`; el peso ya no cierra el entreno y Alimentación se ve siempre.

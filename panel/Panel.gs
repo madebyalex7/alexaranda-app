@@ -14,7 +14,7 @@ var PANEL_KEY = '__PANEL_KEY__';
 var PANEL_HOJA_ID = '1SmU2r84U-k2lq5RR1R9f0BVamwIU4-mwtRd8uRVnZ48';
 var P_ZONA = 'Europe/Madrid';
 var P_TABLAS = {
-  Clientes: { pref: 'c', cols: ['id', 'nombre', 'nombre_whatsapp', 'telefono', 'codigo_app', 'estado', 'programa', 'inicio', 'fin', 'precio_total', 'forma_pago', 'metodo', 'cuotas', 'importe_cuota', 'dia_cobro', 'semaforo', 'semaforo_nota', 'seguimiento', 'proxima_conversacion', 'conversacion_motivo', 'retomar_fecha', 'retomar_motivo', 'notas', 'actualizado', 'archivado', 'carpeta_fotos', 'vida'] },
+  Clientes: { pref: 'c', cols: ['id', 'nombre', 'nombre_whatsapp', 'telefono', 'codigo_app', 'estado', 'programa', 'inicio', 'fin', 'precio_total', 'forma_pago', 'metodo', 'cuotas', 'importe_cuota', 'dia_cobro', 'semaforo', 'semaforo_nota', 'seguimiento', 'proxima_conversacion', 'conversacion_motivo', 'retomar_fecha', 'retomar_motivo', 'notas', 'actualizado', 'archivado', 'carpeta_fotos', 'vida', 'correo'] },
   Leads: { pref: 'l', largo: true, cols: ['id', 'nombre', 'instagram', 'whatsapp', 'origen', 'temperatura', 'estado', 'preocupacion', 'ultima_fecha', 'ultima_resumen', 'siguiente_paso', 'proximo_contacto', 'notas', 'actualizado', 'archivado',
     'llamada', 'llamada_evento', 'llamada_estado', 'motivo_no', 'notas_llamada', 'cliente_id',
     'chat_ig', 'chuleta', 'guion', 'seguimiento_paso', 'seguimiento_msg'] },
@@ -32,7 +32,7 @@ var P_TABLAS = {
   Entregas: { pref: 'e', cols: ['id', 'cliente_id', 'cliente', 'codigo_app', 'tipo', 'formulario', 'desde', 'estado', 'hecha_el', 'como', 'notas', 'actualizado', 'archivado'] },
   // Avisos de la app que Alex ya ha visto (id = clave del aviso)
   AvisosVistos: { pref: 'av', cols: ['id', 'codigo', 'tipo', 'fecha', 'actualizado', 'archivado'] },
-  Altas: { pref: 'al', cols: ['id', 'fecha', 'cliente_id', 'cliente', 'lead_id', 'telefono', 'instagram', 'programa', 'inicio', 'resumen', 'estado', 'chat', 'resultado', 'formulario_enviado', 'paso', 'listo', 'bienvenida_enviada', 'actualizado', 'archivado'] },
+  Altas: { pref: 'al', cols: ['id', 'fecha', 'cliente_id', 'cliente', 'lead_id', 'telefono', 'instagram', 'programa', 'inicio', 'resumen', 'estado', 'chat', 'resultado', 'formulario_enviado', 'paso', 'listo', 'bienvenida_enviada', 'app_enviada', 'actualizado', 'archivado'] },
   Cobros: { pref: 'p', cols: ['id', 'fecha', 'cliente_id', 'cliente', 'concepto', 'importe', 'estado', 'ultimo', 'metodo', 'notas', 'revisado', 'actualizado', 'archivado'] },
   // Ronda del lunes (y revisiones): una fila por cliente y ronda. La rellena Claude; Alex decide en el panel.
   Ronda: { pref: 'r', largo: true, cols: ['id', 'fecha', 'tipo', 'cliente_id', 'cliente', 'codigo_app', 'orden', 'semaforo', 'titular',
@@ -87,6 +87,7 @@ function P_despachar(cuerpo) {
       case 'avisoVisto': return { ok: true, data: P_escribir(function () { return AV_visto(d.id, d.codigo, d.tipo); }) };
       case 'llamadasCargar': return { ok: true, data: LL_cargar(d.sync !== false) };
       case 'llamadaLead': return { ok: true, data: LL_lead(d.id) };
+      case 'altaMontar': return { ok: true, data: P_escribir(function () { return AL_montar(d.cliente_id, d.sexo); }) };
       case 'llamadaCrearCliente': return { ok: true, data: P_escribir(function () { return LL_crearCliente(d.lead_id, d.alta || {}); }) };
       case 'llamadaIA': return { ok: true, data: P_escribir(function () { return LL_guardarIA(d.id, d.texto, d.modo); }) };
       default: return { ok: false, error: 'Acción desconocida: ' + cuerpo.accion };
@@ -655,6 +656,9 @@ function LL_crearCliente(leadId, a) {
   var l = LL_lead(leadId);
   if (l.cliente_id) throw new Error('Este lead ya tiene ficha de cliente (' + l.cliente_id + ')');
   var nombre = String(a.nombre || l.nombre || '').trim(); if (!nombre) throw new Error('Falta el nombre');
+  if (nombre.split(/\s+/).length < 2) throw new Error('Pon nombre y apellidos');
+  if (!LL_tel(a.telefono || l.whatsapp)) throw new Error('Falta el teléfono');
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(a.correo || '').trim())) throw new Error('Falta el correo');
   var inicio = R_fechaOk(a.inicio), meses = parseInt(a.meses, 10), precio = P_num(a.precio);
   if (!(meses > 0)) throw new Error('Falta la duración del plan');
   if (!(precio > 0)) throw new Error('Falta el precio');
@@ -665,7 +669,7 @@ function LL_crearCliente(leadId, a) {
   if (Math.abs(suma - precio) > 0.05) throw new Error('Los cobros suman ' + suma.toFixed(2) + ' € y el precio es ' + precio.toFixed(2) + ' €');
   var n = cobros.length, programa = a.programa || (meses + ' meses');
   var cli = P_nuevo('Clientes', {
-    nombre: nombre, nombre_whatsapp: a.nombre_whatsapp || nombre, telefono: LL_tel(a.telefono || l.whatsapp), estado: 'Activo',
+    nombre: nombre, nombre_whatsapp: a.nombre_whatsapp || nombre, telefono: LL_tel(a.telefono || l.whatsapp), correo: String(a.correo || '').trim(), estado: 'Activo',
     programa: programa, inicio: inicio, fin: LL_sumarMeses(inicio, meses), precio_total: String(precio),
     forma_pago: n === 1 ? 'Pago único' : n + ' cuotas', metodo: a.metodo || '', cuotas: String(n),
     importe_cuota: n === 1 ? String(precio) : String(P_num(cobros[0].importe)), dia_cobro: n > 1 ? String(+cobros[0].fecha.slice(8, 10)) : '',
@@ -687,7 +691,45 @@ function LL_crearCliente(leadId, a) {
     programa: programa, inicio: inicio, resumen: resumen, estado: filaAlta ? filaAlta.estado : 'pendiente' };
   var alta = filaAlta ? P_guardar('Altas', filaAlta.id, campoAlta) : P_nuevo('Altas', campoAlta);
   var lead = P_guardar('Leads', l.id, { nombre: l.nombre || nombre, whatsapp: l.whatsapp || cli.telefono, estado: 'Cerrado', llamada_estado: 'cerrado', cliente_id: cli.id, ultima_fecha: P_hoy(), proximo_contacto: '', siguiente_paso: 'Cliente: ' + programa });
-  return { cliente: cli, cobros: nuevos, alta: alta, lead: lead };
+  // Su hoja de la app, su carpeta y la tarea del vídeo del día 1 (Alex 31/10). Si algo falla, la ficha ya está creada y se reintenta desde Pollitos
+  var montaje = null;
+  try { montaje = AL_montar(cli.id, a.sexo); cli = montaje.cliente; alta = P_leer('Altas').filter(function (x) { return x.id === alta.id; })[0] || alta; }
+  catch (e) { montaje = { error: String(e.message || e) }; alta = P_guardar('Altas', alta.id, { paso: 'Falta crear su hoja de la app: ' + montaje.error }); }
+  return { cliente: cli, cobros: nuevos, alta: alta, lead: lead, montaje: montaje };
+}
+
+/* ═════════ Montar la app de un alta (Alex 31/10): hoja desde la plantilla, código, carpeta de fotos y tarea del día 1 ═════════ */
+var AL_RAIZ_CLIENTES = '1ogv2dqiY_xc4quV1CLkvhhwtnoVBZDmW';   // Drive › 03 Clientes
+function AL_lunesSiguiente(hoy) { var p = hoy.split('-'), d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])), w = d.getUTCDay(); return P_sumarDias(hoy, ((8 - w) % 7) || 7); }
+/** La plantilla es una copia de la hoja de Beta sin datos; se crea la primera vez y su id queda en Config › plantilla_hoja */
+function AL_plantilla() {
+  var cf = P_leer('Config').filter(function (r) { return r.id === 'plantilla_hoja' && !r.archivado; })[0];
+  if (cf && cf.valor) { try { DriveApp.getFileById(String(cf.valor)).getName(); return String(cf.valor); } catch (e) {} }
+  var reg = D_leer(SpreadsheetApp.openById(MAESTRA_ID), 'Registro clientes').filter(function (r) { return String(r.codigo).trim() === 'BETA-ALEX25'; })[0];
+  if (!reg || !reg.hoja_datos_id) throw new Error('No encuentro la hoja de Beta para sacar la plantilla');
+  var orig = DriveApp.getFileById(String(reg.hoja_datos_id)), copia = orig.makeCopy('App · PLANTILLA (no tocar)'), ss = SpreadsheetApp.openById(copia.getId());
+  ss.getSheets().forEach(function (sh) { var n = sh.getLastRow() - 1, c = sh.getLastColumn(); if (n > 0 && c > 0) sh.getRange(2, 1, n, c).clearContent(); });
+  SpreadsheetApp.flush();
+  P_guardar('Config', 'plantilla_hoja', { valor: copia.getId() });
+  return copia.getId();
+}
+function AL_montar(cid, sexo) {
+  var cl = P_leer('Clientes').filter(function (c) { return c.id === cid; })[0]; if (!cl) throw new Error('No encuentro esa ficha');
+  var nombre = String(cl.nombre || '').trim(), hoy = P_hoy();
+  if (cl.codigo_app) return { cliente: cl, ya: true };   // ya tiene hoja: nunca se pisa
+  var beta = typeof ES_BETA !== 'undefined' && ES_BETA;
+  var raiz = beta ? DriveApp.createFolder('BETA · ' + nombre) : DriveApp.getFolderById(AL_RAIZ_CLIENTES).createFolder(nombre), fotos = raiz.createFolder('Fotos de progreso - ' + nombre);
+  var hojaId = DriveApp.getFileById(AL_plantilla()).makeCopy((beta ? 'BETA · ' : '') + 'App · ' + nombre).getId(), ss = SpreadsheetApp.openById(hojaId);
+  var ini = String(nombre.split(/\s+/)[0]).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z]/g, '') || 'CLIENTE', alf = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', cod = ini + '-';
+  for (var i = 0; i < 8; i++) cod += alf.charAt(Math.floor(Math.random() * alf.length));
+  var aj = { candado: 'TRUE', nombre: nombre.split(/\s+/)[0], sexo: /^h|^m[aá]sc|^chico/i.test(String(sexo || '')) ? 'hombre' : 'mujer', carpeta_fotos: fotos.getId(), fecha_inicio_semana1: AL_lunesSiguiente(hoy) };
+  Object.keys(aj).forEach(function (k) { R_ajuste(ss, k, aj[k]); });
+  var tr = D_tabla(SpreadsheetApp.openById(MAESTRA_ID), 'Registro clientes');
+  tr.sh.appendRow(tr.cab.map(function (c) { return c === 'codigo' ? cod : c === 'nombre' ? nombre : c === 'hoja_datos_id' ? hojaId : c === 'activa' ? 'TRUE' : c === 'notas' ? 'Alta desde el panel ' + hoy : ''; }));
+  var cli = P_guardar('Clientes', cid, { codigo_app: cod, carpeta_fotos: fotos.getId() });
+  P_nuevo('Tareas', { tarea: 'Entreno: mandar a ' + nombre + ' el vídeo de cómo funciona el servicio', cliente: nombre, cliente_id: cid, prioridad: 'urgente', fecha: P_sumarDias(hoy, 1), estado: 'pendiente', origen: 'Alta', creada: hoy });
+  try { var al = P_leer('Altas').filter(function (x) { return x.cliente_id === cid && !x.archivado; }).pop(); if (al) P_guardar('Altas', al.id, { paso: 'Hoja de la app creada' }); } catch (e) {}
+  return { cliente: cli, codigo: cod, hoja: hojaId, carpeta: raiz.getId() };
 }
 
 function LL_guardarIA(id, texto, modo) {
